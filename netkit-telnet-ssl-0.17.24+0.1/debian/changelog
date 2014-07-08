@@ -1,9 +1,15 @@
-netkit-telnet-ssl (0.17.24+0.1-23+nmu1) unstable; urgency=low
+netkit-telnet-ssl (0.17.24+0.1-24+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
   * Fixing how we handle UTF8 characters (Closes: #749322)
 
  -- Marcos Marado <mindboosternoori@gmail.com>  Mon, 26 May 2014 11:55:18 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-24) unstable; urgency=medium
+ 
+  * Fix buffer overflow (Closes: #695181).
+ 
+ -- Ian Beckwith <ianb@debian.org>  Sat, 22 Feb 2014 17:00:11 +0000
 
 netkit-telnet-ssl (0.17.24+0.1-23) unstable; urgency=low
 
