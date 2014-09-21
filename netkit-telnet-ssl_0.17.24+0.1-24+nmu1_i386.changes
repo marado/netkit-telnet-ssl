@@ -1,0 +1,34 @@
+Format: 1.8
+Date: Mon, 26 May 2014 11:55:18 +0100
+Source: netkit-telnet-ssl
+Binary: telnet-ssl telnetd-ssl
+Architecture: source i386
+Version: 0.17.24+0.1-24+nmu1
+Distribution: unstable
+Urgency: low
+Maintainer: Ian Beckwith <ianb@debian.org>
+Changed-By: Marcos Marado <mindboosternoori@gmail.com>
+Description: 
+ telnet-ssl - telnet client with SSL encryption support
+ telnetd-ssl - telnet server with SSL encryption support
+Closes: 749322
+Changes: 
+ netkit-telnet-ssl (0.17.24+0.1-24+nmu1) unstable; urgency=low
+ .
+   * Non-maintainer upload.
+   * Fixing how we handle UTF8 characters (Closes: #749322)
+Checksums-Sha1: 
+ 2361cb75ff9289e73bdf6644a1cf9f9496d11b43 1023 netkit-telnet-ssl_0.17.24+0.1-24+nmu1.dsc
+ 80bdf5d9c8ee79e6134d6a7e2dd738313d4e62d8 35898 netkit-telnet-ssl_0.17.24+0.1-24+nmu1.diff.gz
+ b9ee5f655a0d5e25b058c418ad7ad075d00c3931 91538 telnet-ssl_0.17.24+0.1-24+nmu1_i386.deb
+ d6c876367e183a78d546e16d45c90801f14d0a40 62720 telnetd-ssl_0.17.24+0.1-24+nmu1_i386.deb
+Checksums-Sha256: 
+ 9eef6d1292a4ab615b78544128304134fe49c015672323ff1cd4dfa46ed901b5 1023 netkit-telnet-ssl_0.17.24+0.1-24+nmu1.dsc
+ d48df8b0cee4c762550481e596223ab4bbd61703c104ea3c5be57d63791f7f1f 35898 netkit-telnet-ssl_0.17.24+0.1-24+nmu1.diff.gz
+ af83f7d65d067467c28f4a2f43528dcd4dac2a9036f05b3a0bb49bb0b89c0688 91538 telnet-ssl_0.17.24+0.1-24+nmu1_i386.deb
+ 87a718e5169575d44a9bc2f72c1f933e4de6c818f9d2a44ffcedf07781f46aa4 62720 telnetd-ssl_0.17.24+0.1-24+nmu1_i386.deb
+Files: 
+ 0cf91812ea9c3f389e295800d96b9701 1023 net extra netkit-telnet-ssl_0.17.24+0.1-24+nmu1.dsc
+ f3ed20ed68af82a32ffc565fd37f7384 35898 net extra netkit-telnet-ssl_0.17.24+0.1-24+nmu1.diff.gz
+ 1a5770ba7231dc1adf335518ad28a0ff 91538 net extra telnet-ssl_0.17.24+0.1-24+nmu1_i386.deb
+ edb958fd7055361ed8958b09e4d3d2f0 62720 net extra telnetd-ssl_0.17.24+0.1-24+nmu1_i386.deb
