@@ -1,0 +1,135 @@
+Description: Drain input stream from child process.
+ When the server process receives SIGCHILD, there might
+ well be data pending in the PTY buffer, intended for
+ the client waiting eagerly at the network link.
+ .
+ Replace the old signal handler for SIGCHILD with a simpler
+ version that sets a semaphor.  That semaphor is then sampled
+ at a suitable time during the I/O main loop, and execution
+ is transferred to the old handler after flushing the queue.
+ .
+ In the original signal handler, call waitpid() in order to
+ remove the child process from the kernel's process list.
+ .
+ Make some small adjustment to debugging output.
+Author: Mats Erik Andersson <debian@gisladisker.se>
+Bug-Debian: http://bugs.debian.org/607415
+Forwarded: no
+Last-Update: 2015-01-20
+
+--- netkit-telnet-0.17/telnetd/sys_term.c.orig	2015-01-09 20:22:23.000000000 +0100
++++ netkit-telnet-0.17/telnetd/sys_term.c	2015-03-07 15:44:01.185237034 +0100
+@@ -39,6 +39,8 @@
+ 
+ #include <utmp.h>
+ 
++#include <sys/wait.h>
++
+ #include "telnetd.h"
+ #include "pathnames.h"
+ 
+@@ -720,11 +722,16 @@
+  * clean up anything that needs to be cleaned up.
+  */
+ void cleanup(int sig) {
++    int stat = 0;
+     const char *p;
+-    (void)sig;
++
++    if (sig == SIGCHLD) {
++	if (waitpid(-1, &stat, WNOHANG) > 0)
++	    stat = WEXITSTATUS(stat);
++    }
+ 
+     p = line + sizeof("/dev/") - 1;
+     if (logout(p)) logwtmp(p, "", "");
+     shutdown(net, 2);
+-    exit(0);
++    exit(stat);
+ }
+--- netkit-telnet-0.17/telnetd/telnetd.c.orig	2015-01-09 20:22:23.000000000 +0100
++++ netkit-telnet-0.17/telnetd/telnetd.c	2015-01-20 13:59:40.625777998 +0100
+@@ -92,9 +92,17 @@
+ char *loginprg = _PATH_LOGIN;
+ #endif
+ 
++static int got_sigchld = 0;
++
+ extern void usage(void);
+ 
+ static void
++catch_sigchld(int sig)
++{
++	got_sigchld = 1;
++}
++
++static void
+ wait_for_connection(const char *service)
+ {
+ 	struct addrinfo hints;
+@@ -870,9 +878,9 @@
+      */
+     signal(SIGTTOU, SIG_IGN);
+ #endif
+-    
+-    signal(SIGCHLD, cleanup);
+-    
++
++    signal(SIGCHLD, catch_sigchld);
++
+ #ifdef TIOCNOTTY
+     {
+ 	register int t;
+@@ -1091,6 +1099,11 @@
+ 				   ptyibuf[0] & TIOCPKT_DOSTOP ? 1 : 0,
+ 				   IAC, SE);
+ 		}
++
++		DIAG((TD_REPORT | TD_PTYDATA),
++		     netoprintf("td: ptyread %d chars\r\n", pcc););
++		DIAG(TD_PTYDATA, printdata("pd", ptyibuf, pcc));
++
+ 		pcc--;
+ 		ptyip = ptyibuf+1;
+ 	    }
+@@ -1116,6 +1129,11 @@
+ 	    telrcv();
+ 	if (FD_ISSET(p, &obits) && (pfrontp - pbackp) > 0)
+ 	    ptyflush();
++
++    	if (got_sigchld) {
++	    netflush();
++	    cleanup(SIGCHLD);	/* Not returning.  */
++	}
+     }
+     cleanup(0);
+ }  /* end of telnet */
+--- netkit-telnet-0.17/telnetd/utility.c.orig	2015-01-14 18:03:48.552691379 +0100
++++ netkit-telnet-0.17/telnetd/utility.c	2015-01-19 16:06:55.783013012 +0100
+@@ -1110,7 +1110,7 @@
+ 		/* add a line of output */
+ 		netoprintf("%s: ", tag);
+ 		for (i = 0; i < 20 && cnt; i++) {
+-			netoprintf("%02x", *ptr);
++			netoprintf("%02x", (unsigned char) *ptr);
+ 			if (isprint(*ptr)) {
+ 				xbuf[i] = *ptr;
+ 			} else {
+--- netkit-telnet-0.17/telnetd/telnetd.8.orig	2015-01-13 23:06:04.039624516 +0100
++++ netkit-telnet-0.17/telnetd/telnetd.8	2015-01-20 14:35:13.973804769 +0100
+@@ -124,12 +124,13 @@
+ program.
+ .El
+ .It Fl D Ar debugmode
+-This option may be used for debugging purposes.  This allows
++This option may be used for debugging purposes.  It allows
+ .Nm telnetd
+ to print out debugging information to the connection, allowing the
+ user to see what
+ .Nm telnetd
+-is doing.  There are several possible values for
++is doing.  Repeated use of the option arranges composite debug reports.
++There are several possible values for
+ .Ar debugmode:
+ .Bl -tag -width exercise
+ .It Cm options

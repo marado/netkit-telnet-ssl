@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -e
+
+update-alternatives --install /usr/bin/telnet telnet /usr/bin/telnet-ssl 110 \
+		    --slave /usr/share/man/man1/telnet.1.gz telnet.1.gz \
+				/usr/share/man/man1/telnet-ssl.1.gz
+
+#DEBHELPER#

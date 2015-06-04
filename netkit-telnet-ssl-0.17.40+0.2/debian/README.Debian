@@ -1,0 +1,14 @@
+The SSL patches were downloaded from
+ftp://ftp.uni-mainz.de/pub/software/security/ssl/SSL-MZapps/netkit-telnet-0.17+ssl-0.1.diff.gz
+
+The packages was build in the following way:
+
+apt-get source netkit-telnet
+mv netkit-telnet-0.17 netkit-telnet-ssl-0.17.24+0.1
+cd netkit-telnet-ssl-0.17.24+0.1
+zcat ../netkit-telnet-0.17+ssl-0.1.diff.gz | patch -p1
+#don't fix problems with applied patches !
+cd ..
+cp -a netkit-telnet-ssl-0.17.24+0.1 netkit-telnet-ssl-0.17.24+0.1.orig
+cd netkit-telnet-ssl-0.17.24+0.1
+zcat ../netkit-telnet-ssl_0.17.17+0.1-2.diff.gz | patch -p1

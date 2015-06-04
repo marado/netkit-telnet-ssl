@@ -1,0 +1,351 @@
+Description: Selected protocol refinement.
+ Let the manual pages express NEW-ENVIRON as the only
+ supported environment mechanism.
+ .
+ Let the diagnostic printout correctly identify the observed
+ modi of local flow control.
+ .
+ Let the server in debug mode correctly decode only the suboption
+ part of a status response, by ignoring the initial `IAC SB'.
+ .
+ Let the server and client decode suboptions containing also ENV_USERVAR
+ in addition to the already known ENV_VAR.
+ .
+ Make the command `status' be as verbose as in other clients.
+ .
+ Several calls to printsub() were missing in `telnet.cc', thus failing
+ to display options that the client sends to the server.  Instead only
+ the received responses were display in some few negotiations, namely
+ TELOPT_TTYPE, TELOPT_TSPEED, TELOPT_XDISPLOC and TELOPT_LINEMODE
+
+Author: Mats Erik Andersson <debian@gisladisker.se>
+Forwarded: no
+Last-Update: 2015-03-09
+
+--- netkit-telnet-0.17/telnet/telnet.1.orig	2015-01-10 01:35:37.775594668 +0100
++++ netkit-telnet-0.17/telnet/telnet.1	2015-01-13 22:22:47.371626252 +0100
+@@ -90,7 +90,7 @@
+ .Ev USER
+ variable
+ of the
+-.Ev ENVIRON
++.Ev NEW-ENVIRON
+ option if supported by the remote system. The username is retrieved
+ via
+ .Xr getlogin 3 .
+@@ -131,7 +131,7 @@
+ sending the specified name as the 
+ .Dv USER
+ environment variable, so it requires that the remote system support the
+-.Ev TELNET ENVIRON
++.Ev TELNET NEW-ENVIRON
+ option. This option implies the
+ .Fl a
+ option, and may also be used with the
+@@ -327,7 +327,7 @@
+ command is used to propagate environment variables across the 
+ .Nm telnet
+ link using the
+-.Dv TELNET ENVIRON
++.Dv TELNET NEW-ENVIRON
+ protocol option.
+ All variables exported from the shell are defined, but only the 
+ .Ev DISPLAY
+@@ -1044,7 +1044,7 @@
+ attempts to use it to perform automatic authentication.  If the
+ .Dv TELNET AUTHENTICATION
+ option is not supported, the user's login name is propagated using the
+-.Dv TELNET ENVIRON
++.Dv TELNET NEW-ENVIRON
+ option.
+ Setting this flag is the same as specifying the
+ .Ar a
+@@ -1255,7 +1255,7 @@
+ environment variables.
+ Other environment variables may be propagated
+ to the other side via the
+-.Dv TELNET ENVIRON
++.Dv TELNET NEW-ENVIRON
+ option.
+ .Sh FILES
+ .Bl -tag -width /etc/telnetrc -compact
+--- netkit-telnet-0.17/telnetd/telnetd.8.orig	2015-01-10 00:30:52.891551907 +0100
++++ netkit-telnet-0.17/telnetd/telnetd.8	2015-01-13 23:06:04.039624516 +0100
+@@ -250,7 +250,6 @@
+ DO TSPEED
+ DO XDISPLOC
+ DO NEW-ENVIRON
+-DO ENVIRON
+ WILL SUPPRESS GO AHEAD
+ DO ECHO
+ DO LINEMODE
+@@ -372,9 +371,6 @@
+ .It "DO NEW-ENVIRON"
+ Indicates a desire to be able to request environment
+ variable information, as described in RFC 1572.
+-.It "DO ENVIRON"
+-Indicates a desire to be able to request environment
+-variable information, as described in RFC 1408.
+ .It "DO LINEMODE"
+ Only sent if
+ .Nm telnetd
+--- netkit-telnet-0.17/telnet/utilities.cc.orig	2015-01-09 23:33:05.219513739 +0100
++++ netkit-telnet-0.17/telnet/utilities.cc	2015-03-09 15:07:32.965473513 +0100
+@@ -335,10 +335,14 @@
+ 		break;
+ 	    }
+ 	    switch (pointer[1]) {
+-	    case 0:
++	    case LFLOW_OFF:
+ 		fprintf(NetTrace, " OFF"); break;
+-	    case 1:
++	    case LFLOW_ON:
+ 		fprintf(NetTrace, " ON"); break;
++	    case LFLOW_RESTART_ANY:
++		fprintf(NetTrace, " RESTART-ANY"); break;
++	    case LFLOW_RESTART_XON:
++		fprintf(NetTrace, " RESTART-XON"); break;
+ 	    default:
+ 		fprintf(NetTrace, " %d (unknown)", pointer[1]);
+ 	    }
+@@ -454,7 +458,7 @@
+ 			pointer[2]&MODE_SOFT_TAB ? "|SOFT_TAB" : "",
+ 			pointer[2]&MODE_LIT_ECHO ? "|LIT_ECHO" : "",
+ 			pointer[2]&MODE_ACK ? "|ACK" : "");
+-		    fprintf(NetTrace, "%s", tbuf[1] ? &tbuf[1] : "0");
++		    fprintf(NetTrace, "%s", tbuf[0] ? &tbuf[1] : "0");
+ 		}
+ 		if (pointer[2]&~(MODE_MASK))
+ 		    fprintf(NetTrace, " (0x%x)", pointer[2]);
+@@ -580,10 +584,14 @@
+ 		    register int noquote = 2;
+ 		    for (i = 2; i < length; i++ ) {
+ 			switch (pointer[i]) {
++			case ENV_USERVAR:
+ 			case ENV_VAR:
+ 			    if (pointer[1] == TELQUAL_SEND)
+ 				goto def_case;
+-			    fprintf(NetTrace, "%s", "\" VAR " + noquote);
++			    if (pointer[i] == ENV_VAR)
++				fprintf(NetTrace, "%s", "\" VAR " + noquote);
++			    else
++				fprintf(NetTrace, "%s", "\" USERVAR " + noquote);
+ 			    noquote = 2;
+ 			    break;
+ 
+@@ -624,7 +632,7 @@
+ 	    if (TELOPT_OK(pointer[0]))
+ 		fprintf(NetTrace, "%s (unknown)", TELOPT(pointer[0]));
+ 	    else
+-		fprintf(NetTrace, "%d (unknown)", pointer[i]);
++		fprintf(NetTrace, "%d (unknown)", pointer[0]);
+ 	    for (i = 1; i < length; i++)
+ 		fprintf(NetTrace, " %d", pointer[i]);
+ 	    break;
+--- netkit-telnet-0.17/telnetd/utility.c.orig	2015-01-09 23:11:41.695499612 +0100
++++ netkit-telnet-0.17/telnetd/utility.c	2015-01-14 18:03:48.552691379 +0100
+@@ -643,10 +643,14 @@
+ 		break;
+ 	    }
+ 	    switch (pointer[1]) {
+-	    case 0:
++	    case LFLOW_OFF:
+ 		netoprintf(" OFF"); break;
+-	    case 1:
++	    case LFLOW_ON:
+ 		netoprintf(" ON"); break;
++	    case LFLOW_RESTART_ANY:
++		netoprintf(" RESTART-ANY"); break;
++	    case LFLOW_RESTART_XON:
++		netoprintf(" RESTART-XON"); break;
+ 	    default:
+ 		netoprintf(" %d (unknown)", pointer[1]);
+ 	    }
+@@ -792,15 +796,6 @@
+ 	    netoprintf("STATUS");
+ 
+ 	    switch (pointer[1]) {
+-	    default:
+-		if (pointer[1] == TELQUAL_SEND)
+-		    netoprintf(" SEND");
+-		else
+-		    netoprintf(" %d (unknown)", pointer[1]);
+-		for (i = 2; i < length; i++) {
+-		    netoprintf(" ?%d?", pointer[i]);
+-		}
+-		break;
+ 	    case TELQUAL_IS:
+ 		netoprintf(" IS\r\n");
+ 
+@@ -852,6 +847,15 @@
+ 		    }
+ 		}
+ 		break;
++	    default:
++		if (pointer[1] == TELQUAL_SEND)
++		    netoprintf(" SEND");
++		else
++		    netoprintf(" %d (unknown)", pointer[1]);
++		for (i = 2; i < length; i++) {
++		    netoprintf(" ?%d?", pointer[i]);
++		}
++		break;
+ 	    }
+ 	    break;
+ 	  }
+@@ -887,10 +891,14 @@
+ 		    register int noquote = 2;
+ 		    for (i = 2; i < length; i++ ) {
+ 			switch (pointer[i]) {
++			case ENV_USERVAR:
+ 			case ENV_VAR:
+ 			    if (pointer[1] == TELQUAL_SEND)
+ 				goto def_case;
+-			    netoprintf("%s", "\" VAR " + noquote);
++			    if (pointer[i] == ENV_VAR)
++				netoprintf("%s", "\" VAR " + noquote);
++			    else
++				netoprintf("%s", "\" USERVAR " + noquote);
+ 			    noquote = 2;
+ 			    break;
+ 
+@@ -1080,7 +1088,7 @@
+ 	    if (TELOPT_OK(pointer[0]))
+ 	        netoprintf("%s (unknown)", TELOPT(pointer[0]));
+ 	    else
+-	        netoprintf("%d (unknown)", pointer[i]);
++	        netoprintf("%d (unknown)", pointer[0]);
+ 	    for (i = 1; i < length; i++) {
+ 		netoprintf(" %d", pointer[i]);
+ 	    }
+--- netkit-telnet-0.17/telnet/commands.cc.orig	2015-01-09 20:22:23.000000000 +0100
++++ netkit-telnet-0.17/telnet/commands.cc	2015-01-21 23:20:17.488735411 +0100
+@@ -1605,7 +1605,7 @@
+ }
+ 
+ static int status(void) {
+-    int notmuch = 1;
++    int notmuch = 0;
+     return dostatus(notmuch);
+ }
+ 
+--- netkit-telnet-0.17/telnet/telnet.cc.orig	2015-01-09 20:22:23.000000000 +0100
++++ netkit-telnet-0.17/telnet/telnet.cc	2015-01-22 14:34:01.402828217 +0100
+@@ -684,6 +684,15 @@
+       name = gettermname();
+       netoring.xprintf("%c%c%c%c%s%c%c", IAC, SB, TELOPT_TTYPE,
+ 		      TELQUAL_IS, name, IAC, SE);
++      {
++	unsigned char tbuf[7 + 20];	/* 20 chars for terminal name.  */
++	int len;
++
++	len = snprintf((char *) tbuf, sizeof(tbuf), "%c%c%c%c%s%c%c",
++		       IAC, SB, TELOPT_TTYPE, TELQUAL_IS, name, IAC, SE);
++	if (len > 6 && len < sizeof(tbuf))
++	  printsub('>', &tbuf[2], len - 2);
++      }
+     }
+     break;
+   case TELOPT_TSPEED:
+@@ -696,6 +705,16 @@
+       TerminalSpeeds(&iispeed, &oospeed);
+       netoring.xprintf("%c%c%c%c%ld,%ld%c%c", IAC, SB, TELOPT_TSPEED, 
+ 		      TELQUAL_IS, oospeed, iispeed, IAC, SE);
++      {
++	unsigned char tbuf[8 + 20];	/* 20 characters for two speeds.  */
++	int len;
++
++	len = snprintf((char *) tbuf, sizeof(tbuf), "%c%c%c%c%ld,%ld%c%c",
++		       IAC, SB, TELOPT_TSPEED, TELQUAL_IS,
++		       oospeed, iispeed, IAC, SE);
++	if (len > 7 && len < sizeof(tbuf))
++	  printsub('>', &tbuf[2], len - 2);
++      }
+     }
+     break;
+   case TELOPT_LFLOW:
+@@ -783,6 +802,15 @@
+       }
+       netoring.xprintf("%c%c%c%c%s%c%c", IAC, SB, TELOPT_XDISPLOC,
+ 		      TELQUAL_IS, dp, IAC, SE);
++      {
++	unsigned char tbuf[7 + 30];	/* 30 chars for display name.  */
++	int len;
++
++	len = snprintf((char *) tbuf, sizeof(tbuf), "%c%c%c%c%s%c%c",
++		       IAC, SB, TELOPT_XDISPLOC, TELQUAL_IS, dp, IAC, SE);
++	if (len > 6 && len < sizeof(tbuf))
++	  printsub('>', &tbuf[2], len - 2);
++      }
+     }
+     break;
+     
+@@ -801,6 +829,14 @@
+   
+   netoring.xprintf("%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE, 
+ 		  DONT, cmd[0], IAC, SE);
++  {
++    unsigned char tbuf[8];
++    int len;
++
++    len = snprintf((char *) tbuf, sizeof(tbuf), "%c%c%c%c%c%c%c",
++		   IAC, SB, TELOPT_LINEMODE, DONT, cmd[0], IAC, SE);
++    printsub('>', &tbuf[2], len - 2);
++  }
+ }
+ 
+ void lm_wont(unsigned char * /*cmd*/, int len) {
+@@ -818,6 +854,14 @@
+   }
+   netoring.xprintf("%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE, 
+ 		  WONT, cmd[0], IAC, SE);
++  {
++    unsigned char tbuf[8];
++    int len;
++
++    len = snprintf((char *) tbuf, sizeof(tbuf), "%c%c%c%c%c%c%c",
++		   IAC, SB, TELOPT_LINEMODE, WONT, cmd[0], IAC, SE);
++    printsub('>', &tbuf[2], len - 2);
++  }
+ }
+ 
+ void lm_dont(unsigned char * /*cmd*/, int len) {
+@@ -841,6 +885,14 @@
+   
+   netoring.xprintf("%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE, LM_MODE,
+ 		  k, IAC, SE);
++  {
++    unsigned char tbuf[8];
++    int len;
++
++    len = snprintf((char *) tbuf, sizeof(tbuf), "%c%c%c%c%c%c%c",
++		   IAC, SB, TELOPT_LINEMODE, LM_MODE, k, IAC, SE);
++    printsub('>', &tbuf[2], len - 2);
++  }
+   
+   setconnmode(0);	/* set changed mode */
+ }
+@@ -933,14 +985,23 @@
+ }
+ 
+ void slc_import(int def) {
++  unsigned char cmd, tbuf[10];
++  int len;
++
+   if (def) {
++    cmd = SLC_DEFAULT;
+     netoring.xprintf("%c%c%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE,
+ 		    LM_SLC, 0, SLC_DEFAULT, 0, IAC, SE);
+   }
+   else {
++    cmd = SLC_VARIABLE;
+     netoring.xprintf("%c%c%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE,
+ 		    LM_SLC, 0, SLC_VARIABLE, 0, IAC, SE);
+   }
++
++  len = snprintf((char *) tbuf, sizeof(tbuf), "%c%c%c%c%c%c%c%c%c",
++		 IAC, SB, TELOPT_LINEMODE, LM_SLC, 0, cmd, 0, IAC, SE);
++  printsub('>', &tbuf[2], len - 2);
+ }
+ 
+ void slc_export(void) {

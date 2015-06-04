@@ -1,0 +1,6 @@
+# netkit is long dead upstream
+telnet-ssl: no-homepage-field
+# dont is valid as part of telnet IAC DONT.. commands
+telnet-ssl: spelling-error-in-binary usr/bin/telnet-ssl dont don't
+telnet-ssl: spelling-error-in-manpage usr/share/man/man1/telnet-ssl.1.gz dont don't
+

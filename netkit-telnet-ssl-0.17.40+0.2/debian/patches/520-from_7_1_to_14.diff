@@ -1,0 +1,568 @@
+Description: Mixed updates.
+ Protect SSL_writev using ifdef.
+ [telnetd/utility.c]
+ .
+ Fix socks problems. #314416
+ .
+ Compiler warnings caused by GCC 4.
+ .
+ Do not disable SSL to localhost when `-z secure' is in effect. #339528 339535
+ .
+ Reject invalid port numbers.  This patch is separated into its own file,
+ as it can be inherited from netkit-telnet.
+ .
+ Update manpages.
+ [telnet/telnet.1, telnetd/issue.net.5]
+ .
+ Move 'telnetd.pem' to '/etc/telnetd-ssl/'.
+ [telnetd/telnetd.c]
+
+ Fix segfault in netwritebuf().
+ [telnetd/utility.c]
+ .
+ Implement new telnet command `startssl', useful with IMAPS and ESMTP.
+ [telnet/commands.cc, telnet/telnet.1]
+ .
+ Mention '-z sslopt' in manpage.
+ [telnetd/telnetd.8]
+ .
+ Trivial SCM header changes were moved elsewhere.
+
+Author: Matt Bookman, Ian Beckwith, IWAMURO Motonori
+Comment: interdiff netkit-telnet-ssl_0.17.24+0.1-{7.1,14}.diff
+Bug-Debian: http://bugs.debian.org/314416
+ http://bugs.debian.org/339528
+ http://bugs.debian.org/339535
+ http://bugs.debian.org/357737
+ http://bugs.debian.org/368416
+ http://bugs.debian.org/122763
+ http://bugs.debian.org/187202
+Forwarded: no
+Last-Update: 2006-09-24
+
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnet/commands.cc netkit-telnet-ssl-0.17.24+0.1/telnet/commands.cc
+--- netkit-telnet-ssl-0.17.24+0.1/telnet/commands.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/commands.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)commands.c	5.5 (Berkeley) 3/22/91
+  */
+ char cmd_rcsid[] = 
+-  "$Id: commands.cc,v 1.8 2004/11/21 14:40:44 ianb Exp $";
++  "$Id: commands.cc,v 1.12 2006-09-24 00:48:31 ianb Exp $";
+ 
+ #include <string.h>
+ 
+@@ -1372,9 +1372,9 @@
+ 	    else
+ 		shellname++;
+ 	    if (argc > 1)
+-		execl(shellp, shellname, "-c", &saveline[1], 0);
++		execl(shellp, shellname, "-c", &saveline[1], (char *) NULL);
+ 	    else
+-		execl(shellp, shellname, 0);
++		execl(shellp, shellname, (char *) NULL);
+ 	    perror("Execl");
+ 	    _exit(1);
+ 	}
+@@ -1889,7 +1889,7 @@
+ 	if (res < 0)
+ 	    return 0;
+     }
+-        
++
+     /* Resolve both the host and service simultaneously. */
+     res = getaddrinfo(resolv_hostp, portp, &hints, &hostaddr);
+     if (res == EAI_NONAME) {
+@@ -1950,7 +1950,7 @@
+ 	connected++;
+ 
+ #ifdef USE_SSL
+-	if (strcmp(hostp, "localhost") != 0) {
++	if (ssl_secure_flag || (strcmp(hostp, "localhost") != 0)) {
+ 	  /* autologin = 1; */
+ 	  use_authentication=1;
+ 	}
+@@ -2005,6 +2005,9 @@
+ #if	defined(AUTHENTICATE)
+ 	authhelp[] =	"turn on (off) authentication ('auth ?' for more)",
+ #endif
++#if	defined(USE_SSL)
++	startsslhelp[] = "switch to telnet-over-ssl (use 'auth' for ssl-over-telnet)",
++#endif
+ 	zhelp[] =	"suspend telnet",
+ /*	shellhelp[] =	"invoke a subshell", */
+ 	envhelp[] =	"change environment variables ('environ ?' for more)",
+@@ -2020,6 +2023,34 @@
+     return 0;
+ }
+ 
++#if defined(USE_SSL)
++static int startssl_cmd(void)
++{
++	if(ssl_con == NULL)
++	{
++		fprintf(stderr,"telnet: Internal error - ssl_con not initialised.\n");
++		return 1;
++	}
++
++	if(ssl_active_flag)
++	{
++		fprintf(stderr,"telnet: SSL already in use.\n");
++		return 1;
++	}
++  
++	if (SSL_connect(ssl_con) < 1)
++	{
++		ERR_print_errors_fp(stderr);
++		fflush(stderr);
++	} else {
++		display_connect_details(ssl_con,ssl_debug_flag);
++		ssl_active_flag=1;
++		ssl_only_flag=1;
++	}
++	return 1;
++}
++#endif /* USE_SSL */
++
+ static int slc_mode_import_0(void) {
+     slc_mode_import(0);
+     return 1;
+@@ -2067,6 +2098,10 @@
+ #endif
+     // BIND("encrypt", encrypthelp, encrypt_cmd);
+ 
++#if	defined(USE_SSL)
++	BIND("startssl", startsslhelp, startssl_cmd);
++#endif
++
+     BIND("z", zhelp, suspend);
+ 
+ #if defined(TN3270)   /* why?! */
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnet/netlink.cc netkit-telnet-ssl-0.17.24+0.1/telnet/netlink.cc
+--- netkit-telnet-ssl-0.17.24+0.1/telnet/netlink.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/netlink.cc
+@@ -71,11 +71,11 @@
+ 
+ 
+ netlink::netlink() { net = -1; }
+-netlink::~netlink() { ::close(net); }
++netlink::~netlink() { if (net >= 0) ::close(net); }
+ 
+ 
+ int netlink::setdebug(int debug) {
+-    if (net > 0 &&
++    if (net >= 0 &&
+ 	(setsockopt(net, SOL_SOCKET, SO_DEBUG, &debug, sizeof(debug))) < 0) {
+ 	perror("setsockopt (SO_DEBUG)");
+     }
+@@ -96,7 +96,8 @@
+ 	ssl_active_flag=0;
+     }
+ #endif /* USE_SSL */
+-    ::close(net);
++    if (net >= 0)
++       ::close(net);
+     net = -1;
+ }
+ 
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnet/telnet.1 netkit-telnet-ssl-0.17.24+0.1/telnet/telnet.1
+--- netkit-telnet-ssl-0.17.24+0.1/telnet/telnet.1
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/telnet.1
+@@ -30,7 +30,7 @@
+ .\" SUCH DAMAGE.
+ .\"
+ .\"	from: @(#)telnet.1	6.16 (Berkeley) 7/27/91
+-.\"	$Id: telnet.1,v 1.3 2004/11/19 19:49:23 ianb Exp $
++.\"	$Id: telnet.1,v 1.5 2006-09-24 00:48:31 ianb Exp $
+ .\"
+ .Dd August 15, 1999
+ .Dt TELNET 1
+@@ -156,7 +156,9 @@
+ Set SSL (Secure Socket Layer) parameters. The default is to negotiate
+ via telnet protocol if SSL is available at server side and then to
+ switch it on. In this mode you can connect to both conventional and
+-SSL enhanced telnetd's. If the connection is made to localhost then
++SSL enhanced telnetd's. If the connection is made to localhost and 
++.Ic -z secure
++is not set, then
+ SSL is not enabled.
+ .Pp
+ The SSL parameters are:
+@@ -1016,6 +1018,16 @@
+ .Ic slc
+ command.
+ .El
++.It Ic startssl
++Attempt to negotiate telnet-over-SSL (as with the
++.Ic -z ssl
++option). This is useful when connecting to non-telnetds such
++as imapd (with the
++.Ic STARTTLS
++command). To control SSL when connecting to a SSL-enabled
++telnetd, use the
++.Ic auth
++command instead.
+ .It Ic status
+ Show the current status of
+ .Nm telnet .
+@@ -1220,8 +1232,9 @@
+ is sent as
+ .Ic abort  ,
+ and
+-.Ic eof and
+-.B suspend
++.Ic eof
++and
++.Ic suspend
+ are sent as
+ .Ic eof and
+ .Ic susp ,
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnetd/issue.net.5 netkit-telnet-ssl-0.17.24+0.1/telnetd/issue.net.5
+--- netkit-telnet-ssl-0.17.24+0.1/telnetd/issue.net.5
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/issue.net.5
+@@ -15,26 +15,26 @@
+ .Pa /etc/issue.net
+ is a text file which contains a message or system identification to be
+ printed before the login prompt of a telnet session. It may contain
+-various `%\-char' sequences. The following sequences are supported by
++various `%\&\-char' sequences. The following sequences are supported by
+ .Ic telnetd :
+ .Bl -tag -offset indent -compact -width "abcde"
+-.It %t
++.It %\&t
+ - show the current tty
+-.It %h
++.It %\&h
+ - show the system node name (FQDN)
+-.It %D
++.It %\&D
+ - show the name of the NIS domain
+-.It %d
++.It %\&d
+ - show the current time and date
+-.It %s
++.It %\&s
+ - show the name of the operating system
+-.It %m
++.It %\&m
+ - show the machine (hardware) type
+-.It %r
++.It %\&r
+ - show the operating system release
+-.It %v
++.It %\&v
+ - show the operating system version
+-.It %%
++.It %\&%
+ - display a single '%' character
+ .El
+ .Sh FILES
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnetd/state.c netkit-telnet-ssl-0.17.24+0.1/telnetd/state.c
+--- netkit-telnet-ssl-0.17.24+0.1/telnetd/state.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/state.c
+@@ -35,7 +35,7 @@
+  * From: @(#)state.c	5.10 (Berkeley) 3/22/91
+  */
+ char state_rcsid[] = 
+-  "$Id: state.c,v 1.4 2004/11/21 14:04:20 ianb Exp $";
++  "$Id: state.c,v 1.5 2005-07-07 21:53:00 ianb Exp $";
+ 
+ #include "telnetd.h"
+ #if	defined(AUTHENTICATE)
+@@ -1178,33 +1178,33 @@
+ 	if (SB_EOF())
+ 		return;
+ 
+-	cp = varp = (char *)subpointer;
++	cp = varp = (unsigned char *)subpointer;
+ 	valp = 0;
+ 
+ 	while (!SB_EOF()) {
+ 	    switch (c = SB_GET()) {
+ 	    case ENV_VALUE:
+ 		*cp = '\0';
+-		cp = valp = (char *)subpointer;
++		cp = valp = (unsigned char *)subpointer;
+ 		break;
+ 		
+ 	    case ENV_VAR:
+ 		*cp = '\0';
+-		if (envvarok(varp)) {
++		if (envvarok((char *)varp)) {
+ 		  if (valp) {
+-		    (void)setenv(varp, valp, 1);
++		    (void)setenv((char *)varp, (char *)valp, 1);
+ #ifdef AUTHENTICATE
+-		    if (strcmp(varp,"USER") == 0) {
++		    if (strcmp((char *)varp,"USER") == 0) {
+ 		      if (UserNameRequested)
+ 			free(UserNameRequested);
+-		      UserNameRequested=strdup(valp);
++		      UserNameRequested=strdup((char *)valp);
+ 		    }
+ #endif /* AUTHENTICATE */
+ 		  }
+ 		  else {
+-		    unsetenv(varp);
++		    unsetenv((char *)varp);
+ #ifdef AUTHENTICATE
+-		    if (strcmp(varp,"USER") == 0) {
++		    if (strcmp((char *)varp,"USER") == 0) {
+ 		      if (UserNameRequested)
+ 			free(UserNameRequested);
+ 		      UserNameRequested=NULL;
+@@ -1212,7 +1212,7 @@
+ #endif /* AUTHENTICATE */
+ 		  }
+ 		}
+-		cp = varp = (char *)subpointer;
++		cp = varp = (unsigned char *)subpointer;
+ 		valp = 0;
+ 		break;
+ 		
+@@ -1228,21 +1228,21 @@
+ 	    }
+ 	}
+ 	*cp = '\0';
+-	if (envvarok(varp)) {
++	if (envvarok((char *)varp)) {
+ 	  if (valp) {
+-	    (void)setenv(varp, valp, 1);
++	    (void)setenv((char *)varp, (char *)valp, 1);
+ #ifdef AUTHENTICATE
+-	    if (strcmp(varp,"USER") == 0) {
++	    if (strcmp((char *)varp,"USER") == 0) {
+ 	      if (UserNameRequested)
+ 		free(UserNameRequested);
+-	      UserNameRequested=strdup(valp);
++	      UserNameRequested=strdup((char *)valp);
+ 	    }
+ #endif /* AUTHENTICATE */
+ 	  }
+ 	  else {
+-	    unsetenv(varp);
++	    unsetenv((char *)varp);
+ #ifdef AUTHENTICATE
+-	    if (strcmp(varp,"USER") == 0) {
++	    if (strcmp((char *)varp,"USER") == 0) {
+ 	      if (UserNameRequested)
+ 		free(UserNameRequested);
+ 	      UserNameRequested=NULL;
+@@ -1400,7 +1400,7 @@
+     ADD(IAC);
+     ADD(SE);
+ 
+-    writenet(statusbuf, ncp - statusbuf);
++    writenet((char *)statusbuf, ncp - statusbuf);
+     netflush();	/* Send it on its way */
+ 
+     DIAG(TD_OPTIONS, {printsub('>', statusbuf, ncp - statusbuf); netflush();});
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.8 netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.8
+--- netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.8
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.8
+@@ -30,7 +30,7 @@
+ .\" SUCH DAMAGE.
+ .\"
+ .\"	from: @(#)telnetd.8	6.8 (Berkeley) 4/20/91
+-.\"	$Id: telnetd.8,v 1.4 2004/11/25 17:09:21 ianb Exp $
++.\"	$Id: telnetd.8,v 1.5 2006-09-24 00:48:31 ianb Exp $
+ .\"
+ .Dd December 29, 1996
+ .Dt TELNETD 8
+@@ -50,6 +50,7 @@
+ .Op Fl X Ar authtype
+ .Op Fl edebug
+ .Op Fl debug Ar port
++.Op Fl z Ar sslopt
+ .Sh DESCRIPTION
+ The
+ .Nm telnetd
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.c netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.c
+--- netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.c
+@@ -39,7 +39,7 @@
+  * From: @(#)telnetd.c	5.48 (Berkeley) 3/1/91
+  */
+ char telnetd_rcsid[] = 
+-  "$Id: telnetd.c,v 1.6 2004/12/21 18:14:29 ianb Exp $";
++  "$Id: telnetd.c,v 1.7 2006-06-16 13:29:00 ianb Exp $";
+ 
+ #include "../version.h"
+ 
+@@ -223,8 +223,7 @@
+ 	 * certificate that we will be running with as we cannot
+ 	 * be sure of the cwd when we are launched
+ 	 */
+-	sprintf(cert_filepath,"%s/%s",X509_get_default_cert_dir(),
+-	        "telnetd.pem");
++	strcpy(cert_filepath, "/etc/telnetd-ssl/telnetd.pem");
+ 	ssl_cert_file=cert_filepath;
+ 	ssl_key_file=NULL;
+ #endif /* USE_SSL */
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnetd/utility.c netkit-telnet-ssl-0.17.24+0.1/telnetd/utility.c
+--- netkit-telnet-ssl-0.17.24+0.1/telnetd/utility.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/utility.c
+@@ -35,7 +35,7 @@
+  * From: @(#)utility.c	5.8 (Berkeley) 3/22/91
+  */
+ char util_rcsid[] = 
+-  "$Id: utility.c,v 1.3 2004/11/21 12:53:12 ianb Exp $";
++  "$Id: utility.c,v 1.8 2006-09-24 00:48:31 ianb Exp $";
+ 
+ #define PRINTOPTIONS
+ 
+@@ -221,7 +221,7 @@
+ 	}
+ 
+ out:
+-	return next ? next + (current - end) : current;
++	return (const char *) (next ? (next + (current - end)) : current );
+ }  /* end of nextitem */
+ 
+ 
+@@ -248,6 +248,7 @@
+ 	doclear--;
+ }  /* end of netclear */
+ 
++#ifdef USE_SSL
+ static int
+ SSL_writev(SSL *ssl_con,const struct iovec *vector,int num)
+ {
+@@ -268,6 +269,7 @@
+ 	}
+ 	return len;
+ }
++#endif /* USE_SSL */
+ 
+ static void
+ netwritebuf(void)
+@@ -316,20 +318,25 @@
+ 	vector->iov_base = (char *)vector->iov_base + skip;
+ 	vector->iov_len -= skip;
+ 
++	if(vector->iov_len == 0 ) {
++	  n=0;
++	} else {
++
+ #ifdef USE_SSL
+-	if (ssl_active_flag)
+-	  n = SSL_writev(ssl_con, vector, len);	/* normal write */
+-	else
++	  if (ssl_active_flag)
++		n = SSL_writev(ssl_con, vector, len);	/* normal write */
++	  else	
+ #endif /* USE_SSL */
+-	n = writev(net, vector, len);
++		n = writev(net, vector, len);
+ 
+ epi:
+-	free(vector);
++	  free(vector);
+ 
+-	if (n < 0) {
++	  if (n < 0) {
+ 		if (errno != EWOULDBLOCK && errno != EINTR)
+-			cleanup(0);
++		  cleanup(0);
+ 		return;
++	  }
+ 	}
+ 
+ 	len = n + skip;
+@@ -354,6 +361,10 @@
+ 		}
+ 	}
+ 
++	if(ltrailing && (len==0)) {
++		ltrailing=trailing=0;
++	}
++
+ 	skip = len;
+ }
+ 
+@@ -1028,7 +1039,7 @@
+ 			((pointer[3] & AUTH_HOW_MASK) == AUTH_HOW_MUTUAL) ?
+ 			"MUTUAL" : "ONE-WAY");
+ 
+-		auth_printsub(&pointer[1], length - 1, buf, sizeof(buf));
++		auth_printsub(&pointer[1], length - 1, (unsigned char *) buf, sizeof(buf));
+ 		netoprintf("%s", buf);
+ 		break;
+ 
+@@ -1236,7 +1247,15 @@
+ 		size_t l;
+ 		size_t m = tail->len;
+ 
+-		p = nextitem(tail->buf, tail->buf + tail->len, buf, end);
++		if((tail->buf == NULL) || (tail->len==0))
++		{
++			p = nextitem((unsigned char *) buf, (unsigned char *) end,0,0);
++		}
++		else
++		{
++			p = nextitem((unsigned char *) tail->buf, (unsigned char *) (tail->buf + tail->len),
++						 (unsigned char *) buf, (unsigned char *) end);
++		}
+ 		ltrailing = !p;
+ 		if (ltrailing) {
+ 			p = end;
+@@ -1290,7 +1309,7 @@
+ 		const char *p;
+ 		size_t l;
+ 
+-		p = nextitem(buf, end, 0, 0);
++		p = nextitem((unsigned char *) buf, (unsigned char *) end, 0, 0);
+ 		ltrailing = !p;
+ 		if (ltrailing) {
+ 			p = end;
+diff -u netkit-telnet-ssl-0.17.24+0.1/libtelnet/auth.c netkit-telnet-ssl-0.17.24+0.1/libtelnet/auth.c
+--- netkit-telnet-ssl-0.17.24+0.1/libtelnet/auth.c
++++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/auth.c
+@@ -341,7 +341,7 @@
+ 		}
+ 		*e++ = IAC;
+ 		*e++ = SE;
+-		writenet(str_request, e - str_request);
++		writenet((char *) str_request, e - str_request);
+ 		printsub('>', &str_request[2], e - str_request - 2);
+ 	}
+ }
+@@ -430,7 +430,7 @@
+ 		}
+ 		auth_send_data += 2;
+ 	}
+-	writenet(str_none, sizeof(str_none));
++	writenet((char *) str_none, sizeof(str_none));
+ 	printsub('>', &str_none[2], sizeof(str_none) - 2);
+ 	if (auth_debug_mode)
+ 		printf(">>>%s: Sent failure message\r\n", Name);
+@@ -511,7 +511,7 @@
+ 	savename[cnt] = '\0';	/* Null terminate */
+ 	if (auth_debug_mode)
+ 		printf(">>>%s: Got NAME [%s]\r\n", Name, savename);
+-	auth_encrypt_user(savename);
++	auth_encrypt_user((char *)savename);
+ }
+ 
+ 	int
+@@ -532,7 +532,7 @@
+ 	}
+ 	*e++ = IAC;
+ 	*e++ = SE;
+-	writenet(str_request, e - str_request);
++	writenet((char *) str_request, e - str_request);
+ 	printsub('>', &str_request[2], e - &str_request[2]);
+ 	return(1);
+ }
+diff -u netkit-telnet-ssl-0.17.24+0.1/libtelnet/ssl.c netkit-telnet-ssl-0.17.24+0.1/libtelnet/ssl.c
+--- netkit-telnet-ssl-0.17.24+0.1/libtelnet/ssl.c
++++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/ssl.c
+@@ -237,7 +237,7 @@
+         *p++ = SE;
+ 	if (str_data[3] == TELQUAL_IS)
+ 		printsub('>', &str_data[2], p - (&str_data[2]));
+-        return(writenet(str_data, p - str_data));
++        return(writenet((char *) str_data, p - str_data));
+ }
+ 
+ int auth_ssl_init(ap, server)

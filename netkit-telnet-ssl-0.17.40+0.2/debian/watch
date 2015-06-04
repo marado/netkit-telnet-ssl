@@ -1,0 +1,8 @@
+# In essence: netkit upstream has been dead for years,
+# and the SSL patch is unmaintained upstream too.
+#
+# Instead we aim at following the Debian packaging
+# of netkit-telnet as our source base.
+version=3
+
+opts="uversionmangle=s/(.*)-(.*)/$1.$2+0.2/" http://ftp.debian.org/debian/pool/main/n/netkit-telnet/netkit-telnet_(.*).dsc

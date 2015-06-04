@@ -1,0 +1,345 @@
+Description: Collect trivial SCM headers.
+ All cases of trivial changes, where solely an SCM version
+ header has been altered, were collected and pruned into
+ a single change.  The all were of the kind:
+ .
+ 1.## dholland  -->  1.1.1.1 ianb  -->  1.1 ianb
+
+Author: Ian Beckwith
+Forwarded: not-needed
+Last-Update: 2004-10-14
+
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/authenc.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/authenc.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)authenc.c	5.1 (Berkeley) 3/1/91
+  */
+ char au_rcsid[] = 
+-  "$Id: authenc.cc,v 1.6 2000/07/23 03:24:53 dholland Exp $";
++  "$Id: authenc.cc,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #if	defined(ENCRYPT) || defined(AUTHENTICATE)
+ #include <sys/types.h>
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/defines.h
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/defines.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)defines.h	5.1 (Berkeley) 9/14/90
+- *	$Id: defines.h,v 1.5 1996/08/04 23:44:43 dholland Exp $
++ *	$Id: defines.h,v 1.1 2004-10-14 13:19:53 ianb Exp $
+  */
+ 
+ #define ENV_VAR NEW_ENV_VAR
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/fdset.h
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/fdset.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)fdset.h	5.1 (Berkeley) 9/14/90
+- *	$Id: fdset.h,v 1.1 1996/07/16 05:17:22 dholland Exp $
++ *	$Id: fdset.h,v 1.1 2004-10-14 13:19:53 ianb Exp $
+  */
+ 
+ /*
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/general.h
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/general.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)general.h	5.2 (Berkeley) 3/1/91
+- *	$Id: general.h,v 1.1 1996/07/16 05:17:22 dholland Exp $
++ *	$Id: general.h,v 1.1 2004-10-14 13:19:53 ianb Exp $
+  */
+ 
+ /*
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/genget.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/genget.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)genget.c	5.1 (Berkeley) 2/28/91
+  */
+ char gg_rcsid[] = 
+-  "$Id: genget.cc,v 1.3 1996/07/26 09:54:09 dholland Exp $";
++  "$Id: genget.cc,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #include <string.h>
+ #include <ctype.h>
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/network.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/network.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)network.c	5.2 (Berkeley) 3/1/91
+  */
+ char net_rcsid[] = 
+-  "$Id: network.cc,v 1.15 1996/08/13 08:09:58 dholland Exp $";
++  "$Id: network.cc,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #include <sys/types.h>
+ #include <sys/socket.h>
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/ring.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/ring.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)ring.c	5.2 (Berkeley) 3/1/91
+  */
+ char ring_rcsid[] =
+-  "$Id: ring.cc,v 1.23 2000/07/23 03:25:09 dholland Exp $";
++  "$Id: ring.cc,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ /*
+  * This defines a structure for a ring buffer. 
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/ring.h
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/ring.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)ring.h	5.2 (Berkeley) 3/1/91
+- *	$Id: ring.h,v 1.13 1996/08/13 08:43:28 dholland Exp $
++ *	$Id: ring.h,v 1.1 2004-10-14 13:19:53 ianb Exp $
+  */
+ 
+ class datasink {
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/sys_bsd.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/sys_bsd.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)sys_bsd.c	5.2 (Berkeley) 3/1/91
+  */
+ char bsd_rcsid[] = 
+-  "$Id: sys_bsd.cc,v 1.24 1999/09/28 16:29:24 dholland Exp $";
++  "$Id: sys_bsd.cc,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ /*
+  * The following routines try to encapsulate what is system dependent
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/terminal.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/terminal.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)terminal.c	5.3 (Berkeley) 3/22/91
+  */
+ char terminal_rcsid[] = 
+-  "$Id: terminal.cc,v 1.25 1999/12/12 19:48:05 dholland Exp $";
++  "$Id: terminal.cc,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #include <arpa/telnet.h>
+ #include <sys/types.h>
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/tn3270.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/tn3270.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)tn3270.c	5.2 (Berkeley) 3/1/91
+  */
+ char tn3270_rcsid[] = 
+-  "$Id: tn3270.cc,v 1.9 1996/08/13 09:08:34 dholland Exp $";
++  "$Id: tn3270.cc,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #include <sys/types.h>
+ #include <arpa/telnet.h>
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/types.h
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/types.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)types.h	5.1 (Berkeley) 9/14/90
+- *	$Id: types.h,v 1.2 1996/07/27 00:45:54 dholland Exp $
++ *	$Id: types.h,v 1.1 2004-10-14 13:19:53 ianb Exp $
+  */
+ 
+ typedef struct {
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/utilities.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/utilities.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)utilities.c	5.3 (Berkeley) 3/22/91
+  */
+ char util_rcsid[] = 
+-  "$Id: utilities.cc,v 1.19 1999/12/12 15:33:40 dholland Exp $";
++  "$Id: utilities.cc,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #define	TELOPTS
+ #define	TELCMDS
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/authenc.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/authenc.c
+@@ -23,7 +23,7 @@
+  * From: @(#)authenc.c	5.1 (Berkeley) 3/1/91
+  */
+ char authenc_rcsid[] =
+-  "$Id: authenc.c,v 1.5 1999/12/12 14:59:44 dholland Exp $";
++  "$Id: authenc.c,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #if	defined(ENCRYPT) || defined(AUTHENTICATE)
+ #include "telnetd.h"
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/defs.h
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/defs.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)defs.h	5.10 (Berkeley) 3/1/91
+- *	$Id: defs.h,v 1.7 1999/08/02 03:14:03 dholland Exp $
++ *	$Id: defs.h,v 1.1 2004-10-14 13:19:53 ianb Exp $
+  */
+ 
+ /*
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/getent.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/getent.c
+@@ -35,7 +35,7 @@
+  * From: @(#)getent.c	5.1 (Berkeley) 2/28/91
+  */
+ char ge_rcsid[] = 
+-  "$Id: getent.c,v 1.3 1996/08/15 06:23:28 dholland Exp $";
++  "$Id: getent.c,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ /*
+  * Copyright (c) 1991 Regents of the University of California.
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/global.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/global.c
+@@ -35,7 +35,7 @@
+  * From: @(#)global.c	5.2 (Berkeley) 6/1/90
+  */
+ char global_rcsid[] = 
+-  "$Id: global.c,v 1.4 1999/12/12 14:59:44 dholland Exp $";
++  "$Id: global.c,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ /*
+  * Allocate global variables.  
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/pathnames.h
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/pathnames.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)pathnames.h	5.5 (Berkeley) 6/28/90
+- *	$Id: pathnames.h,v 1.3 1996/08/29 22:31:24 dholland Exp $
++ *	$Id: pathnames.h,v 1.1 2004-10-14 13:19:53 ianb Exp $
+  */
+ 
+ #include <paths.h>
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/setproctitle.3
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/setproctitle.3
+@@ -1,5 +1,5 @@
+ .\"	OpenBSD: setproctitle.3,v 1.4 1996/10/08 01:20:08 michaels Exp 
+-.\"     $Id: setproctitle.3,v 1.13 2000/07/30 23:57:09 dholland Exp $
++.\"     $Id: setproctitle.3,v 1.1 2004-10-14 13:19:53 ianb Exp $
+ .\"
+ .\" Copyright (c) 1994, 1995 Christopher G. Demetriou
+ .\" All rights reserved.
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/setproctitle.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/setproctitle.c
+@@ -39,7 +39,7 @@
+  * From: @(#)conf.c	8.243 (Berkeley) 11/20/95
+  */
+ char setproctitle_rcsid[] =
+-  "$Id: setproctitle.c,v 1.3 1999/12/10 23:06:39 bryce Exp $";
++  "$Id: setproctitle.c,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #include <stdlib.h>
+ #include <string.h>
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/slc.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/slc.c
+@@ -35,7 +35,7 @@
+  * From: @(#)slc.c	5.7 (Berkeley) 3/1/91
+  */
+ char slc_rcsid[] = 
+-  "$Id: slc.c,v 1.5 1999/12/12 14:59:44 dholland Exp $";
++  "$Id: slc.c,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #include "telnetd.h"
+ 
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/sys_term.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/sys_term.c
+@@ -35,7 +35,7 @@
+  * From: @(#)sys_term.c	5.16 (Berkeley) 3/22/91
+  */
+ char st_rcsid[] = 
+-  "$Id: sys_term.c,v 1.17 1999/12/17 14:28:47 dholland Exp $";
++  "$Id: sys_term.c,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #include <utmp.h>
+ 
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.h
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)telnetd.h	5.3 (Berkeley) 3/1/91
+- *	$Id: telnetd.h,v 1.2 1999/03/27 07:46:21 dholland Exp $
++ *	$Id: telnetd.h,v 1.1 2004-10-14 13:19:53 ianb Exp $
+  */
+ 
+ 
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/termstat.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/termstat.c
+@@ -35,7 +35,7 @@
+  * From: @(#)termstat.c	5.10 (Berkeley) 3/22/91
+  */
+ char termstat_rcsid[] = 
+-  "$Id: termstat.c,v 1.6 1999/12/12 14:59:45 dholland Exp $";
++  "$Id: termstat.c,v 1.1 2004-10-14 13:19:53 ianb Exp $";
+ 
+ #include "telnetd.h"
+ 
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnet/externs.h netkit-telnet-ssl-0.17.24+0.1/telnet/externs.h
+--- netkit-telnet-ssl-0.17.24+0.1/telnet/externs.h
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/externs.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)externs.h	5.3 (Berkeley) 3/22/91
+- *	$Id: externs.h,v 1.2 2004/11/17 15:28:51 ianb Exp $
++ *	$Id: externs.h,v 1.2 2004-11-17 15:28:51 ianb Exp $
+  */
+ 
+ #ifndef	BSD
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnet/main.cc netkit-telnet-ssl-0.17.24+0.1/telnet/main.cc
+--- netkit-telnet-ssl-0.17.24+0.1/telnet/main.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/main.cc
+@@ -39,7 +39,7 @@
+  * From: @(#)main.c	5.4 (Berkeley) 3/22/91
+  */
+ char main_rcsid[] = 
+-  "$Id: main.cc,v 1.6 2004/11/22 20:26:37 ianb Exp $";
++  "$Id: main.cc,v 1.6 2004-11-22 20:26:37 ianb Exp $";
+ 
+ #include "../version.h"
+ 
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnet/telnet.cc netkit-telnet-ssl-0.17.24+0.1/telnet/telnet.cc
+--- netkit-telnet-ssl-0.17.24+0.1/telnet/telnet.cc
++++ netkit-telnet-ssl-0.17.24+0.1/telnet/telnet.cc
+@@ -47,7 +47,7 @@
+  * From: @(#)telnet.c	5.53 (Berkeley) 3/22/91
+  */
+ char telnet_rcsid[] = 
+-"$Id: telnet.cc,v 1.6 2004/12/05 13:02:58 ianb Exp $";
++"$Id: telnet.cc,v 1.8 2005-04-14 15:26:27 ianb Exp $";
+ 
+ #include <string.h>
+ #include <sys/types.h>
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnetd/ext.h netkit-telnet-ssl-0.17.24+0.1/telnetd/ext.h
+--- netkit-telnet-ssl-0.17.24+0.1/telnetd/ext.h
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/ext.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)ext.h	5.7 (Berkeley) 3/1/91
+- *	$Id: ext.h,v 1.2 2004/11/21 12:53:12 ianb Exp $
++ *	$Id: ext.h,v 1.2 2004-11-21 12:53:12 ianb Exp $
+  */
+ 
+ /*
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnetlogin/telnetlogin.8 netkit-telnet-ssl-0.17.24+0.1/telnetlogin/telnetlogin.8
+--- netkit-telnet-ssl-0.17.24+0.1/telnetlogin/telnetlogin.8
++++ netkit-telnet-ssl-0.17.24+0.1/telnetlogin/telnetlogin.8
+@@ -28,7 +28,7 @@
+ .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ .\" SUCH DAMAGE.
+ .\"
+-.\"	$Id: telnetlogin.8,v 1.2 2004/11/07 15:47:43 ianb Exp $
++.\"	$Id: telnetlogin.8,v 1.2 2004-11-07 15:47:43 ianb Exp $
+ .\"
+ .Dd April 12, 2000
+ .Dt TELNETLOGIN 8
+diff -u netkit-telnet-ssl-0.17.24+0.1/telnetlogin/telnetlogin.c netkit-telnet-ssl-0.17.24+0.1/telnetlogin/telnetlogin.c
+--- netkit-telnet-ssl-0.17.24+0.1/telnetlogin/telnetlogin.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetlogin/telnetlogin.c
+@@ -35,7 +35,7 @@
+  "All rights reserved.\n";
+ 
+ char rcsid[] =
+-  "$Id: telnetlogin.c,v 1.2 2004/11/07 15:47:43 ianb Exp $";
++  "$Id: telnetlogin.c,v 1.2 2004-11-07 15:47:43 ianb Exp $";
+ #include "../version.h"
+ 
+ #include <sys/types.h>
