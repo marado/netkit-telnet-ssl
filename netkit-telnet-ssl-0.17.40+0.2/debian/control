@@ -3,7 +3,7 @@ Section: net
 Priority: extra
 Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
 Uploaders: Alberto Gonzalez Iniesta <agi@inittab.org>
-Standards-Version: 3.9.6
+Standards-Version: 3.9.7
 Build-Depends: debhelper (>= 9), libncurses-dev, libssl-dev (>= 0.9.8g-9)
 
 Package: telnet-ssl

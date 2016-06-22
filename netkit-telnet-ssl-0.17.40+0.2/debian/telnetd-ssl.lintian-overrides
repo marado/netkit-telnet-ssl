@@ -1,5 +1,6 @@
 # netkit is long dead upstream
 telnetd-ssl: no-homepage-field
-# dont is valid as part of telnet IAC DONT.. commands
+# dont/wont is valid as part of telnet IAC DONT/WONT commands
 telnetd-ssl: spelling-error-in-binary usr/sbin/in.telnetd dont don't
+telnetd-ssl: spelling-error-in-binary usr/sbin/in.telnetd wont won't
 

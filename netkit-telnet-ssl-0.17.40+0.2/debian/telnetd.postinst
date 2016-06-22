@@ -101,7 +101,14 @@ elif [ -f /etc/telnetd-ssl/telnetd.pem ]
 then
     echo "You already have /etc/telnetd-ssl/telnetd.pem"
 else
-	cd /etc/telnetd-ssl
+    cd /etc/telnetd-ssl
+
+    # Implement removal of any newly created seed file.
+    # 'openssl req' regularly creates RANDFILE or '~/.rnd'.
+    MYRANDFILE=${RANDFILE:-~/.rnd}
+    NEW__RND=
+    test -f "$MYRANDFILE" || NEW__RND=yes
+
     HSTNAME=`hostname -s`
     DOMAINNAME=`hostname -d`
     openssl req -config /etc/telnetd-ssl/openssl.cnf  -new -x509 -nodes -out telnetd.pem -keyout telnetd.pem > /dev/null 2>&1 <<+
@@ -116,6 +123,11 @@ root@$HSTNAME.$DOMAINNAME
 #    req -new -x509 -nodes -out telnetd.pem -keyout telnetd.pem
 #    ln -sf telnetd.pem `openssl x509 -noout -hash < telnetd.pem`.0
 #    chmod 644 telnetd.pem
+
+    if test x$NEW__RND = xyes && test -f "$MYRANDFILE"
+    then
+	rm "$MYRANDFILE"
+    fi
 fi
 
 chown root:telnetd-ssl /etc/telnetd-ssl/telnetd.pem

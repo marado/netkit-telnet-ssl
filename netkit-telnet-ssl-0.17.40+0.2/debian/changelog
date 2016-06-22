@@ -1,9 +1,20 @@
-netkit-telnet-ssl (0.17.40+0.2-1+nmu1) unstable; urgency=low
+netkit-telnet-ssl (0.17.40+0.2-2+nmu1) unstable; urgency=low
  
   * Non-maintainer upload.
   * Fixing how we handle UTF8 characters (Closes: #749322)
 
- -- Marcos Marado <mindboosternoori@gmail.com>  Thu, 21 Jun 2015 20:51:28 +0100
+ -- Marcos Marado <mindboosternoori@gmail.com>  Wed, 22 Jun 2016 21:38:12 +0100
+
+netkit-telnet-ssl (0.17.40+0.2-2) unstable; urgency=low
+
+  * Upgrade to Standards 3.9.7, no changes.
+  * [piuparts, telnetd-ssl] Remove a newly created random-seed file.
+    + debian/telnetd.postinst: Updated.
+  * [lintian] Add overrides for protocol compliant spelling 'wont'.
+    + debian/telnet-ssl.lintian-overrides: Updated.
+    + debian/telnetd-ssl.lintian-overrides: Updated.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Mon, 29 Feb 2016 19:28:52 +0100
 
 netkit-telnet-ssl (0.17.40+0.2-1) unstable; urgency=low
 
