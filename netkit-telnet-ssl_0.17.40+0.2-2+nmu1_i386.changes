@@ -1,0 +1,45 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+Format: 1.8
+Date: Wed, 22 Jun 2016 21:38:12 +0100
+Source: netkit-telnet-ssl
+Binary: telnet-ssl telnetd-ssl
+Architecture: source i386
+Version: 0.17.40+0.2-2+nmu1
+Distribution: unstable
+Urgency: low
+Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
+Changed-By: Marcos Marado <mindboosternoori@gmail.com>
+Description:
+ telnet-ssl - telnet client with SSL encryption support
+ telnetd-ssl - telnet server with SSL encryption support
+Closes: 749322
+Changes:
+ netkit-telnet-ssl (0.17.40+0.2-2+nmu1) unstable; urgency=low
+ .
+   * Non-maintainer upload.
+   * Fixing how we handle UTF8 characters (Closes: #749322)
+Checksums-Sha1:
+ ac486bd551a9a25bb1c0764d985bf27c373921d6 1298 netkit-telnet-ssl_0.17.40+0.2-2+nmu1.dsc
+ 02461cbebbd3465e834335b8a1d184f41ee5019d 83520 netkit-telnet-ssl_0.17.40+0.2-2+nmu1.debian.tar.xz
+ 5ecfc543c10837aea47a44e1769b72f41ff427f9 90926 telnet-ssl_0.17.40+0.2-2+nmu1_i386.deb
+ 4c4a2ba71da80e767cc9385d43e2443a115d8bea 61594 telnetd-ssl_0.17.40+0.2-2+nmu1_i386.deb
+Checksums-Sha256:
+ 145ac543ab67e501652647a14020fa1cda4b57d58e0c14e7a61fd39b1a510ac0 1298 netkit-telnet-ssl_0.17.40+0.2-2+nmu1.dsc
+ a46a928c6b7e25337401bf9205ebfbda6c2d87f66ac188ca678702dbd620dba9 83520 netkit-telnet-ssl_0.17.40+0.2-2+nmu1.debian.tar.xz
+ 922ab3c5ff09fe9d1f696aafa9a2beae580c05f154f581fa1431551e3da8f8db 90926 telnet-ssl_0.17.40+0.2-2+nmu1_i386.deb
+ ed240f31d7e54ef2dd9c25ae46c030f9409e3db849ac9d333ef11cd824867329 61594 telnetd-ssl_0.17.40+0.2-2+nmu1_i386.deb
+Files:
+ 3cdc893d85f76f968e1ad6ee6d3f81f4 1298 net extra netkit-telnet-ssl_0.17.40+0.2-2+nmu1.dsc
+ c00ad51b154cf45331570eeb9a10ac4e 83520 net extra netkit-telnet-ssl_0.17.40+0.2-2+nmu1.debian.tar.xz
+ 5d48d0bd2a6f9c6064215bdc3c8dce8d 90926 net extra telnet-ssl_0.17.40+0.2-2+nmu1_i386.deb
+ 0857dc54adc738fd70df214588df232c 61594 net extra telnetd-ssl_0.17.40+0.2-2+nmu1_i386.deb
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iEYEARECAAYFAldsQlIACgkQ/i1znHE86Rh06ACdHSy8yApNQB2Tim3lbclxDeJx
+ShQAnid5j/h0oCkHvu1HZQrNAs/8mr5a
+=DHsM
+-----END PGP SIGNATURE-----
