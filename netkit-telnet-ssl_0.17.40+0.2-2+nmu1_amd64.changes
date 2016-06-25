@@ -1,0 +1,34 @@
+Format: 1.8
+Date: Wed, 22 Jun 2016 21:38:12 +0100
+Source: netkit-telnet-ssl
+Binary: telnet-ssl telnetd-ssl
+Architecture: source amd64
+Version: 0.17.40+0.2-2+nmu1
+Distribution: unstable
+Urgency: low
+Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
+Changed-By: Marcos Marado <mindboosternoori@gmail.com>
+Description:
+ telnet-ssl - telnet client with SSL encryption support
+ telnetd-ssl - telnet server with SSL encryption support
+Closes: 749322
+Changes:
+ netkit-telnet-ssl (0.17.40+0.2-2+nmu1) unstable; urgency=low
+ .
+   * Non-maintainer upload.
+   * Fixing how we handle UTF8 characters (Closes: #749322)
+Checksums-Sha1:
+ c7586920feece0942f635b10f0cbe2e11aa8fee5 1069 netkit-telnet-ssl_0.17.40+0.2-2+nmu1.dsc
+ 9e9c8371a4fcbfe441f8d7763831abe7aafc5ba9 83432 netkit-telnet-ssl_0.17.40+0.2-2+nmu1.debian.tar.xz
+ 859ddc3f7324ca4407132c8a431defd6fcd3f692 90772 telnet-ssl_0.17.40+0.2-2+nmu1_amd64.deb
+ b860d2d272100e3704be282fff99049b3fad6c25 60966 telnetd-ssl_0.17.40+0.2-2+nmu1_amd64.deb
+Checksums-Sha256:
+ 89f17f2f555214f7f642aebe26acf4a021220929f269b36267b95d323e60dbfe 1069 netkit-telnet-ssl_0.17.40+0.2-2+nmu1.dsc
+ b1ddc9c0120c5639f915e13e7565fd0c9da1785a6bcf9ec9097043e1c8857e23 83432 netkit-telnet-ssl_0.17.40+0.2-2+nmu1.debian.tar.xz
+ 466feb6abd8674d3f43e2fa0a3105c39dc0c7f848b9dbb00f8c9cee312867d57 90772 telnet-ssl_0.17.40+0.2-2+nmu1_amd64.deb
+ 176238de31e854019de7648595ecd16495b2f101a03bfb30d7ed0141748b8dc3 60966 telnetd-ssl_0.17.40+0.2-2+nmu1_amd64.deb
+Files:
+ 5cac7290970375dd6b1fe0dc4fb75e6e 1069 net extra netkit-telnet-ssl_0.17.40+0.2-2+nmu1.dsc
+ 07782fd6559ff54183a33a621925cbaa 83432 net extra netkit-telnet-ssl_0.17.40+0.2-2+nmu1.debian.tar.xz
+ 6596f724eb6ca172233ddef4dc8d9225 90772 net extra telnet-ssl_0.17.40+0.2-2+nmu1_amd64.deb
+ 16202a8e56b8be9ccdaeeef19b9e96c9 60966 net extra telnetd-ssl_0.17.40+0.2-2+nmu1_amd64.deb
