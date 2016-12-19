@@ -52,3 +52,7 @@
 ### Now at source equivalent to netkit-telnet_0.17-39!
 
 150-cross_configure.diff
+
+### UTF-8 fix
+
+700-fix_UTF8.diff
