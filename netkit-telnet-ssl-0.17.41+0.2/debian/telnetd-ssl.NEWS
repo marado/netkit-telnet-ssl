@@ -1,0 +1,42 @@
+netkit-telnet-ssl (0.17.24+0.1-21) unstable; urgency=low
+
+    SSL keys/certificates generated since 2006-09-17 with Debian's openssl
+    package are vulnerable due to a predictable random number generator.
+    For more details see:
+
+      http://www.debian.org/security/2008/dsa-1571
+      http://www.debian.org/security/key-rollover/
+      http://wiki.debian.org/SSLkeys
+
+    To generate new keys using the default telnetd-ssl setup (as root):
+
+      rm -f /etc/telnetd-ssl/telnetd.pem /etc/ssl/certs/telnetd.pem
+      dpkg-reconfigure telnetd-ssl
+
+    If you have set up any SSL infrastructure beyond this, it will
+    also need to be regenerated.
+
+ -- Ian Beckwith <ianb@erislabs.net>  Mon, 26 May 2008 00:37:58 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-5) unstable; urgency=low
+
+  * Autologin
+    For compatability with vanilla telnet, and by popular demand, autologin
+    is no longer on by default in telnet-ssl.
+
+    Autologin is enabled if any of the following command-line arguments are used:
+
+    * -a 
+    * -l username 
+    * -r (rlogin mode) 
+    * -z cert=cert.pem
+    * -z key=key.pem
+
+  * Certificate-based authentication
+    SSL telnetd now supports -z certsok and /etc/ssl.users for
+    certificate-based authentication without a password. As a consequence
+    of this, telnetlogin(8) now accepts -f for login without a
+    password. See telnetd(8) for more information.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Sun,  5 Dec 2004 12:57:09 +0000
+

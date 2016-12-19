@@ -1,0 +1,61 @@
+Description: Fix buffer overflow.
+ Write to stdout, instead of filling a fixed buffer.
+Author: Ian Beckwith <ianb@debian.org>
+Bug-Debian: http://bugs.debian.org/659181
+Forwarded: no
+Last-Update: 2014-02-22
+
+diff -u netkit-telnet-ssl-0.17.24+0.1/libtelnet/ssl.c netkit-telnet-ssl-0.17.24+0.1/libtelnet/ssl.c
+--- netkit-telnet-ssl-0.17.24+0.1/libtelnet/ssl.c
++++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/ssl.c
+@@ -148,31 +148,35 @@
+ int verbose;
+ {
+     X509 *peer;
+-    char *cipher_list;
++    char *p;
+ 
+     if (ssl_active_flag && verbose) {
+ #ifdef SSLEAY8
+-        char *p;
+-	char buf[1024];
+ 	int i;
+-
++#endif /* SSLEAY8 */
++	fprintf(stderr,"[SSL cipher=");
++#ifdef SSLEAY8
+ 	/* grab the full list of ciphers */
+ 	i=0;
+-	buf[0]='\0';
+ 	while((p=(char *)SSL_get_cipher_list(ssl_con,i++))!=NULL) {
+-	  if (i>0)
+-	    strcat(buf,":");
+-	  strcat(buf,p);
++	    if (i>1) {
++		fprintf(stderr,":");
++	    }
++	    fprintf(stderr, "%s", p);
++	}
++	if(i==1) {
++	    fprintf(stderr, "<NULL>");
+ 	}
+-	cipher_list=buf;
+ #else /* !SSLEAY8 */
+-	cipher_list=SSL_get_cipher(ssl_con);
++	p=SSL_get_cipher(ssl_con);
++	if(p) {
++	    fprintf(stderr, "%s", p);
++	} else {
++	    /* the cipher list *can* be NULL ... useless but it happens! */
++	    fprintf(stderr, "<NULL>");
++	}
+ #endif /* !SSLEAY8 */
+-
+-	/* the cipher list *can* be NULL ... useless but it happens! */
+-	if (cipher_list==NULL)
+-	    cipher_list="<NULL>";
+-	fprintf(stderr,"[SSL cipher=%s]\r\n",cipher_list);
++	fprintf(stderr,"]\r\n");
+ 	peer=SSL_get_peer_certificate(ssl_con);
+ 	if (peer != NULL) {
+ 	    char *str;

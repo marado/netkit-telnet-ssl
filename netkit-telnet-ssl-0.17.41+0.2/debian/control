@@ -1,0 +1,44 @@
+Source: netkit-telnet-ssl
+Section: net
+Priority: extra
+Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
+Uploaders: Alberto Gonzalez Iniesta <agi@inittab.org>
+Standards-Version: 3.9.8
+Build-Depends: debhelper (>= 9), libncurses-dev, libssl1.0-dev
+
+Package: telnet-ssl
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Provides: telnet-client
+Description: telnet client with SSL encryption support
+ The telnet command is used for interactive communication with another host
+ using the TELNET protocol.
+ .
+ SSL telnet replaces normal telnet using SSL authentication and
+ encryption. It interoperates with normal telnetd in both directions.
+ It checks if the other side is also talking SSL, if not it falls back
+ to normal telnet protocol.
+ .
+ Advantages over normal telnet: Your passwords and the data you send
+ will not go in cleartext over the line. Nobody can get it with
+ tcpdump or similar tools. With SSLtelnet you can also connect to
+ https-server like https://www.mozilla.org. Just do
+ 'telnet -z ssl www.mozilla.org 443'
+
+Package: telnetd-ssl
+Architecture: any
+Depends: adduser, openbsd-inetd | inet-superserver, passwd, openssl (>= 0.9.8g-9), ${shlibs:Depends}, ${misc:Depends}
+Provides: telnet-server
+Conflicts: telnetd
+Description: telnet server with SSL encryption support
+ The in.telnetd program is a server which supports the DARPA telnet interactive
+ communication protocol.
+ .
+ SSL telnetd replaces normal telnetd using SSL authentication and
+ encryption. It interoperates with normal telnetd in both directions.
+ It checks if the other side is also talking SSL, if not it falls back
+ to normal telnet protocol.
+ .
+ Advantages over normal telnetd: Your passwords and the data you send
+ will not go in cleartext over the line. Nobody can get it with
+ tcpdump or similar tools.

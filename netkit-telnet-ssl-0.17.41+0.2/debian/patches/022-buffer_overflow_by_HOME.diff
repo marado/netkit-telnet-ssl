@@ -1,0 +1,42 @@
+Description: Fix buffer overflow when $HOME is large.
+ Very long values of $HOME will extend beyond fixed rcbuf[128].
+ In its stead, use dynamic allocation.
+
+Author: Josh Martin
+Bug-Debian: http://bugs.debian.org/264846
+Comment: Introduced in netkit-telnet_0.17-25.
+Forwarded: no
+Last-Update: 2004-08-13
+
+--- netkit-telnet-0.17.orig/telnet/commands.cc
++++ netkit-telnet-0.17/telnet/commands.cc
+@@ -2139,22 +2139,18 @@
+ }
+ 
+ void cmdrc(const char *m1, const char *m2, const char *port) {
+-    static char *rcname = 0;
+-    static char rcbuf[128];
++    char *rcname = NULL;
+ 
+     if (skiprc) return;
+ 
+     readrc(m1, m2, port, "/etc/telnetrc");
+-    if (rcname == 0) {
+-	rcname = getenv("HOME");
+-	if (rcname)
+-	    strcpy(rcbuf, rcname);
+-	else
+-	    rcbuf[0] = '\0';
+-	strcat(rcbuf, "/.telnetrc");
+-	rcname = rcbuf;
+-    }
++    if (asprintf (&rcname, "%s/.telnetrc", getenv ("HOME")) == -1)
++      {
++        perror ("asprintf");
++        return;
++      }
+     readrc(m1, m2, port, rcname);
++    free (rcname);
+ }
+ 
+ #if defined(IP_OPTIONS) && defined(HAS_IPPROTO_IP)

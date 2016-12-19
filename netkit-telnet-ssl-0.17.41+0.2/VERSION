@@ -1,0 +1,118 @@
+Version 0.13 16-Sep-1997 tjh (tjh@cryptsoft.com)
+	- CRLF on messages in sslapp.c
+	- fixed built-in service name to port number code for sites that
+	  don't have SSL things in their services list (https, telnets, etc)
+	- work around gcc 2.7.2 solaris 2.5.1 compiler bug in telnet/commands.c
+
+Version 0.12 02-Aug-1997 tjh (tjh@cryptsoft.com)
+	- fixed up check for secure mode when running with ssl_only 
+	  set - thanks to Simon Gerraty (sjg@zen.quick.com.au) for 
+	  pointing this combination out.
+
+Version 0.11 01-Jun-1997 tjh (tjh@cryptsoft.com)
+	- SSLeay-0.8.0 port
+	- reorganised the code so that most of the SSLeay stuff is
+	  now in lib/libtelnet/sslapp.c and is shared between the
+	  client and the server so things are easier to maintain
+
+Version 0.10 06-Aug-1996 tjh (tjh@mincom.oz.au)
+	- updated the messages from telnet on startup so that the
+	  user is 100% sure of when SSL is being used and when it 
+	  is not being used (thanks to Eric for hassling me to do this)
+        - extra options for working with SSLeay-0.6.x which changed
+	  a lot of the verify handling stuff with support for 
+	  client certificate exchange ... still to be documented
+	  in detail
+	    telnetd -z certrequired -z secure -z verify=1 -z certsok
+	    telnet  -z secure -z cert=FILENAME.pem -z key=FILENAME.pem
+	- added in support for all the telnetd args being comma separated
+	  so that braindead inetd's (SunOS 5.3) can have lots of options
+	  in the one option to work around arg count limits! You can
+	  now do this
+	    telnet -z certrequired,secure,debug,certsok
+
+	- there is now documentation for SSL telnet ... and it should
+	  be read especially if you are going to use certificates for
+	  authentication
+
+Version 0.9 01-Jul-1996 tjh (tjh@mincom.oz.au)
+        - hmm ... merged in some additional things ... and I don't
+	  recollect exactly what :-)
+
+Version 0.8 01-Jan-1996 tjh (tjh@mincom.oz.au)
+        - fixed up gettimeofday to add the extra parameter that
+  	  is required under SunOS 5.4+ (by default) ... thanks to 
+	   J.J.Bailey <jjb@bcc.com>
+	- get the checking for -z secure correct - thanks to 
+	  James Walter Martin III <jwm3@harriet.jwm3.org> for pointing out
+          that I had it wrong initially
+	- fixed major security flaw in lib/libtelnet/ssl.c thanks to 
+	  Christop Martin for pointing this one out!
+
+
+Version 0.7 21-Dec-1995 tjh (tjh@mincom.oz.au)
+        - SSLeay 0.5.0b support
+	=> note: now using telnetd.pem for public+private key
+	(telnetd/ext.h now displays the SSLtelnetd version)
+
+Version 0.6 03-Nov-1995 tjh (tjh@mincom.oz.au)
+
+Version 0.5 18-Sep-1995 tjh (tjh@mincom.oz.au)
+        - fixed up SSL_accept, SSL_connect as Eric changed the return 
+        codes on me without letting me know (again)!
+	- fixed up inet_addr.c for SunOS 4.1.3 as per email from
+	Nicolas Pioch <pioch@Email.ENST.Fr>
+	- yet another linux patch - this time to fix termio includes
+	thanks to Warwick Heath <warwick@rcc-irc.si>
+	- include the security patch (modified) for removing unwanted
+	things from the environment of telnetd (things that effect
+	shared libraries) as per the CERT announcement. Note that
+	this patch doesn't log a hack attempt explicitly - perhaps
+	it should. (01-Nov-95) 
+	
+Version 0.4 18-Jul-1995 tjh (tjh@mincom.oz.au) 
+        - updated to the new error handling stuff in SSLeay-0.4.4
+	and added -cipher=cipherlist and printout of subject
+	and issuer of the certificate offered by the server.
+
+Version 0.3 09-Jul-1995 tjh (tjh@mincom.oz.au)
+        - 01-Jul-95 tjh - merged patches from Steven Schoch 
+	<schoch@sheba.arc.nasa.gov> that add in the option of having
+	a file that allows you to not have to enter a password if you
+	have a matching certificate (and the server is running with
+	the new -z certsok option and the user is in /etc/ssl.users)
+	[look in lib/libtelnet/ssl.c for more details until I document
+	this a little better]
+        - 30-Jun-95 tjh - applied the CERT advisory security patch that
+	I happened to have missed before to bring the code up to date
+	with the "current" BSD telnetd auth stuff
+        -  set utmp entry to be tn0xff0xff so that comsat doesn't find
+	the entry twice - really need to know what the *real* id should
+	be set to. (SunOS 5.x) ... and this is still not *right*
+        -  fixed up building under SunOS 4.1.3 
+	thanks to Nicolas Pioch <pioch@Email.ENST.Fr>
+	- telnet client now builds cleanly on 
+	SunOS 4.x, SunOS 5.x, IRIX 5.x, HPUX 9.x, DGUX 5.x, Linux
+        - telnetd fixes for Linux from bogk@inf.fu-berlin.de (Andreas Bogk) 
+        to work around an ncurses "feature" ... see terminaltypeok()
+	which was also emailed in by aeppert@dialin.ind.net a few weeks 
+	later
+	- telnetd has now been tested on
+	SunOS 5.x, IRIX 5.x, Linux
+
+Version 0.2 09-Jun-1995 tjh (tjh@mincom.oz.au)
+        - fixed up the handling of utmpx so that we can use the "normal"
+	/bin/login program rather than our separate login program which
+	fixed the SunOS 5.3 problem
+	No utmpx entry. You must exec "login" from the lowest level "shell".
+	- thanks to bogk@inf.fu-berlin.de (Andreas Bogk) for pointing
+	out that I hadn't cleaned up that part of the SRA base I've 
+	built on top of.
+	- HPUX builds now ... still need to put in the pty handling code
+	if I want telnetd to work I think
+
+Version 0.1 06-Jun-1995 tjh (tjh@mincom.oz.au)
+        - first "released" version. Code is really still pre-alpha as
+	it was implemented last night so at the moment use it at your
+	own risk. :-)
+

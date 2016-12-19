@@ -1,0 +1,14 @@
+#!/bin/sh -e
+
+dpkg-divert --package ssltelnet --remove --rename \
+                --divert /usr/bin/telnet.nossl /usr/bin/telnet
+dpkg-divert --package ssltelnet --remove --rename \
+                --divert /usr/man/man1/telnet.nossl.1.gz /usr/man/man1/telnet.1.gz
+dpkg-divert --package ssltelnet --remove --rename \
+                --divert /usr/sbin/in.telnetd.nossl /usr/sbin/in.telnetd
+dpkg-divert --package ssltelnet --remove --rename \
+                --divert /usr/man/man8/telnetd.nossl.8.gz /usr/man/man8/telnetd.8.gz
+dpkg-divert --package ssltelnet --remove --rename \
+                --divert /usr/man/man8/in.telnetd.nossl.8.gz /usr/man/man8/in.telnetd.8.gz
+
+#DEBHELPER#

@@ -1,0 +1,54 @@
+### Patches brought in from netkit-telnet:
+###   [0-4]??-description.diff
+###
+### Patches of nekit-telnet-ssl while migrating to format '3.0 (quilt)':
+###   5??-description.diff
+###
+### Continued maintenance:
+###   [6-9]??-description.diff
+
+#
+# netkit-telnet_0.17-24
+#
+010-full_set_in_18.diff
+020-from_18_to_24.diff
+
+# Produce basic SSL support.
+# Corresponds to netkit-telnet-ssl_0.17.14+0.1.orig.tar.gz.
+#
+500-implement_ssl.diff
+
+#
+# netkit-telnet-ssl_0.17.24+0.1-1
+#
+510-can_2004_0640_and_0998.diff
+022-buffer_overflow_by_HOME.diff
+024-can_2004-0911.diff
+026-can_2005_0469.diff
+512-numeric_hosts.diff
+514-mixed_up_to_24_7_1.diff
+516-telnet_up_to_24_7_1.diff
+518-telnetd_up_to_24_7_1.diff
+
+# Steps towards netkit-telnet-ssl_0.17.24+0.1-24
+#
+030-reject_invalid_port.diff
+520-from_7_1_to_14.diff
+
+530-from_14_to_21.diff
+540-buffer_overflow.diff
+545-track_scm.diff
+
+### Now at netkit-telnet-ssl_0.17.24+0.1-24!
+
+045-avoid_unsetting_term.diff
+100-format_security_error.diff
+120-some_protocol_refinement.diff
+130-drain_input_from_child.diff
+600-better_diagnostic.diff
+610-support_uservar.diff
+620-do_not_strip_telnetlogin.diff
+
+### Now at source equivalent to netkit-telnet_0.17-39!
+
+150-cross_configure.diff

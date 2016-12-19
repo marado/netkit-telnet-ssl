@@ -1,0 +1,40 @@
+Description: Fix remote DOS hole, CAN-2004-0911.
+ telnetd/utility.c (netwritebuf): Check that `listlen' is positive
+ before any action.  Otherwise do nothing, just return.
+ .
+ Patch made public in bug report.
+
+Author: Herbert Xu
+Bug-Debian: http://bugs.debian.org/273694
+Comment: Introduced in ntekit-telnet_0.17-26.
+Forwarded: no
+Last-Update: 2004-07-27
+
+Index: netkit-telnet-0.17/telnetd/utility.c
+===================================================================
+RCS file: /home/gondolin/herbert/src/CVS/debian/netkit-telnet/telnetd/utility.c,v
+retrieving revision 1.8
+diff -u -r1.8 utility.c
+--- netkit-telnet-0.17/telnetd/utility.c	18 Jan 2002 09:13:36 -0000	1.8
++++ netkit-telnet-0.17/telnetd/utility.c	25 Sep 2004 01:22:51 -0000
+@@ -246,6 +246,9 @@
+ 	size_t len;
+ 	int ltrailing = trailing;
+ 
++	if (!listlen)
++		return;
++
+ 	vector = malloc(listlen * sizeof(struct iovec));
+ 	if (!vector) {
+ 		return;
+@@ -323,9 +326,7 @@
+ 		/* out of memory? */
+ 		cleanup(0);
+ 	}
+-	if (listlen) {
+-		netwritebuf();
+-	}
++	netwritebuf();
+ }
+ 
+ 

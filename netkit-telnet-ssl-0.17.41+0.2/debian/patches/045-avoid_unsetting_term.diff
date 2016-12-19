@@ -1,0 +1,20 @@
+Description: Avoid unsetting environment variable TERM.
+ Do not reset TERM to "UNKNOWN", when it is unknown in the local host.
+Author: Philippe Troin
+Bug-Debian: http://bugs.debian.org/237324
+Comment: interdiff netkit-telnet_0.17-{34,36}.diff
+Forwarded: no
+Last-Update: 2008-06-22
+
+diff -u netkit-telnet-0.17/telnet/telnet.cc netkit-telnet-0.17/telnet/telnet.cc
+--- netkit-telnet-0.17/telnet/telnet.cc
++++ netkit-telnet-0.17/telnet/telnet.cc
+@@ -640,7 +640,7 @@
+   if (resettermname) {
+     resettermname = 0;
+     tname = env_getvalue("TERM", 0);
+-    if (!tname || my_setupterm(tname, 1, &err)) {
++    if (!tname /* || my_setupterm(tname, 1, &err) */) {
+       termbuf[0] = 0;
+       tname = "UNKNOWN";
+     }

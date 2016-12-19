@@ -1,0 +1,75 @@
+Description: Resolve remote host as numeric host identifier.
+ Implement a new switch '-N' in the server, avoiding reverse DNS
+ resolution and instead registering a numeric host representation.
+ The environment variable REMOTEHOST is set to this numeric address.
+ .
+ The change could be of benefit in PAM rules for access control as well
+ as for accounting and tracing of network activity.  In addition, the use
+ of '-N' mitigates cases when a hostile third party might have gained
+ control of reverse DNS resolution and is trying to inject fake answers.
+
+Author: Dean Gaudet
+Bug-Debian: http://bugs.debian.org/258371
+Last-Update: 2004-12-05
+
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.c
+@@ -90,6 +90,7 @@ int	hostinfo = 1;			/* do we print login
+ 
+ int debug = 0;
+ int keepalive = 1;
++int numeric_hosts = 0;
+ #ifdef LOGIN_WRAPPER
+ char *loginprg = LOGIN_WRAPPER;
+ #else
+@@ -228,7 +229,7 @@ main(int argc, char *argv[], char *env[]
+ 	ssl_key_file=NULL;
+ #endif /* USE_SSL */
+ 
+-	while ((ch = getopt(argc, argv, "d:a:e:lhnr:I:D:B:sS:a:X:L:z:")) != EOF) {
++	while ((ch = getopt(argc, argv, "d:a:e:lhnNr:I:D:B:sS:a:X:L:z:")) != EOF) {
+ 		switch(ch) {
+ 
+ #ifdef USE_SSL
+@@ -389,6 +390,10 @@ main(int argc, char *argv[], char *env[]
+ 			keepalive = 0;
+ 			break;
+ 
++		case 'N':
++		  numeric_hosts = 1;
++		  break;
++
+ #ifdef	SecurID
+ 		case 's':
+ 			/* SecurID required */
+@@ -867,7 +872,8 @@ doit(struct sockaddr *who, socklen_t who
+ 
+ 	/* get name of connected client */
+ 	if (getnameinfo(who, who_len, remote_host_name,
+-			sizeof(remote_host_name), 0, 0, 0)) {
++			sizeof(remote_host_name), 0, 0, 
++			numeric_hosts ? NI_NUMERICHOST : 0)) {
+ 		syslog(LOG_ERR, "doit: getnameinfo: %m");
+ 		*remote_host_name = 0;
+         }
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.8
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.8
+@@ -42,7 +42,7 @@
+ protocol server
+ .Sh SYNOPSIS
+ .Nm /usr/sbin/in.telnetd
+-.Op Fl hns
++.Op Fl hnNs
+ .Op Fl a Ar authmode
+ .Op Fl D Ar debugmode
+ .Op Fl L Ar loginprg
+@@ -175,6 +175,9 @@
+ if the client is still there, so that idle connections
+ from machines that have crashed or can no longer
+ be reached may be cleaned up.
++.It Fl N
++Disable reverse DNS lookups and use the numeric IP address in logs
++and REMOTEHOST environment variable.
+ .It Fl s
+ This option is only enabled if
+ .Nm telnetd

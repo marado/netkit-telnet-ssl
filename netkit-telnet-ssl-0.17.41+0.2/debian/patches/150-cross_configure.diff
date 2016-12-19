@@ -1,0 +1,60 @@
+Description: Do not run built programs during configure.
+ When cross compiling the source, the host-specific programs
+ built during the configuration phase are irrelevant for execution.
+ Avoid running those executables.  The compile test is still there,
+ but the runtime test value should have been well accomplished after
+ all these years!
+Author: Helmut Grohne <helmut@subdivi.de>
+Bug-Debian: http://bugs.debian.org/835977
+Forwarded: no
+Last Update: 2016-08-29
+
+Index: netkit-telnet-0.17/configure
+===================================================================
+--- netkit-telnet-0.17.orig/configure
++++ netkit-telnet-0.17/configure
+@@ -94,7 +94,6 @@
+     echo -n 'Checking if C compiler works... '
+     if (
+           $CC __conftest.c -o __conftest || exit 1
+-          ./__conftest || exit 1
+        ) >/dev/null 2>&1; then
+          echo 'yes'
+      else
+@@ -141,7 +140,6 @@
+     echo -n 'Checking if C++ compiler works... '
+     if (
+           $CXX __conftest.cc -o __conftest || exit 1
+-          ./__conftest || exit 1
+        ) >/dev/null 2>&1; then
+          echo 'yes'
+      else
+@@ -427,7 +425,6 @@
+ else
+     if (
+           $CXX $CXXFLAGS -D_GNU_SOURCE __conftest.cc  -o __conftest || exit 1
+-          ./__conftest || exit 1
+        ) >/dev/null 2>&1; then
+         echo '-D_GNU_SOURCE'
+         CFLAGS="$CFLAGS -D_GNU_SOURCE"
+@@ -460,20 +457,17 @@
+ EOF
+ if (
+       $CXX $CXXFLAGS  __conftest.cc $LIBBSD -o __conftest || exit 1
+-      ./__conftest || exit 1
+    ) >/dev/null 2>&1; then
+     echo 'ok'
+ else
+     if (
+           $CXX $CXXFLAGS  __conftest.cc -lsnprintf $LIBBSD -o __conftest || exit 1
+-          ./__conftest || exit 1
+        ) >/dev/null 2>&1; then
+         echo '-lsnprintf'
+         LIBS="$LIBS -lsnprintf"
+     else
+         if (
+               $CXX $CXXFLAGS  __conftest.cc -ldb $LIBBSD -o __conftest || exit 1
+-              ./__conftest || exit 1
+            ) >/dev/null 2>&1; then
+             echo '-ldb'
+             LIBS="$LIBS -ldb"

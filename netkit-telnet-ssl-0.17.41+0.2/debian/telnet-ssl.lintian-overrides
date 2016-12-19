@@ -1,0 +1,6 @@
+# dont/wont is valid as part of telnet IAC DONT/WONT commands
+telnet-ssl: spelling-error-in-binary usr/bin/telnet-ssl dont don't
+telnet-ssl: spelling-error-in-binary usr/bin/telnet-ssl wont won't
+telnet-ssl: spelling-error-in-manpage usr/share/man/man1/telnet-ssl.1.gz dont don't
+telnet-ssl: spelling-error-in-manpage usr/share/man/man1/telnet-ssl.1.gz wont won't
+

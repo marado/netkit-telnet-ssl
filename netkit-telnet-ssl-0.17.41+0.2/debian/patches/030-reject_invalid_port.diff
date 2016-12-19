@@ -1,0 +1,35 @@
+Description: Reject invalid port numbers.
+ Check that any port number is within the range of a short integer.
+Author: Justin Pryzby
+Bug-Debian: http://bugs.debian.org/300273
+Comment: interdiff netkit-telnet_0.17-{29.34}.diff
+Forwarded: no
+Last-Update: 2005-10-09
+
+diff -u netkit-telnet-0.17/telnet/commands.cc netkit-telnet-0.17/telnet/commands.cc
+--- netkit-telnet-0.17/telnet/commands.cc
++++ netkit-telnet-0.17/telnet/commands.cc
+@@ -1747,8 +1747,22 @@
+ 	if (*portp == '-') {
+ 	    portp++;
+ 	    telnetport = 1;
+-	} else
++	} else {
+ 	    telnetport = 0;
++	    if (*portp >='0' && *portp<='9') {
++	       char *end;
++	       long int p;
++
++	       p=strtol(portp, &end, 10);
++	       if (ERANGE==errno && (LONG_MIN==p || LONG_MAX==p)) {
++	          fprintf(stderr, "telnet: port %s overflows\n", portp);
++		  return 0;
++	       } else if (p<=0 || p>=65536) {
++	          fprintf(stderr, "telnet: port %s out of range\n", portp);
++		  return 0;
++	       }
++	    }
++	}
+     }
+     else {
+ 	portp = "telnet";

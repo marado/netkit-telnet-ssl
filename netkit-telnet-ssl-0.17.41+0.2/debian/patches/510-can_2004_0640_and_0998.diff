@@ -1,0 +1,26 @@
+Description: Two format string vulnerabilities.
+ syslog() was applying user data as format string, CAN-2004-0640.
+ [telnetd/telnetd.c]
+ .
+ Likewise for BIO_printf(), CAN-2004-0998.  Reported by Joel Eriksson.
+ [telnetd/telnetd.c]
+
+Author: Christoph Martin, Joel Eriksson
+Bug-Debian: http://bugs.debian.org/258372
+Forwarded: no
+Last-Update: 2004-12-21
+
+--- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.c
++++ netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.c
+@@ -520,9 +525,9 @@
+ 	        sprintf(errbuf,"SSL_accept error %s\n",
+ 		    ERR_error_string(ERR_get_error(),NULL));
+ 
+-		syslog(LOG_WARNING, errbuf);
++		syslog(LOG_WARNING, "%s", errbuf);
+ 
+-		BIO_printf(bio_err,errbuf);
++		BIO_printf(bio_err,"%s",errbuf);
+ 
+ 		/* go to sleep to make sure we are noticed */
+ 		sleep(10);

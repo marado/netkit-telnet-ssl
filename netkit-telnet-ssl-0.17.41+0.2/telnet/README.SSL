@@ -1,0 +1,26 @@
+/*
+ * The modifications to support SSLeay were done by Tim Hudson
+ * tjh@cryptsoft.com
+ *
+ * You can do whatever you like with these patches except pretend that
+ * you wrote them.
+ *
+ * Email ssl-users-request@mincom.oz.au to get instructions on how to
+ * join the mailing list that discusses SSLeay and also these patches.
+ *
+ * The modifications for this version of telnet where done by
+ * Christoph Martin <christoph.martin@uni-mainz.de>
+ */
+
+    Features:
+
+	This version of telnet/telnetd has support for the
+	AUTHENTICATION option.  The AUTHENTICATION option is fairly
+	well defined, and an option number has been assigned to
+	it. The code is provided in this release for experimental and
+	testing purposes.
+
+	A new telnet command, "auth" has been added (if
+	AUTHENTICATE is defined).  It has four sub-commands,
+	"status", "debug", "disable", "enable" and "help".
+

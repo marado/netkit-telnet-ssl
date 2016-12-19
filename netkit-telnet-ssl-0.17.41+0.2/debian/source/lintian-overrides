@@ -1,0 +1,4 @@
+# netkit is long dead as upstream source
+netkit-telnet-ssl source: no-homepage-field
+
+netkit-telnet-ssl source: debian-watch-may-check-gpg-signature
