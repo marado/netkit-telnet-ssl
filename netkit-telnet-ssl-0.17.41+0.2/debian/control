@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
 Uploaders: Alberto Gonzalez Iniesta <agi@inittab.org>
 Standards-Version: 3.9.8
-Build-Depends: debhelper (>= 9), libncurses-dev, libssl1.0-dev
+Build-Depends: debhelper (>= 9), libncurses-dev, libssl1.0-dev | libssl-dev (<< 1.1.0~)
 
 Package: telnet-ssl
 Architecture: any
