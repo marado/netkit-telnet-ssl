@@ -1,0 +1,81 @@
+Description: Make possible builds with libssl of version 1.1.0.
+ Protected access to an opaque structure was made mandatory
+ in version 1.1.0 of libssl.
+Author: Mats Erik Andersson <debian@gisladisker.se>
+Forwarded: not-needed
+Last-Update: 2017-01-16
+
+--- netkit-telnet-0.17.debian/libtelnet/ssl.c	2017-01-10 23:07:43.508414610 +0100
++++ netkit-telnet-0.17/libtelnet/ssl.c	2017-01-16 23:30:02.454609472 +0100
+@@ -586,11 +586,11 @@ int depth, error;
+     char *subject, *issuer;
+ #ifdef SSLEAY8
+     int depth,error;
+-    char *xs;
++    X509 *xs;
+ 
+-    depth=ctx->error_depth;
+-    error=ctx->error;
+-    xs=(char *)X509_STORE_CTX_get_current_cert(ctx);
++    depth = X509_STORE_CTX_get_error_depth(ctx);
++    error = X509_STORE_CTX_get_error(ctx);
++    xs = X509_STORE_CTX_get_current_cert(ctx);
+ 
+ #endif /* SSLEAY8 */
+ 
+@@ -733,11 +733,11 @@ int depth, error;
+     char *subject, *issuer, *cnsubj;
+ #ifdef SSLEAY8
+     int depth,error;
+-    char *xs;
++    X509 *xs;
+ 
+-    depth=ctx->error_depth;
+-    error=ctx->error;
+-    xs=(char *)X509_STORE_CTX_get_current_cert(ctx);
++    depth = X509_STORE_CTX_get_error_depth(ctx);
++    error = X509_STORE_CTX_get_error(ctx);
++    xs = X509_STORE_CTX_get_current_cert(ctx);
+ 
+ #endif /* SSLEAY8 */
+ 
+@@ -817,25 +817,25 @@ int depth, error;
+     case X509_V_ERR_CERT_NOT_YET_VALID:
+       fprintf(stderr,"SSL: Certificate not yet valid\n");
+       BIO_printf(bio_err,"notBefore=");
+-      ASN1_TIME_print(bio_err,X509_get_notBefore(ctx->current_cert));
++      ASN1_TIME_print(bio_err, X509_get_notBefore((X509 *) xs));
+       BIO_printf(bio_err,"\n");
+       break;
+     case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
+       fprintf(stderr,"SSL: Error in certificate notBefore field\n");
+       BIO_printf(bio_err,"notBefore=");
+-      ASN1_TIME_print(bio_err,X509_get_notBefore(ctx->current_cert));
++      ASN1_TIME_print(bio_err, X509_get_notBefore((X509 *) xs));
+       BIO_printf(bio_err,"\n");
+       break;
+     case X509_V_ERR_CERT_HAS_EXPIRED:
+       fprintf(stderr,"SSL: Certificate has expired\n");
+       BIO_printf(bio_err,"notAfter=");
+-      ASN1_TIME_print(bio_err,X509_get_notAfter(ctx->current_cert));
++      ASN1_TIME_print(bio_err, X509_get_notAfter((X509 *) xs));
+       BIO_printf(bio_err,"\n");
+       break;
+     case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
+       fprintf(stderr,"SSL: Error in certificate notAfter field\n");
+       BIO_printf(bio_err,"notAfter=");
+-      ASN1_TIME_print(bio_err,X509_get_notAfter(ctx->current_cert));
++      ASN1_TIME_print(bio_err, X509_get_notAfter((X509 *) xs));
+       BIO_printf(bio_err,"\n");
+       break;
+     default:
+--- netkit-telnet-0.17.debian/telnet/netlink.cc	2017-01-10 23:07:43.508414610 +0100
++++ netkit-telnet-0.17/telnet/netlink.cc	2017-01-16 23:39:21.339701400 +0100
+@@ -2,6 +2,7 @@
+ #include <stdio.h>
+ #include <unistd.h>
+ #include <stdlib.h>
++#include <string.h>
+ #include <sys/socket.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>

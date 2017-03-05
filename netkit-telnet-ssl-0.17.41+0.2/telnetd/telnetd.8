@@ -219,6 +219,11 @@ has been built with SSL (Secure Socket Layer) support.
 .Bl -tag -width Fl
 .It Ic debug
 Enable SSL related debugging.
+.It Ic debug= Ns Ar log_file
+Select in addition a specific location
+.Ar log_file
+for collecting debug output, thus overriding the default file
+.Ar /var/tmp/telnetd.log .
 .It Ic ssl
 Negotiate SSL at first, then use telnet protocol. In this mode telnetd
 only accepts connections from SSL enhanced telnet with option 
@@ -226,8 +231,9 @@ only accepts connections from SSL enhanced telnet with option
 .It Ic nossl, !ssl
 switch off SSL negotiation
 .It Ic certsok
-Look username up in /etc/ssl.users. The format of this file is lines
-of this form: 
+Look username up in
+.Pa /etc/ssl.users .
+The format of this file is lines of the form: 
 .Ar user1,user2:/C=US/.....
 where user1 and user2 are usernames and /C=US/... is the subject name of
 the certificate. Use 
@@ -240,26 +246,28 @@ client certificate is mandatory
 .It Ic secure
 Don't switch back to unencrypted mode (no SSL) if SSL is not available.
 .It Ic verify=int
-.\" TODO
-Set the SSL verify flags (SSL_VERIFY_* in 
-.Ar ssl/ssl.h
+Set the SSL verify flags.  (See SSL_VERIFY_* in 
+.Ar openssl/ssl.h
 ).
-.\" TODO
-.It Ic cert=cert_file
-.\" TODO
-Use the certificate(s) in
-.Ar cert_file .
-.It Ic key=key_file
-.\" TODO
+.It Ic cacert= Ns Ar CA_file
+A collection of trusted authority certificates for verification of
+whatever the clients care to send as identifiers.
+.It Ic cert= Ns Ar cert_file
+Present the certificate(s) in
+.Ar cert_file
+to any client.  They are in PEM-format, and the first certificate
+identifies the server itself.
+.It Ic key= Ns Ar key_file
 Use the key(s) in
-.Ar key_file .
-.It Ic cipher=ciph_list
-.\" TODO
+.Ar key_file
+in case a key is not stored together with the certificate.
+.It Ic cipher= Ns Ar ciph_list
 Set the preferred ciphers to
 .Ar ciph_list .
 .\" TODO: possible values; comma-separated list?
+The environment variable SSL_CIPHER serves the same purpose.
 (See 
-.Ar ssl/ssl.h
+.Ar openssl/ssl.h
 ).
 .El
 .El
@@ -459,7 +467,8 @@ the data stream.
 .El
 .Sh FILES
 .Pa /etc/services ,
-.Pa /etc/issue.net
+.Pa /etc/issue.net ,
+.Pa /etc/ssl.users
 .Sh "SEE ALSO"
 .Xr telnet 1 ,
 .Xr login 1 ,

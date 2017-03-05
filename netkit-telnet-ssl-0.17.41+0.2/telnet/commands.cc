@@ -2043,9 +2043,9 @@ static int startssl_cmd(void)
 		ERR_print_errors_fp(stderr);
 		fflush(stderr);
 	} else {
-		display_connect_details(ssl_con,ssl_debug_flag);
 		ssl_active_flag=1;
 		ssl_only_flag=1;
+		display_connect_details(ssl_con,ssl_debug_flag);
 	}
 	return 1;
 }

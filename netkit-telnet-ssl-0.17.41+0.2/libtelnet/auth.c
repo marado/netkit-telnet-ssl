@@ -83,6 +83,9 @@ static char sccsid[] = "@(#)auth.c	5.2 (Berkeley) 3/22/91";
 #include "auth.h"
 #include "misc-proto.h"
 #include "auth-proto.h"
+#ifdef USE_SSL
+# include "sslapp.h"
+#endif
 
 #define	typemask(x)		(1<<((x)-1))
 
@@ -306,10 +309,27 @@ auth_status(const char *type, const char *a)
                 if ((mask & (i = typemask(ap->type))) != 0)
                         continue;
                 mask |= i;
+#ifndef USE_SSL
                 printf("%s: %s\n", AUTHTYPE_NAME(ap->type),
                          (i_wont_support & typemask(ap->type)) ?
                                          "disabled" : "enabled");
+#else /* USE_SSL */
+                printf("%s %s", AUTHTYPE_NAME(ap->type),
+                         (i_wont_support & typemask(ap->type)) ?
+                                         "disabled" : "enabled");
+		if (ap->type == AUTHTYPE_SSL)
+			printf(", %s",
+				ssl_active_flag ? "active" : "inactive");
+		puts("");
+#endif /* USE_SSL */
         }
+#ifdef USE_SSL
+	if (ssl_active_flag && ssl_con) {
+		printf("Active cipher: %s, protocol %s.\n",
+			SSL_get_cipher_name(ssl_con),
+			SSL_get_version(ssl_con));
+	}
+#endif /* USE_SSL */
 	return(1);
 }
 

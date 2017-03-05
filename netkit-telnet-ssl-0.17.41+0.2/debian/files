@@ -1,0 +1,5 @@
+netkit-telnet-ssl_0.17.41+0.2-3+nmu1_i386.buildinfo net extra
+telnet-ssl-dbgsym_0.17.41+0.2-3+nmu1_i386.deb debug extra
+telnet-ssl_0.17.41+0.2-3+nmu1_i386.deb net extra
+telnetd-ssl-dbgsym_0.17.41+0.2-3+nmu1_i386.deb debug extra
+telnetd-ssl_0.17.41+0.2-3+nmu1_i386.deb net extra

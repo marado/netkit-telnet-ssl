@@ -22,3 +22,6 @@
 610-support_uservar.diff
 620-do_not_strip_telnetlogin.diff
 150-cross_configure.diff
+630-recent_libssl.diff
+650-improve_abilities.diff
+700-fix_UTF8.diff

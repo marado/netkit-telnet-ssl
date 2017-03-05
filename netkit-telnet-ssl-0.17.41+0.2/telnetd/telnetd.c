@@ -76,6 +76,10 @@ static void doit(struct sockaddr *who, socklen_t who_len);
 static int terminaltypeok(const char *s);
 
 #ifdef USE_SSL 
+# ifndef SSL_LOG_FILE
+#  define SSL_LOG_FILE "/telnetd.log"
+# endif
+
 static char cert_filepath[1024];
 #endif /* USE_SSL */
 
@@ -249,7 +253,11 @@ main(int argc, char *argv[], char *env[])
 
 			while(optarg!=NULL) {
 
-		        if (strcmp(optarg, "debug") == 0 ) {
+			if (strncmp(optarg, "debug=",
+				    strlen("debug=")) == 0 ) {
+			    ssl_debug_flag = 1;
+			    ssl_log_file = optarg + strlen("debug=");
+		        } else if (strcmp(optarg, "debug") == 0 ) {
 			    ssl_debug_flag=1;
 			} else if (strcmp(optarg, "ssl") == 0 ) {
 			    ssl_only_flag=1;
@@ -268,6 +276,9 @@ main(int argc, char *argv[], char *env[])
 			} else if (strncmp(optarg, "verify=", 
 			                strlen("verify=")) == 0 ) {
 			    ssl_verify_flag=atoi(optarg+strlen("verify="));
+			} else if (strncmp(optarg, "cacert=", 
+			                strlen("cacert=")) == 0 ) {
+			    ssl_cacert_file=optarg+strlen("cacert=");
 			} else if (strncmp(optarg, "cert=", 
 			                strlen("cert=")) == 0 ) {
 			    ssl_cert_file=optarg+strlen("cert=");
@@ -282,6 +293,8 @@ main(int argc, char *argv[], char *env[])
 			     * if the user makes a mistake they have to
 			     * correct it!
 			     */
+			    syslog(LOG_DAEMON | LOG_ERR,
+				   "Unknown SSL option '%s'.", optarg);
 			    fprintf(stderr,"Unknown SSL option %s\n",optarg);
 			    fflush(stderr);
 			    exit(1);
@@ -448,18 +461,23 @@ main(int argc, char *argv[], char *env[])
 		ssl_verify_flag=1;
 	}
 
+	/* We do really require the peer to identify himself.  */
+	if (ssl_cert_required)
+	    ssl_verify_flag |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+
 	/* if we are not running in debug then any error
 	 * stuff from SSL debug *must* not go down
 	 * the socket (which 0,1,2 are all pointing to by
 	 * default)
 	 */
-	if (ssl_debug_flag)
-	    ssl_log_file="/telnetd.log";
+	if (ssl_debug_flag && !ssl_log_file)
+	    ssl_log_file = SSL_LOG_FILE;
 
 	if (!do_ssleay_init(1)) {
 	  if (bio_err!=NULL) {
-	    BIO_printf(bio_err,"do_ssleay_init() failed\n");
+	    (void) BIO_printf(bio_err,"do_ssleay_init() failed\n");
 	    ERR_print_errors(bio_err);
+	    (void) BIO_flush(bio_err);
 	  } else {
 	    fflush(stderr);
 	    fprintf(stderr,"do_ssleay_init() failed\n");
@@ -469,10 +487,14 @@ main(int argc, char *argv[], char *env[])
 	}
 
 	if (ssl_debug_flag) {
-	  BIO_printf(bio_err,"secure %d certrequired %d verify %d\n",
-	      ssl_secure_flag,ssl_cert_required,ssl_verify_flag);
+	  (void) BIO_printf(bio_err,"Flags: ssl %d secure %d certrequired %d certsok %d verify %d\n",
+		     ssl_only_flag, ssl_secure_flag, ssl_cert_required,
+		     ssl_certsok_flag, ssl_verify_flag);
 	  for(i=0;i<argc;i++)
-	      BIO_printf(bio_err,"argv[%d]=\"%s\"\n",i,argv[i]);
+	      (void) BIO_printf(bio_err,"argv[%d]=\"%s\"\n",i,argv[i]);
+
+	  (void) BIO_printf(bio_err, "Init of SSL is complete.\r\n");
+	  (void) BIO_flush(bio_err);
 	}
 
 #endif /* USE_SSL */
@@ -490,6 +512,11 @@ main(int argc, char *argv[], char *env[])
 	}
 
 	openlog("telnetd", LOG_PID | LOG_ODELAY, LOG_DAEMON);
+#ifdef USE_SSL
+	if (ssl_debug_flag && ssl_log_file)
+	  syslog(LOG_NOTICE, "SSL debugging into %s.\n", ssl_log_file);
+#endif /* USE_SSL */
+
 	fromlen = sizeof (from);
 	if (getpeername(0, (struct sockaddr *)&from, &fromlen) < 0) {
 		fatalperror(2, "getpeername");
@@ -524,20 +551,46 @@ main(int argc, char *argv[], char *env[])
 	     * https servers should we hit this code and then
 	     * we really don't care *who* we talk to :-)
 	     */
-	    SSL_set_verify(ssl_con,ssl_verify_flag,NULL);
+	    int ret;
 
-	    if (SSL_accept(ssl_con) <= 0) {
+	    /* There is already a callback in effect, since the call
+	     * to do_ssleay_init().  This callback must be replaced
+	     * by a function tailored to SSL-only.
+	     *
+	     * At this point the legacy SSL code included a call
+	     *
+	     *   SSL_set_verify(ssl_con, ssl_verify_flag, NULL);
+	     *
+	     * which probably unintendedly left the previously chosen
+	     * callback function 'client_verify_callback' being active.
+	     * That function produces different outcomes in the two
+	     * settings '-z verify=3' and '-z verify=3 -z certrequired',
+	     * which certainly contradicts intuition in SSL-only mode.
+	     */
+	    SSL_set_verify(ssl_con, ssl_verify_flag,
+			   ssl_only_verify_callback);
+
+	    if (ssl_debug_flag) {
+		(void) BIO_printf(bio_err, "Serving an SSL-only client.\r\n");
+		(void) BIO_flush(bio_err);
+	    }
+
+	    ret = SSL_accept(ssl_con);
+	    if (ret <= 0) {
 		static char errbuf[1024];
 		char *res, *p;
 
 		res = ERR_error_string(ERR_peek_last_error(), NULL);
 		p = strrchr(res, ':');
 
-	        sprintf(errbuf,"SSL_accept error: %s\n", p ? &p[1] : res);
+	        sprintf(errbuf,"SSL_accept error: %s", p ? &p[1] : res);
 
-		syslog(LOG_WARNING, "%s", errbuf);
+		syslog(LOG_NOTICE, "%s", errbuf);
 
-		BIO_printf(bio_err,"%s",errbuf);
+		(void) BIO_printf(bio_err, "SSL_accept: %s, %s\r\n",
+			   ERR_func_error_string(ERR_peek_error()),
+			   ERR_reason_error_string(ERR_peek_error()));
+		(void) BIO_flush(bio_err);
 
 		/* go to sleep to make sure we are noticed */
 		sleep(10);
@@ -546,6 +599,18 @@ main(int argc, char *argv[], char *env[])
 		_exit(1);
 	    } else {
 		ssl_active_flag=1;
+		if (ssl_debug_flag) {
+		    X509 *peer = SSL_get_peer_certificate(ssl_con);
+
+		    if (peer) {
+			char *subj = ONELINE_NAME(X509_get_subject_name(peer));
+
+			(void) BIO_printf(bio_err, "Peer: %s\r\n", subj);
+			(void) BIO_flush(bio_err);
+			free(subj);
+			X509_free(peer);
+		    }
+		}
 	    }
 	}
 #endif /* USE_SSL */
@@ -588,8 +653,8 @@ usage(void)
 #endif
 #ifdef USE_SSL
         /* might as well output something useful here ... */
-	fprintf(stderr, "\n\t [-z ssl] [-z secure] [-z debug] [-z verify=int]\n\t");
-	fprintf(stderr, " [-z cert=file] [-z key=file]\n\t");
+	fprintf(stderr, "\n\t [-z ssl] [-z secure] [-z debug] [-z debug=file]\n\t");
+	fprintf(stderr, " [-z verify=int] [-z cacert=file] [-z cert=file] [-z key=file]\n\t");
 #endif /* USE_SSL */
 	fprintf(stderr, "\n");
 	exit(1);
@@ -613,9 +678,16 @@ getterminaltype(char *name)
 
     settimer(baseline);
 #if defined(AUTHENTICATE)
+# if defined USE_SSL && defined EXTRA_DEBUGGING
+	if (ssl_debug_flag) {
+	    (void) BIO_printf(bio_err, "Negotiate terminal abilities.\r\n");
+	    (void) BIO_flush(bio_err);
+	}
+# endif /* USE_SSL && EXTRA_DEBUGGING */
     /*
      * Handle the Authentication option before we do anything else.
      */
+
     send_do(TELOPT_ENVIRON, 1);
     while (his_will_wont_is_changing(TELOPT_ENVIRON)) {
 	ttloop();
@@ -668,11 +740,11 @@ getterminaltype(char *name)
 #endif
 
             if (ssl_debug_flag) {
-		fprintf(stderr,"[SSL required - connection rejected]");
-		fflush(stderr);
+		(void) BIO_printf(bio_err, "SSL required - connection rejected\r\n");
+		(void) BIO_flush(bio_err);
 	    }
 
-	    fatal(net,"[SSL required - connection rejected]");
+	    fatal(net,"SSL required - connection rejected");
 
 	}
     }
@@ -953,6 +1025,10 @@ doit(struct sockaddr *who, socklen_t who_len)
 	    fprintf(stderr,"doit - starting telnet protocol itself\n");
 	    fflush(stderr);
 	    sleep(2);
+	}
+	if (ssl_debug_flag && bio_err) {
+	    (void) BIO_printf(bio_err, "Ready to launch login slave.\n");
+	    (void) BIO_flush(bio_err);
 	}
 #endif /* USE_SSL */
 
@@ -1380,9 +1456,21 @@ void telnet(int f, int p)
 
     	if (got_sigchld) {
 	    netflush();
+#if defined USE_SSL && defined EXTRA_DEBUGGING
+	    if (ssl_debug_flag) {
+		(void) BIO_printf(bio_err, "Peer has closed down in good order.\r\n");
+		(void) BIO_flush(bio_err);
+	    }
+#endif /* USE_SSL && EXTRA_DEBUGGING */
 	    cleanup(SIGCHLD);	/* Not returning.  */
 	}
     }
+#if defined USE_SSL && defined EXTRA_DEBUGGING
+    if (ssl_debug_flag) {
+	(void) BIO_printf(bio_err, "Peer has forced a close down.\r\n");
+	(void) BIO_flush(bio_err);
+    }
+#endif /* USE_SSL && EXTRA_DEBUGGING */
     cleanup(0);
 }  /* end of telnet */
 	

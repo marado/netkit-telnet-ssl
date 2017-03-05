@@ -1,0 +1,1172 @@
+Description: Improve cerificate handling and diagnostics.
+ Server as well as client are now able to handle certificate
+ chains and thus full verification.
+ .
+ The SSL options 'cacert=file' and 'cipher=list' are implemented
+ and working in both binaries.  The server will extract the subject
+ identifiers from the CA-file and will send those to the peer.
+ At present this TELNET client ignores offered list, but other software
+ is free to use that knowledge to its own benefit.
+ .
+ In SSL-only mode the server has undergone a revision.  The possibility
+ of inspecting certificate chains unearthed a flaw in the verification
+ callback installed, which the legacy code intended to change but never
+ did with success.  A new behaviour is that SSL-only mode, with certsok
+ and certrequired also set, will reject an otherwise verifying client
+ unless his subject identifier is present in at least one entry in the
+ file '/etc/ssl.users'.  Otherwise, only the additional verification
+ effects of having a CA list should be noticeable for old installs.
+ Notice the contrast to secure mode, where certsok makes autologin
+ possible for users listed in '/etc/ssl.users', once the fitting
+ subject identifier is included.
+ .
+ At build time the server uses a macro SSL_LOG_FILE to determine
+ location of debug text, but the binary now understands a new SSL
+ option 'debug=file' for overriding the default value.  Therefore
+ underpriviledged debugging into a file is now possible.
+ .
+ The client command 'auth status' includes information as to whether
+ SSL is active or not, and also displays the cipher in use.
+ .
+ A macro EXTRA_DEBUGGING brings, when defined, more SSL debug
+ messages for clearer understanding of the path from invokation
+ to acceptance of a peer.  It has been instrumental in finding
+ the weak spots in the legacy code, and will help when further
+ examining or bug reporting on the the present changes, but should
+ not be active in prepackaged binaries.
+ .
+Author: Mats Erik Andersson <debian@gisladisker.se>
+Forwarded: no
+Last-Update: 2017-01-22
+
+diff -Naurp netkit-telnet-0.17.debian/libtelnet/auth.c netkit-telnet-0.17/libtelnet/auth.c
+--- netkit-telnet-0.17.debian/libtelnet/auth.c	2017-01-10 23:07:40.912524812 +0100
++++ netkit-telnet-0.17/libtelnet/auth.c	2017-01-14 19:11:35.437392727 +0100
+@@ -83,6 +83,9 @@ static char sccsid[] = "@(#)auth.c	5.2 (
+ #include "auth.h"
+ #include "misc-proto.h"
+ #include "auth-proto.h"
++#ifdef USE_SSL
++# include "sslapp.h"
++#endif
+ 
+ #define	typemask(x)		(1<<((x)-1))
+ 
+@@ -306,10 +309,27 @@ auth_status(const char *type, const char
+                 if ((mask & (i = typemask(ap->type))) != 0)
+                         continue;
+                 mask |= i;
++#ifndef USE_SSL
+                 printf("%s: %s\n", AUTHTYPE_NAME(ap->type),
+                          (i_wont_support & typemask(ap->type)) ?
+                                          "disabled" : "enabled");
++#else /* USE_SSL */
++                printf("%s %s", AUTHTYPE_NAME(ap->type),
++                         (i_wont_support & typemask(ap->type)) ?
++                                         "disabled" : "enabled");
++		if (ap->type == AUTHTYPE_SSL)
++			printf(", %s",
++				ssl_active_flag ? "active" : "inactive");
++		puts("");
++#endif /* USE_SSL */
+         }
++#ifdef USE_SSL
++	if (ssl_active_flag && ssl_con) {
++		printf("Active cipher: %s, protocol %s.\n",
++			SSL_get_cipher_name(ssl_con),
++			SSL_get_version(ssl_con));
++	}
++#endif /* USE_SSL */
+ 	return(1);
+ }
+ 
+diff -Naurp netkit-telnet-0.17.debian/libtelnet/sslapp.c netkit-telnet-0.17/libtelnet/sslapp.c
+--- netkit-telnet-0.17.debian/libtelnet/sslapp.c	2017-01-10 23:07:37.792657231 +0100
++++ netkit-telnet-0.17/libtelnet/sslapp.c	2017-01-21 19:34:50.099668022 +0100
+@@ -14,8 +14,12 @@
+ 
+ #ifdef USE_SSL
+ 
++#include <string.h>
++#include <syslog.h>
+ #include "sslapp.h"
+ 
++#include <openssl/rand.h>
++
+ #ifdef SSLEAY8
+ #define SSL_set_pref_cipher(c,n)        SSL_set_cipher_list(c,n)
+ #endif
+@@ -31,6 +35,7 @@ int ssl_certsok_flag=0;
+ int ssl_cert_required=0;
+ int ssl_verbose_flag=0;
+ int ssl_disabled_flag=0;
++char *ssl_cacert_file=NULL;
+ char *ssl_cert_file=NULL;
+ char *ssl_key_file=NULL;
+ char *ssl_cipher_list=NULL;
+@@ -41,6 +46,8 @@ static void client_info_callback();
+ 
+ int do_ssleay_init(int server)
+ {
++  int ret;
++
+   /* make sure we have somewhere we can log errors to */
+   if (bio_err==NULL) {
+     if ((bio_err=BIO_new(BIO_s_file()))!=NULL) {
+@@ -48,6 +55,11 @@ int do_ssleay_init(int server)
+ 	BIO_set_fp(bio_err,stderr,BIO_NOCLOSE);
+       else {
+ 	if (BIO_write_filename(bio_err,ssl_log_file)<=0) {
++	  if (server)
++	    syslog(LOG_ERR | LOG_DAEMON, "No access to log file %s.",
++		   ssl_log_file);
++	  else
++	    fprintf(stderr, "No logging allowed to %s.\n", ssl_log_file);
+ 	  /* not a lot we can do */
+ 	}
+       }
+@@ -58,8 +70,10 @@ int do_ssleay_init(int server)
+    * vars are long gone now SSLeay8 has rolled around and we have 
+    * a clean interface for doing things
+    */
+-  if (ssl_debug_flag)
+-    BIO_printf(bio_err,"SSL_DEBUG_FLAG on\r\n");
++  if (ssl_debug_flag) {
++    (void) BIO_printf(bio_err,"SSL_DEBUG_FLAG on\r\n");
++    (void) BIO_flush(bio_err);
++  }
+ 
+ 
+   /* init things so we will get meaningful error messages
+@@ -75,22 +89,46 @@ int do_ssleay_init(int server)
+    * one now!
+    */
+   if (server) {
+-    ssl_ctx=(SSL_CTX *)SSL_CTX_new(SSLv23_method());
++    ssl_ctx=(SSL_CTX *)SSL_CTX_new(SSLv23_server_method());
+     if (SSL_CTX_need_tmp_RSA(ssl_ctx)) {
+-      RSA *rsa;
++      RSA *rsa = NULL;
++      BIGNUM *exp = NULL;
+ 
+       if (ssl_debug_flag)
+-	  BIO_printf(bio_err,"Generating temp (512 bit) RSA key ...\r\n");
++	  (void) BIO_printf(bio_err,"Generating temp (512 bit) RSA key ...\r\n");
++
++#if OPENSSL_VERSION_NUMBER > 0x00090800fL
++      rsa = RSA_new();
++      if (rsa == NULL)
++	return(0);
++
++      if (ssl_debug_flag && RAND_status() != 1) {
++	(void) BIO_printf(bio_err, "Insufficient seeding of PRNG.\r\n");
++	(void) BIO_flush(bio_err);
++      }
++
++      exp = BN_new();
++      if (exp) {
++	if (BN_set_word(exp, RSA_F4) == 1)
++	  RSA_generate_key_ex(rsa, 512, exp, NULL);
++	    
++	BN_free(exp);
++      }
++#else /* Not later than 0.9.8. */
+       rsa=RSA_generate_key(512,RSA_F4,NULL,NULL);
++#endif
++      if (rsa == NULL)
++	return(0);
++
+       if (ssl_debug_flag)
+-	  BIO_printf(bio_err,"Generation of temp (512 bit) RSA key done\r\n");
++	  (void) BIO_printf(bio_err,"Generation of temp (512 bit) RSA key done\r\n");
+    
+       if (!SSL_CTX_set_tmp_rsa(ssl_ctx,rsa)) {
+-	BIO_printf(bio_err,"Failed to assign generated temp RSA key!\r\n");
++	(void) BIO_printf(bio_err,"Failed to assign generated temp RSA key!\r\n");
+       }
+       RSA_free(rsa);
+       if (ssl_debug_flag)
+-	  BIO_printf(bio_err,"Assigned temp (512 bit) RSA key\r\n");
++	  (void) BIO_printf(bio_err,"Assigned temp (512 bit) RSA key\r\n");
+     }
+   } else {
+     ssl_ctx=(SSL_CTX *)SSL_CTX_new(SSLv23_client_method());
+@@ -107,17 +145,6 @@ int do_ssleay_init(int server)
+   ssl_ctx=(SSL_CTX *)SSL_CTX_new();
+ #endif /* SSLEAY8 */
+ 
+-  ssl_con=(SSL *)SSL_new(ssl_ctx);
+-
+-  SSL_set_verify(ssl_con,ssl_verify_flag,NULL);
+-
+-/*
+-  if (ssl_cipher_list==NULL)
+-      SSL_set_pref_cipher(ssl_con,getenv("SSL_CIPHER"));
+-  else
+-      SSL_set_pref_cipher(ssl_con,ssl_cipher_list);
+-*/
+-
+   /* for verbose we use the 0.6.x info callback that I got
+    * eric to finally add into the code :-) --tjh
+    */
+@@ -125,22 +152,77 @@ int do_ssleay_init(int server)
+       SSL_CTX_set_info_callback(ssl_ctx,client_info_callback);
+   }
+ 
++  /* Add any requested CA certificates.  */
++  if (ssl_cacert_file) {
++      errno = 0;
++
++      if (!SSL_CTX_load_verify_locations(ssl_ctx, ssl_cacert_file, NULL)) {
++	  if (errno)
++	      (void) BIO_printf(bio_err, "Error loading CA, %s: %s\r\n",
++			 strerror(errno), ssl_cacert_file);
++	  else {
++	      const char *e = ERR_func_error_string(ERR_peek_error());
++
++	      if (e)
++		  (void) BIO_printf(bio_err, "Error loading CA %s: %s, %s\r\n",
++			     ssl_cacert_file, e,
++			     ERR_reason_error_string(ERR_peek_error()));
++	      else
++		  (void) BIO_printf(bio_err, "Broken CA file: %s\r\n",
++			     ssl_cacert_file);
++	      (void) BIO_flush(bio_err);
++	  }
++	  /* This condition is not desirable, but can only make the
++	     chance of later success decrease, not increase!
++	   */
++	  if (server)
++	      syslog(LOG_NOTICE | LOG_DAEMON,
++		     "Error while loading CA file %s.", ssl_cacert_file);
++      } else if (server) {
++	  STACK_OF(X509_NAME) *names;
++
++	  if (ssl_debug_flag)
++	      (void) BIO_printf(bio_err, "Preparing client CA list.\r\n");
++
++	  names = SSL_load_client_CA_file(ssl_cacert_file);
++	  if (names)
++	      SSL_CTX_set_client_CA_list(ssl_ctx, names);
++	  else
++	      (void) BIO_printf(bio_err, "Failed to load client CA list.\r\n");
++      }
++  }
++
+   /* Add in any certificates if you want to here ... */
+   if (ssl_cert_file) {
+-      if (!SSL_use_certificate_file(ssl_con, ssl_cert_file, 
+-		      X509_FILETYPE_PEM)) {
+-	  BIO_printf(bio_err,"Error loading %s: ",ssl_cert_file);
+-	  ERR_print_errors(bio_err);
+-	  BIO_printf(bio_err,"\r\n");
++      errno = 0;
++
++      if (!SSL_CTX_use_certificate_chain_file(ssl_ctx, ssl_cert_file)) {
++	  if (errno) {
++	      (void) BIO_printf(bio_err, "Error loading CRT, %s: %s\r\n",
++			 strerror(errno), ssl_cert_file);
++	  } else {
++	      (void) BIO_printf(bio_err, "Error loading CRT %s: %s, %s\r\n",
++			 ssl_cert_file,
++			 ERR_func_error_string(ERR_peek_error()),
++			 ERR_reason_error_string(ERR_peek_error()));
++	  }
++	  (void) BIO_flush(bio_err);
+ 	  return(0);
+       } else {
+ 	  if (!ssl_key_file)
+ 	      ssl_key_file = ssl_cert_file;
+-	  if (!SSL_use_RSAPrivateKey_file(ssl_con, ssl_key_file,
++	  if (!SSL_CTX_use_RSAPrivateKey_file(ssl_ctx, ssl_key_file,
+ 		      X509_FILETYPE_PEM)) {
+-	      BIO_printf(bio_err,"Error loading %s: ",ssl_key_file);
+-	      ERR_print_errors(bio_err);
+-	      BIO_printf(bio_err,"\r\n");
++	      if (errno) {
++		  (void) BIO_printf(bio_err, "Error loading KEY, %s: %s\r\n",
++			     strerror(errno), ssl_key_file);
++	      } else {
++		  (void) BIO_printf(bio_err, "Error loading KEY %s: %s, %s\r\n",
++			     ssl_key_file,
++			     ERR_func_error_string(ERR_peek_error()),
++			     ERR_reason_error_string(ERR_peek_error()));
++	      }
++	      (void) BIO_flush(bio_err);
+ 	      return(0);
+ 	  }
+       }
+@@ -157,8 +239,27 @@ int do_ssleay_init(int server)
+   SSL_set_default_verify_paths(ssl_ctx);
+ #endif
+ 
++  /* Now create the connection.  */
++  ssl_con=(SSL *)SSL_new(ssl_ctx);
++
++  /* Select the desired cipher suites for the new connection.  */
++  ret = 1;
++  if (ssl_cipher_list == NULL) {
++    char *p = getenv("SSL_CIPHER");
++
++    if (p)
++      ret = SSL_set_cipher_list(ssl_con, p);
++  } else
++      ret = SSL_set_cipher_list(ssl_con, ssl_cipher_list);
++
++  if (!ret)
++    return(0);
++
+   SSL_set_verify(ssl_con,ssl_verify_flag,client_verify_callback);
+ 
++  if (ssl_debug_flag)
++    (void) BIO_flush(bio_err);
++
+   return(1);
+ }
+ 
+@@ -169,14 +270,14 @@ int where;
+ int ret;
+ {
+   if (where==SSL_CB_CONNECT_LOOP) {
+-    BIO_printf(bio_err,"SSL_connect:%s %s\r\n",
++    (void) BIO_printf(bio_err,"SSL_connect:%s %s\r\n",
+ 		    SSL_state_string(s),SSL_state_string_long(s));
+   } else if (where==SSL_CB_CONNECT_EXIT) {
+     if (ret == 0) {
+-      BIO_printf(bio_err,"SSL_connect:failed in %s %s\r\n",
++      (void) BIO_printf(bio_err,"SSL_connect:failed in %s %s\r\n",
+ 	      SSL_state_string(s),SSL_state_string_long(s));
+     } else if (ret < 0) {
+-      BIO_printf(bio_err,"SSL_connect:error in %s %s\r\n",
++      (void) BIO_printf(bio_err,"SSL_connect:error in %s %s\r\n",
+ 	      SSL_state_string(s),SSL_state_string_long(s));
+     }
+   }
+diff -Naurp netkit-telnet-0.17.debian/libtelnet/sslapp.h netkit-telnet-0.17/libtelnet/sslapp.h
+--- netkit-telnet-0.17.debian/libtelnet/sslapp.h	2017-01-10 23:07:39.484585424 +0100
++++ netkit-telnet-0.17/libtelnet/sslapp.h	2017-01-21 00:35:19.362525072 +0100
+@@ -66,6 +66,7 @@ extern int ssl_cert_required;
+ extern int ssl_certsok_flag;
+ 
+ extern char *ssl_log_file; 
++extern char *ssl_cacert_file; 
+ extern char *ssl_cert_file; 
+ extern char *ssl_key_file;
+ extern char *ssl_cipher_list;
+@@ -76,6 +77,7 @@ extern int do_ssleay_init(int server);
+ extern void display_connect_details(SSL *ssl_con, int verbose);
+ extern int server_verify_callback();
+ extern int client_verify_callback();
++extern int ssl_only_verify_callback();
+ 
+ #ifdef __cplusplus
+ }
+diff -Naurp netkit-telnet-0.17.debian/libtelnet/ssl.c netkit-telnet-0.17/libtelnet/ssl.c
+--- netkit-telnet-0.17.debian/libtelnet/ssl.c	2017-01-16 23:30:02.454609472 +0100
++++ netkit-telnet-0.17/libtelnet/ssl.c	2017-01-22 00:09:05.064418211 +0100
+@@ -47,6 +47,7 @@
+ #include <string.h>
+ #endif
+ 
++#include <syslog.h>
+ #include <unistd.h>
+ #include <openssl/err.h>
+ 
+@@ -80,6 +81,9 @@
+ #ifndef VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT
+ #define VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT 
+ #endif
++#ifndef VERIFY_ERR_SELF_SIGNED_CERT_IN_CHAIN
++# define VERIFY_ERR_SELF_SIGNED_CERT_IN_CHAIN X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN
++#endif
+ #ifndef VERIFY_OK
+ #define VERIFY_OK X509_V_OK
+ #endif
+@@ -94,6 +98,21 @@
+ #define VERIFY_ROOT_OK VERIFY_OK
+ #endif
+ 
++/* Two possibilities:
++ *   X509_V_ERR_INVALID_PURPOSE
++ * or
++ *   X509_V_ERR_APPLICATION_VERIFICATION
++ *
++ * The resulting error messages are not particularly helpful.
++ */
++#ifndef VERIFY_REJECTED_BY_CERTSOK
++# define VERIFY_REJECTED_BY_CERTSOK X509_V_ERR_APPLICATION_VERIFICATION
++#endif
++
++#ifndef SSL_USERS_FILE
++# define SSL_USERS_FILE "/etc/ssl.users"
++#endif
++
+ extern int netflush(void);
+ 
+ extern int auth_debug_mode;
+@@ -308,6 +327,11 @@ int cnt;
+ 		if (ssl_dummy_flag)
+ 		    return;
+ 
++		if (ssl_debug_flag && bio_err) {
++		    (void) BIO_printf(bio_err, "AUTH SSL is starting\r\n");
++		    (void) BIO_flush(bio_err);
++		}
++
+ 		if (!ssl_only_flag) {
+ 		    /* only want/need verify if doing certsok stuff */
+ 		    if (ssl_certsok_flag||ssl_cert_required) 
+@@ -320,9 +344,15 @@ int cnt;
+ 
+ 			res = ERR_error_string(ERR_peek_last_error(), NULL);
+ 			p = strrchr(res, ':');
+-			fprintf(stderr,"[SSL - SSL_accept error: %s]\r\n",
++
++			syslog(LOG_NOTICE, "SSL_accept error: %s",
+ 				p ? &p[1] : res);
+-			fflush(stderr);
++
++			if (ssl_debug_flag && bio_err) {
++			    (void) BIO_printf(bio_err, "SSL_accept: %s\r\n",
++					      p ? &p[1] : res);
++			    (void) BIO_flush(bio_err);
++			}
+ 			sleep(5);
+ 			SSL_free(ssl_con);
+ 
+@@ -346,6 +376,10 @@ int cnt;
+ 				fprintf(stderr,"[SSL - peer check failed]\r\n");
+ 				fflush(stderr);
+ 			    }
++			    if (ssl_debug_flag && bio_err) {
++				(void) BIO_printf(bio_err, "SSL - peer sent no certificate\r\n");
++				(void) BIO_flush(bio_err);
++			    }
+ 
+ 			    /* LOGGING REQUIRED HERE! */
+ 			    SSL_free(ssl_con);
+@@ -465,7 +499,7 @@ int level;
+ 	 * where user1 and user2 are usernames
+ 	 */
+ 	if (ssl_certsok_flag) {
+-	    user_fp = fopen("/etc/ssl.users", "r");
++	    user_fp = fopen(SSL_USERS_FILE, "r");
+ 	    if (!auth_ssl_name || !user_fp || !UserNameRequested) {
+ 	        /* If we haven't received a certificate, then don't 
+ 		 * return AUTH_VALID. 
+@@ -504,6 +538,15 @@ int level;
+ 			            !strcmp(UserNameRequested, n)) {
+ 			    strcpy(name, n);
+ 			    fclose(user_fp);
++
++			    syslog(LOG_AUTH | LOG_INFO,
++				   "Certsok autologin %s: %s",
++				   UserNameRequested, auth_ssl_name);
++			    if (ssl_debug_flag)
++				(void) BIO_printf(bio_err,
++						  "Certsok for %s: %s\r\n",
++						  UserNameRequested,
++						  auth_ssl_name);
+ 			    return(AUTH_VALID);
+ 			}
+ 			n = cp;
+@@ -594,13 +637,13 @@ int depth, error;
+ 
+ #endif /* SSLEAY8 */
+ 
+-#ifdef LOCAL_DEBUG
++#ifdef EXTRA_DEBUGGING
+     if (ssl_debug_flag) {
+-	fprintf(stderr,"ssl:server_verify_callback:depth=%d ok=%d err=%d-%s\n",
+-	    depth,ok,error,X509_cert_verify_error_string(error));
+-	fflush(stderr);
++	(void) BIO_printf(bio_err,"ssl:server_verify_callback:depth=%d ok=%d err=%d - %s\n",
++	    depth,ok,error,X509_verify_cert_error_string(error));
++	(void) BIO_flush(bio_err);
+     }
+-#endif /* LOCAL_DEBUG */
++#endif /* EXTRA_DEBUGGING */
+ 
+     subject=issuer=NULL;
+ 
+@@ -650,15 +693,16 @@ int depth, error;
+      * that wants to use the certificate as it is basically
+      * junk of no value in this context!
+      */
+-    if (error==VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
++    if (error == VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT
++	|| error == VERIFY_ERR_SELF_SIGNED_CERT_IN_CHAIN) {
+ 	if (ssl_cert_required) {
+ 	    /* make 100% sure that in secure mode we drop the 
+ 	     * connection if the server does not have a 
+ 	     * real certificate!
+ 	     */
+ 	    if (ssl_debug_flag) {
+-		fprintf(stderr,"SSL: rejecting connection - self-signed cert\n");
+-		fflush(stderr);
++		(void) BIO_printf(bio_err,"SSL: rejecting connection - self-signed cert\n");
++		(void) BIO_flush(bio_err);
+ 	    }
+ 
+ 	    ok=0;
+@@ -673,13 +717,13 @@ int depth, error;
+     if (! ((error==VERIFY_OK)||(error==VERIFY_ROOT_OK)) ) {
+ 	if (ssl_cert_required) {
+ 	    if (ssl_debug_flag) {
+-		fprintf(stderr,"SSL: rejecting connection - ");
++		(void) BIO_printf(bio_err,"SSL: rejecting connection - ");
+ 		if (error==VERIFY_ERR_UNABLE_TO_GET_ISSUER) {
+-		    fprintf(stderr,"unknown issuer: %s\n",issuer);
++		    (void) BIO_printf(bio_err,"unknown issuer: %s\n",issuer);
+ 		} else {
+ 		    ERR_print_errors(bio_err);
+ 		}
+-		fflush(stderr);
++		(void) BIO_flush(bio_err);
+ 	    }
+ 	    ok=0;
+ 	    goto return_time;
+@@ -690,8 +734,8 @@ int depth, error;
+ 	     */
+ 	    if (error==VERIFY_ERR_UNABLE_TO_GET_ISSUER) {
+ 		if (ssl_debug_flag) {
+-		    fprintf(stderr,"SSL: unknown issuer: %s\n",issuer);
+-		    fflush(stderr);
++		    (void) BIO_printf(bio_err,"SSL: unknown issuer: %s\n",issuer);
++		    (void) BIO_flush(bio_err);
+ 		}
+ 	    }
+ 	}
+@@ -742,9 +786,9 @@ int depth, error;
+ #endif /* SSLEAY8 */
+ 
+     if(ssl_debug_flag && !ok) {
+-      fprintf(stderr,"ssl:client_verify_callback:depth=%d ok=%d err=%d-%s\n",
++      (void) BIO_printf(bio_err,"ssl:client_verify_callback:depth=%d ok=%d err=%d - %s\r\n",
+ 	      depth,ok,error,X509_verify_cert_error_string(error));
+-      fflush(stderr);
++      (void) BIO_flush(bio_err);
+     }
+ 
+     subject=issuer=cnsubj=NULL;
+@@ -811,6 +855,12 @@ int depth, error;
+     switch(error) {
+     case VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+       fprintf(stderr,"SSL: Server has a self-signed certificate\n");
++      fprintf(stderr, "SSL: unknown Issuer: %s\n", issuer);
++      break;
++    case VERIFY_ERR_SELF_SIGNED_CERT_IN_CHAIN:
++      fprintf(stderr, "SSL: Server uses self-signed certificate in chain.\n");
++      fprintf(stderr, "SSL: unknown Issuer: %s\n", issuer);
++      break;
+     case VERIFY_ERR_UNABLE_TO_GET_ISSUER:
+       fprintf(stderr,"SSL: unknown issuer: %s\n",issuer);
+       break;
+@@ -857,7 +907,8 @@ return_time: ;
+ 	free(cnsubj);
+     if(!ok && ssl_cert_required) {
+       if(ssl_debug_flag) {
+-	fprintf(stderr,"SSL: debug -> ignoring cert required!\n");
++	(void) BIO_printf(bio_err,"SSL: debug -> ignoring cert required!\n");
++	(void) BIO_flush(bio_err);
+ 	ok=1;
+       }
+       else {
+@@ -870,6 +921,114 @@ return_time: ;
+     return ok;
+ }
+ 
++/* To be used by server when ssl_only_flag is set.  */
++int
++ssl_only_verify_callback(int ok, X509_STORE_CTX *ctx)
++{
++    static char *saved_subject = NULL;
++    char *subject;
++    int err, depth;
++    X509 *cert;
++
++    cert  = X509_STORE_CTX_get_current_cert(ctx);
++    err   = X509_STORE_CTX_get_error(ctx);
++    depth = X509_STORE_CTX_get_error_depth(ctx);
++
++# ifdef EXTRA_DEBUGGING
++    if (ssl_debug_flag) {
++	(void) BIO_printf(bio_err, "Verify callback: depth %d, err %d, %s\r\n",
++			  depth, err, X509_verify_cert_error_string(err));
++	(void) BIO_flush(bio_err);
++    }
++# endif /* EXTRA_DEBUGGING */
++
++    subject = ONELINE_NAME(X509_get_subject_name(cert));
++    if (subject == NULL) {
++	ok = 0;
++
++	if (ssl_debug_flag) 
++	    (void) BIO_printf(bio_err, "Subject name: %s\r\n",
++			      ERR_reason_error_string(ERR_peek_error()));
++    }
++
++    if (depth == 0 && subject) {
++	free(auth_ssl_name);
++	free(saved_subject);
++	auth_ssl_name = saved_subject = NULL;
++
++	if (ok)
++	    saved_subject = strdup(subject);
++
++	/* Check to see if the certsok list contains this
++	 * particular certificate subject.
++	 */
++	if (ssl_certsok_flag && ssl_cert_required) {
++	    char buf[2048];
++	    FILE *fp = fopen(SSL_USERS_FILE, "r");
++
++	    if (!fp) {
++		/* Missing file is treated as verification failure.  */
++		ok = 0;
++		SSL_set_verify_result(ssl_con, VERIFY_REJECTED_BY_CERTSOK);
++		if (ssl_debug_flag)
++		    (void) BIO_printf(bio_err, "Accessing %s: %s\r\n",
++				      SSL_USERS_FILE, strerror(errno));
++	    } else {
++		while(fgets(buf, sizeof(buf), fp)) {
++		    char *p;
++
++		    if ((p = strchr(buf, '\n')))
++			*p = '\0';
++
++		    p = buf;
++
++		    while (*p && strchr(" \t", *p))
++			p++;
++
++		    if (*p == '#')
++			continue;
++
++		    p = strchr(buf, ':');
++		    if (!p)
++			continue;
++
++		    if (strcmp(++p, subject) == 0)
++			/* An acceptable subject has been found.  */
++			break;
++		}
++
++		if (feof(fp)) {
++		    /* The file is at EOF, so no acceptable subject name
++		     * was included.  Treat this as verification failure.
++		     */
++		    ok = 0;
++		    SSL_set_verify_result(ssl_con, VERIFY_REJECTED_BY_CERTSOK);
++
++		    if (ssl_debug_flag)
++			(void) BIO_printf(bio_err, "Rejected by certsok: %s\r\n",
++					  subject);
++		} else if (ssl_debug_flag)
++		    (void) BIO_printf(bio_err, "Certsok found: %s\r\n",
++				      subject);
++
++		fclose(fp);
++	    }
++	}
++    }
++
++    /* Depth zero is examined as the very last chained certificate.
++     * An acceptable verification makes the subject name relevant.
++     */
++    if (ok && (err == VERIFY_ROOT_OK) && (depth == 0)) {
++	auth_ssl_name = saved_subject;
++	saved_subject = NULL;
++    }
++
++    free(subject);
++
++    return ok;
++} /* ssl_only_verify_callback */
++
+ #endif /* USE_SSL */
+ 
+ 
+diff -Naurp netkit-telnet-0.17.debian/telnet/commands.cc netkit-telnet-0.17/telnet/commands.cc
+--- netkit-telnet-0.17.debian/telnet/commands.cc	2017-01-10 23:07:42.584453837 +0100
++++ netkit-telnet-0.17/telnet/commands.cc	2017-01-14 15:39:14.185121522 +0100
+@@ -2043,9 +2043,9 @@ static int startssl_cmd(void)
+ 		ERR_print_errors_fp(stderr);
+ 		fflush(stderr);
+ 	} else {
+-		display_connect_details(ssl_con,ssl_debug_flag);
+ 		ssl_active_flag=1;
+ 		ssl_only_flag=1;
++		display_connect_details(ssl_con,ssl_debug_flag);
+ 	}
+ 	return 1;
+ }
+diff -Naurp netkit-telnet-0.17.debian/telnet/main.cc netkit-telnet-0.17/telnet/main.cc
+--- netkit-telnet-0.17.debian/telnet/main.cc	2017-01-10 23:07:41.480500702 +0100
++++ netkit-telnet-0.17/telnet/main.cc	2017-01-13 22:36:55.124830158 +0100
+@@ -103,7 +103,8 @@ void usage(void) {
+ #endif
+ #ifdef USE_SSL
+         /* might as well output something useful here ... */
+-	"\n\t[-z ssl] [-z secure] [-z debug] [-z verify=int]\n\t[-z cert=file] [-z key=file]\n\t",
++	"\n\t[-z ssl] [-z secure] [-z debug] [-z verify=int]\n\t"
++	"[-z cacert=file] [-z cert=file] [-z key=file]\n\t",
+ #else /* !USE_SSL */
+         "",
+ #endif /* USE_SSL */
+@@ -179,6 +180,9 @@ main(int argc, char *argv[])
+ 			} else if (strncmp(optarg, "verify=", 
+ 			                        strlen("verify=")) == 0 ) {
+ 			    ssl_verify_flag=atoi(optarg+strlen("verify="));
++			} else if (strncmp(optarg, "cacert=", 
++			                        strlen("cacert=")) == 0 ) {
++			    ssl_cacert_file= optarg + strlen("cacert=");
+ 			} else if (strncmp(optarg, "cert=", 
+ 			                        strlen("cert=")) == 0 ) {
+ 			    ssl_cert_file= optarg + strlen("cert=");
+diff -Naurp netkit-telnet-0.17.debian/telnet/netlink.cc netkit-telnet-0.17/telnet/netlink.cc
+--- netkit-telnet-0.17.debian/telnet/netlink.cc	2017-01-16 23:39:21.339701400 +0100
++++ netkit-telnet-0.17/telnet/netlink.cc	2017-01-16 23:54:53.277630562 +0100
+@@ -208,12 +208,14 @@ int netlink::connect(int debug, struct a
+ 	if (!do_ssleay_init(0)) {
+ 	  if (bio_err==NULL) {
+ 	    fflush(stdout);
+-	    fflush(stderr);
+-	    fprintf(stderr,"do_ssleay_init() failed\n");
++	    fprintf(stderr,"SSL initialisation failed\n");
+ 	    ERR_print_errors_fp(stderr);
++	    fflush(stderr);
+ 	  } else {
+-	    BIO_printf(bio_err,"do_ssleay_init() failed\n");
+-	    ERR_print_errors(bio_err);
++	    BIO_printf(bio_err, "SSL initialisation failed\r\n");
++	    BIO_printf(bio_err, "Error cause: %s, %s\n",
++		       ERR_func_error_string(ERR_peek_error()),
++		       ERR_reason_error_string(ERR_peek_error()));
+ 	  }
+ 	  exit(1);
+ 	}
+@@ -260,8 +262,8 @@ int netlink::connect(int debug, struct a
+ 
+ 		exit(1);
+ 	    } else {
+-		display_connect_details(ssl_con,ssl_debug_flag);
+ 		ssl_active_flag=1;
++		display_connect_details(ssl_con,ssl_debug_flag);
+ 	    }
+ 	}
+ 
+diff -Naurp netkit-telnet-0.17.debian/telnet/telnet.1 netkit-telnet-0.17/telnet/telnet.1
+--- netkit-telnet-0.17.debian/telnet/telnet.1	2017-01-10 23:07:42.584453837 +0100
++++ netkit-telnet-0.17/telnet/telnet.1	2017-01-20 20:55:09.883514200 +0100
+@@ -168,10 +168,11 @@ Send SSL related debugging information t
+ .It Ic authdebug
+ Enable authentication debugging.
+ .It Ic ssl
+-Negotiate SSL at first, then use telnet protocol. In this mode you can
+-connect to any server supporting directly SSL like Apache-SSL. Use
+-.Ic telnet -z ssl ssl3.netscape.com https
+-for example. telnet protocol negotiation goes encrypted.
++Negotiate SSL at first, then use TELNET protocol. In this mode you can
++connect to any server directly supporting SSL, like Apache-SSL.
++The TELNET protocol negotiation is done encrypted.
++A typical example is the call
++.Ic telnet -z ssl mail.google.com https.
+ .It Ic nossl, Ic !ssl
+ switch off SSL negotiation
+ .It Ic certrequired
+@@ -181,26 +182,28 @@ Don't switch back to unencrypted mode (n
+ .It Ic verbose
+ Be verbose about certificates etc.
+ .It Ic verify= Ns Ar int
+-.\" TODO
+-Set the SSL verify flags (SSL_VERIFY_* in 
+-.Ar ssl/ssl.h
++Set the SSL verify flags.  (See SSL_VERIFY_* in 
++.Ar openssl/ssl.h
+ ).
+-.\" TODO
++.It Ic cacert= Ns Ar CA_file
++This is used for verification of whatever certificate the remote
++server cares to send as identifier.
+ .It Ic cert= Ns Ar cert_file
+-.\" TODO
+-Use the certificate(s) in
+-.Ar cert_file .
++Present the certificate(s) in
++.Ar cert_file
++to the server.  They are in PEM-format, and the first identifies
++you as a client.
+ .It Ic key= Ns Ar key_file
+-.\" TODO
+ Use the key(s) in
+-.Ar key_file .
++.Ar key_file
++in case a key is not stored together with the certificate.
+ .It Ic cipher= Ns Ar ciph_list
+-.\" TODO
+ Set the preferred ciphers to
+ .Ar ciph_list .
+ .\" TODO: possible values; comma-separated list?
++The environment variable SSL_CIPHER serves the same purpose.
+ (See 
+-.Ar ssl/ssl.h
++.Ar openssl/ssl.h
+ ).
+ .El
+ .It Ar host
+@@ -1320,7 +1323,9 @@ environment variables.
+ Other environment variables may be propagated
+ to the other side via the
+ .Dv TELNET NEW-ENVIRON
+-option.
++option.  The variable
++.Dv  SSL_CIPHER
++is accessed when setting up encrypted traffic.
+ .Sh FILES
+ .Bl -tag -width /etc/telnetrc -compact
+ .It Pa /etc/telnetrc
+diff -Naurp netkit-telnet-0.17.debian/telnetd/state.c netkit-telnet-0.17/telnetd/state.c
+--- netkit-telnet-0.17.debian/telnetd/state.c	2017-01-10 23:07:43.940396270 +0100
++++ netkit-telnet-0.17/telnetd/state.c	2017-01-21 19:54:09.626356640 +0100
+@@ -880,6 +880,10 @@ void dooption(int option) {
+ 	    set_my_want_state_will(TELOPT_LOGOUT);
+ 	    send_will(TELOPT_LOGOUT, 0);
+ 	    set_my_state_will(TELOPT_LOGOUT);
++#if defined USE_SSL && defined EXTRA_DEBUGGING
++	    (void) BIO_printf(bio_err, "Peer asked for immediate logout.\r\n");
++	    (void) BIO_flush(bio_err);
++#endif /* USE_SSL && EXTRA_DEBUGGING */
+ 	    (void)netflush();
+ 	    cleanup(0);
+ 	    /* NOT REACHED */
+diff -Naurp netkit-telnet-0.17.debian/telnetd/telnetd.8 netkit-telnet-0.17/telnetd/telnetd.8
+--- netkit-telnet-0.17.debian/telnetd/telnetd.8	2017-01-10 23:07:42.960437876 +0100
++++ netkit-telnet-0.17/telnetd/telnetd.8	2017-01-14 15:23:05.409100901 +0100
+@@ -219,6 +219,11 @@ has been built with SSL (Secure Socket L
+ .Bl -tag -width Fl
+ .It Ic debug
+ Enable SSL related debugging.
++.It Ic debug= Ns Ar log_file
++Select in addition a specific location
++.Ar log_file
++for collecting debug output, thus overriding the default file
++.Ar /var/tmp/telnetd.log .
+ .It Ic ssl
+ Negotiate SSL at first, then use telnet protocol. In this mode telnetd
+ only accepts connections from SSL enhanced telnet with option 
+@@ -226,8 +231,9 @@ only accepts connections from SSL enhanc
+ .It Ic nossl, !ssl
+ switch off SSL negotiation
+ .It Ic certsok
+-Look username up in /etc/ssl.users. The format of this file is lines
+-of this form: 
++Look username up in
++.Pa /etc/ssl.users .
++The format of this file is lines of the form: 
+ .Ar user1,user2:/C=US/.....
+ where user1 and user2 are usernames and /C=US/... is the subject name of
+ the certificate. Use 
+@@ -240,26 +246,28 @@ client certificate is mandatory
+ .It Ic secure
+ Don't switch back to unencrypted mode (no SSL) if SSL is not available.
+ .It Ic verify=int
+-.\" TODO
+-Set the SSL verify flags (SSL_VERIFY_* in 
+-.Ar ssl/ssl.h
++Set the SSL verify flags.  (See SSL_VERIFY_* in 
++.Ar openssl/ssl.h
+ ).
+-.\" TODO
+-.It Ic cert=cert_file
+-.\" TODO
+-Use the certificate(s) in
+-.Ar cert_file .
+-.It Ic key=key_file
+-.\" TODO
++.It Ic cacert= Ns Ar CA_file
++A collection of trusted authority certificates for verification of
++whatever the clients care to send as identifiers.
++.It Ic cert= Ns Ar cert_file
++Present the certificate(s) in
++.Ar cert_file
++to any client.  They are in PEM-format, and the first certificate
++identifies the server itself.
++.It Ic key= Ns Ar key_file
+ Use the key(s) in
+-.Ar key_file .
+-.It Ic cipher=ciph_list
+-.\" TODO
++.Ar key_file
++in case a key is not stored together with the certificate.
++.It Ic cipher= Ns Ar ciph_list
+ Set the preferred ciphers to
+ .Ar ciph_list .
+ .\" TODO: possible values; comma-separated list?
++The environment variable SSL_CIPHER serves the same purpose.
+ (See 
+-.Ar ssl/ssl.h
++.Ar openssl/ssl.h
+ ).
+ .El
+ .El
+@@ -459,7 +467,8 @@ the data stream.
+ .El
+ .Sh FILES
+ .Pa /etc/services ,
+-.Pa /etc/issue.net
++.Pa /etc/issue.net ,
++.Pa /etc/ssl.users
+ .Sh "SEE ALSO"
+ .Xr telnet 1 ,
+ .Xr login 1 ,
+diff -Naurp netkit-telnet-0.17.debian/telnetd/telnetd.c netkit-telnet-0.17/telnetd/telnetd.c
+--- netkit-telnet-0.17.debian/telnetd/telnetd.c	2017-01-10 23:07:43.512414441 +0100
++++ netkit-telnet-0.17/telnetd/telnetd.c	2017-01-21 21:37:33.074375994 +0100
+@@ -76,6 +76,10 @@ static void doit(struct sockaddr *who, s
+ static int terminaltypeok(const char *s);
+ 
+ #ifdef USE_SSL 
++# ifndef SSL_LOG_FILE
++#  define SSL_LOG_FILE "/telnetd.log"
++# endif
++
+ static char cert_filepath[1024];
+ #endif /* USE_SSL */
+ 
+@@ -249,7 +253,11 @@ main(int argc, char *argv[], char *env[]
+ 
+ 			while(optarg!=NULL) {
+ 
+-		        if (strcmp(optarg, "debug") == 0 ) {
++			if (strncmp(optarg, "debug=",
++				    strlen("debug=")) == 0 ) {
++			    ssl_debug_flag = 1;
++			    ssl_log_file = optarg + strlen("debug=");
++		        } else if (strcmp(optarg, "debug") == 0 ) {
+ 			    ssl_debug_flag=1;
+ 			} else if (strcmp(optarg, "ssl") == 0 ) {
+ 			    ssl_only_flag=1;
+@@ -268,6 +276,9 @@ main(int argc, char *argv[], char *env[]
+ 			} else if (strncmp(optarg, "verify=", 
+ 			                strlen("verify=")) == 0 ) {
+ 			    ssl_verify_flag=atoi(optarg+strlen("verify="));
++			} else if (strncmp(optarg, "cacert=", 
++			                strlen("cacert=")) == 0 ) {
++			    ssl_cacert_file=optarg+strlen("cacert=");
+ 			} else if (strncmp(optarg, "cert=", 
+ 			                strlen("cert=")) == 0 ) {
+ 			    ssl_cert_file=optarg+strlen("cert=");
+@@ -282,6 +293,8 @@ main(int argc, char *argv[], char *env[]
+ 			     * if the user makes a mistake they have to
+ 			     * correct it!
+ 			     */
++			    syslog(LOG_DAEMON | LOG_ERR,
++				   "Unknown SSL option '%s'.", optarg);
+ 			    fprintf(stderr,"Unknown SSL option %s\n",optarg);
+ 			    fflush(stderr);
+ 			    exit(1);
+@@ -448,18 +461,23 @@ main(int argc, char *argv[], char *env[]
+ 		ssl_verify_flag=1;
+ 	}
+ 
++	/* We do really require the peer to identify himself.  */
++	if (ssl_cert_required)
++	    ssl_verify_flag |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
++
+ 	/* if we are not running in debug then any error
+ 	 * stuff from SSL debug *must* not go down
+ 	 * the socket (which 0,1,2 are all pointing to by
+ 	 * default)
+ 	 */
+-	if (ssl_debug_flag)
+-	    ssl_log_file="/telnetd.log";
++	if (ssl_debug_flag && !ssl_log_file)
++	    ssl_log_file = SSL_LOG_FILE;
+ 
+ 	if (!do_ssleay_init(1)) {
+ 	  if (bio_err!=NULL) {
+-	    BIO_printf(bio_err,"do_ssleay_init() failed\n");
++	    (void) BIO_printf(bio_err,"do_ssleay_init() failed\n");
+ 	    ERR_print_errors(bio_err);
++	    (void) BIO_flush(bio_err);
+ 	  } else {
+ 	    fflush(stderr);
+ 	    fprintf(stderr,"do_ssleay_init() failed\n");
+@@ -469,10 +487,14 @@ main(int argc, char *argv[], char *env[]
+ 	}
+ 
+ 	if (ssl_debug_flag) {
+-	  BIO_printf(bio_err,"secure %d certrequired %d verify %d\n",
+-	      ssl_secure_flag,ssl_cert_required,ssl_verify_flag);
++	  (void) BIO_printf(bio_err,"Flags: ssl %d secure %d certrequired %d certsok %d verify %d\n",
++		     ssl_only_flag, ssl_secure_flag, ssl_cert_required,
++		     ssl_certsok_flag, ssl_verify_flag);
+ 	  for(i=0;i<argc;i++)
+-	      BIO_printf(bio_err,"argv[%d]=\"%s\"\n",i,argv[i]);
++	      (void) BIO_printf(bio_err,"argv[%d]=\"%s\"\n",i,argv[i]);
++
++	  (void) BIO_printf(bio_err, "Init of SSL is complete.\r\n");
++	  (void) BIO_flush(bio_err);
+ 	}
+ 
+ #endif /* USE_SSL */
+@@ -490,6 +512,11 @@ main(int argc, char *argv[], char *env[]
+ 	}
+ 
+ 	openlog("telnetd", LOG_PID | LOG_ODELAY, LOG_DAEMON);
++#ifdef USE_SSL
++	if (ssl_debug_flag && ssl_log_file)
++	  syslog(LOG_NOTICE, "SSL debugging into %s.\n", ssl_log_file);
++#endif /* USE_SSL */
++
+ 	fromlen = sizeof (from);
+ 	if (getpeername(0, (struct sockaddr *)&from, &fromlen) < 0) {
+ 		fatalperror(2, "getpeername");
+@@ -524,20 +551,46 @@ main(int argc, char *argv[], char *env[]
+ 	     * https servers should we hit this code and then
+ 	     * we really don't care *who* we talk to :-)
+ 	     */
+-	    SSL_set_verify(ssl_con,ssl_verify_flag,NULL);
++	    int ret;
++
++	    /* There is already a callback in effect, since the call
++	     * to do_ssleay_init().  This callback must be replaced
++	     * by a function tailored to SSL-only.
++	     *
++	     * At this point the legacy SSL code included a call
++	     *
++	     *   SSL_set_verify(ssl_con, ssl_verify_flag, NULL);
++	     *
++	     * which probably unintendedly left the previously chosen
++	     * callback function 'client_verify_callback' being active.
++	     * That function produces different outcomes in the two
++	     * settings '-z verify=3' and '-z verify=3 -z certrequired',
++	     * which certainly contradicts intuition in SSL-only mode.
++	     */
++	    SSL_set_verify(ssl_con, ssl_verify_flag,
++			   ssl_only_verify_callback);
+ 
+-	    if (SSL_accept(ssl_con) <= 0) {
++	    if (ssl_debug_flag) {
++		(void) BIO_printf(bio_err, "Serving an SSL-only client.\r\n");
++		(void) BIO_flush(bio_err);
++	    }
++
++	    ret = SSL_accept(ssl_con);
++	    if (ret <= 0) {
+ 		static char errbuf[1024];
+ 		char *res, *p;
+ 
+ 		res = ERR_error_string(ERR_peek_last_error(), NULL);
+ 		p = strrchr(res, ':');
+ 
+-	        sprintf(errbuf,"SSL_accept error: %s\n", p ? &p[1] : res);
++	        sprintf(errbuf,"SSL_accept error: %s", p ? &p[1] : res);
+ 
+-		syslog(LOG_WARNING, "%s", errbuf);
++		syslog(LOG_NOTICE, "%s", errbuf);
+ 
+-		BIO_printf(bio_err,"%s",errbuf);
++		(void) BIO_printf(bio_err, "SSL_accept: %s, %s\r\n",
++			   ERR_func_error_string(ERR_peek_error()),
++			   ERR_reason_error_string(ERR_peek_error()));
++		(void) BIO_flush(bio_err);
+ 
+ 		/* go to sleep to make sure we are noticed */
+ 		sleep(10);
+@@ -546,6 +599,18 @@ main(int argc, char *argv[], char *env[]
+ 		_exit(1);
+ 	    } else {
+ 		ssl_active_flag=1;
++		if (ssl_debug_flag) {
++		    X509 *peer = SSL_get_peer_certificate(ssl_con);
++
++		    if (peer) {
++			char *subj = ONELINE_NAME(X509_get_subject_name(peer));
++
++			(void) BIO_printf(bio_err, "Peer: %s\r\n", subj);
++			(void) BIO_flush(bio_err);
++			free(subj);
++			X509_free(peer);
++		    }
++		}
+ 	    }
+ 	}
+ #endif /* USE_SSL */
+@@ -588,8 +653,8 @@ usage(void)
+ #endif
+ #ifdef USE_SSL
+         /* might as well output something useful here ... */
+-	fprintf(stderr, "\n\t [-z ssl] [-z secure] [-z debug] [-z verify=int]\n\t");
+-	fprintf(stderr, " [-z cert=file] [-z key=file]\n\t");
++	fprintf(stderr, "\n\t [-z ssl] [-z secure] [-z debug] [-z debug=file]\n\t");
++	fprintf(stderr, " [-z verify=int] [-z cacert=file] [-z cert=file] [-z key=file]\n\t");
+ #endif /* USE_SSL */
+ 	fprintf(stderr, "\n");
+ 	exit(1);
+@@ -613,9 +678,16 @@ getterminaltype(char *name)
+ 
+     settimer(baseline);
+ #if defined(AUTHENTICATE)
++# if defined USE_SSL && defined EXTRA_DEBUGGING
++	if (ssl_debug_flag) {
++	    (void) BIO_printf(bio_err, "Negotiate terminal abilities.\r\n");
++	    (void) BIO_flush(bio_err);
++	}
++# endif /* USE_SSL && EXTRA_DEBUGGING */
+     /*
+      * Handle the Authentication option before we do anything else.
+      */
++
+     send_do(TELOPT_ENVIRON, 1);
+     while (his_will_wont_is_changing(TELOPT_ENVIRON)) {
+ 	ttloop();
+@@ -668,11 +740,11 @@ getterminaltype(char *name)
+ #endif
+ 
+             if (ssl_debug_flag) {
+-		fprintf(stderr,"[SSL required - connection rejected]");
+-		fflush(stderr);
++		(void) BIO_printf(bio_err, "SSL required - connection rejected\r\n");
++		(void) BIO_flush(bio_err);
+ 	    }
+ 
+-	    fatal(net,"[SSL required - connection rejected]");
++	    fatal(net,"SSL required - connection rejected");
+ 
+ 	}
+     }
+@@ -954,6 +1026,10 @@ doit(struct sockaddr *who, socklen_t who
+ 	    fflush(stderr);
+ 	    sleep(2);
+ 	}
++	if (ssl_debug_flag && bio_err) {
++	    (void) BIO_printf(bio_err, "Ready to launch login slave.\n");
++	    (void) BIO_flush(bio_err);
++	}
+ #endif /* USE_SSL */
+ 
+ 	/*
+@@ -1380,9 +1456,21 @@ void telnet(int f, int p)
+ 
+     	if (got_sigchld) {
+ 	    netflush();
++#if defined USE_SSL && defined EXTRA_DEBUGGING
++	    if (ssl_debug_flag) {
++		(void) BIO_printf(bio_err, "Peer has closed down in good order.\r\n");
++		(void) BIO_flush(bio_err);
++	    }
++#endif /* USE_SSL && EXTRA_DEBUGGING */
+ 	    cleanup(SIGCHLD);	/* Not returning.  */
+ 	}
+     }
++#if defined USE_SSL && defined EXTRA_DEBUGGING
++    if (ssl_debug_flag) {
++	(void) BIO_printf(bio_err, "Peer has forced a close down.\r\n");
++	(void) BIO_flush(bio_err);
++    }
++#endif /* USE_SSL && EXTRA_DEBUGGING */
+     cleanup(0);
+ }  /* end of telnet */
+ 	

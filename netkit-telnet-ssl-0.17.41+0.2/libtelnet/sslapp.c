@@ -14,7 +14,11 @@
 
 #ifdef USE_SSL
 
+#include <string.h>
+#include <syslog.h>
 #include "sslapp.h"
+
+#include <openssl/rand.h>
 
 #ifdef SSLEAY8
 #define SSL_set_pref_cipher(c,n)        SSL_set_cipher_list(c,n)
@@ -31,6 +35,7 @@ int ssl_certsok_flag=0;
 int ssl_cert_required=0;
 int ssl_verbose_flag=0;
 int ssl_disabled_flag=0;
+char *ssl_cacert_file=NULL;
 char *ssl_cert_file=NULL;
 char *ssl_key_file=NULL;
 char *ssl_cipher_list=NULL;
@@ -41,6 +46,8 @@ static void client_info_callback();
 
 int do_ssleay_init(int server)
 {
+  int ret;
+
   /* make sure we have somewhere we can log errors to */
   if (bio_err==NULL) {
     if ((bio_err=BIO_new(BIO_s_file()))!=NULL) {
@@ -48,6 +55,11 @@ int do_ssleay_init(int server)
 	BIO_set_fp(bio_err,stderr,BIO_NOCLOSE);
       else {
 	if (BIO_write_filename(bio_err,ssl_log_file)<=0) {
+	  if (server)
+	    syslog(LOG_ERR | LOG_DAEMON, "No access to log file %s.",
+		   ssl_log_file);
+	  else
+	    fprintf(stderr, "No logging allowed to %s.\n", ssl_log_file);
 	  /* not a lot we can do */
 	}
       }
@@ -58,8 +70,10 @@ int do_ssleay_init(int server)
    * vars are long gone now SSLeay8 has rolled around and we have 
    * a clean interface for doing things
    */
-  if (ssl_debug_flag)
-    BIO_printf(bio_err,"SSL_DEBUG_FLAG on\r\n");
+  if (ssl_debug_flag) {
+    (void) BIO_printf(bio_err,"SSL_DEBUG_FLAG on\r\n");
+    (void) BIO_flush(bio_err);
+  }
 
 
   /* init things so we will get meaningful error messages
@@ -75,22 +89,46 @@ int do_ssleay_init(int server)
    * one now!
    */
   if (server) {
-    ssl_ctx=(SSL_CTX *)SSL_CTX_new(SSLv23_method());
+    ssl_ctx=(SSL_CTX *)SSL_CTX_new(SSLv23_server_method());
     if (SSL_CTX_need_tmp_RSA(ssl_ctx)) {
-      RSA *rsa;
+      RSA *rsa = NULL;
+      BIGNUM *exp = NULL;
 
       if (ssl_debug_flag)
-	  BIO_printf(bio_err,"Generating temp (512 bit) RSA key ...\r\n");
+	  (void) BIO_printf(bio_err,"Generating temp (512 bit) RSA key ...\r\n");
+
+#if OPENSSL_VERSION_NUMBER > 0x00090800fL
+      rsa = RSA_new();
+      if (rsa == NULL)
+	return(0);
+
+      if (ssl_debug_flag && RAND_status() != 1) {
+	(void) BIO_printf(bio_err, "Insufficient seeding of PRNG.\r\n");
+	(void) BIO_flush(bio_err);
+      }
+
+      exp = BN_new();
+      if (exp) {
+	if (BN_set_word(exp, RSA_F4) == 1)
+	  RSA_generate_key_ex(rsa, 512, exp, NULL);
+	    
+	BN_free(exp);
+      }
+#else /* Not later than 0.9.8. */
       rsa=RSA_generate_key(512,RSA_F4,NULL,NULL);
+#endif
+      if (rsa == NULL)
+	return(0);
+
       if (ssl_debug_flag)
-	  BIO_printf(bio_err,"Generation of temp (512 bit) RSA key done\r\n");
+	  (void) BIO_printf(bio_err,"Generation of temp (512 bit) RSA key done\r\n");
    
       if (!SSL_CTX_set_tmp_rsa(ssl_ctx,rsa)) {
-	BIO_printf(bio_err,"Failed to assign generated temp RSA key!\r\n");
+	(void) BIO_printf(bio_err,"Failed to assign generated temp RSA key!\r\n");
       }
       RSA_free(rsa);
       if (ssl_debug_flag)
-	  BIO_printf(bio_err,"Assigned temp (512 bit) RSA key\r\n");
+	  (void) BIO_printf(bio_err,"Assigned temp (512 bit) RSA key\r\n");
     }
   } else {
     ssl_ctx=(SSL_CTX *)SSL_CTX_new(SSLv23_client_method());
@@ -107,17 +145,6 @@ int do_ssleay_init(int server)
   ssl_ctx=(SSL_CTX *)SSL_CTX_new();
 #endif /* SSLEAY8 */
 
-  ssl_con=(SSL *)SSL_new(ssl_ctx);
-
-  SSL_set_verify(ssl_con,ssl_verify_flag,NULL);
-
-/*
-  if (ssl_cipher_list==NULL)
-      SSL_set_pref_cipher(ssl_con,getenv("SSL_CIPHER"));
-  else
-      SSL_set_pref_cipher(ssl_con,ssl_cipher_list);
-*/
-
   /* for verbose we use the 0.6.x info callback that I got
    * eric to finally add into the code :-) --tjh
    */
@@ -125,22 +152,77 @@ int do_ssleay_init(int server)
       SSL_CTX_set_info_callback(ssl_ctx,client_info_callback);
   }
 
+  /* Add any requested CA certificates.  */
+  if (ssl_cacert_file) {
+      errno = 0;
+
+      if (!SSL_CTX_load_verify_locations(ssl_ctx, ssl_cacert_file, NULL)) {
+	  if (errno)
+	      (void) BIO_printf(bio_err, "Error loading CA, %s: %s\r\n",
+			 strerror(errno), ssl_cacert_file);
+	  else {
+	      const char *e = ERR_func_error_string(ERR_peek_error());
+
+	      if (e)
+		  (void) BIO_printf(bio_err, "Error loading CA %s: %s, %s\r\n",
+			     ssl_cacert_file, e,
+			     ERR_reason_error_string(ERR_peek_error()));
+	      else
+		  (void) BIO_printf(bio_err, "Broken CA file: %s\r\n",
+			     ssl_cacert_file);
+	      (void) BIO_flush(bio_err);
+	  }
+	  /* This condition is not desirable, but can only make the
+	     chance of later success decrease, not increase!
+	   */
+	  if (server)
+	      syslog(LOG_NOTICE | LOG_DAEMON,
+		     "Error while loading CA file %s.", ssl_cacert_file);
+      } else if (server) {
+	  STACK_OF(X509_NAME) *names;
+
+	  if (ssl_debug_flag)
+	      (void) BIO_printf(bio_err, "Preparing client CA list.\r\n");
+
+	  names = SSL_load_client_CA_file(ssl_cacert_file);
+	  if (names)
+	      SSL_CTX_set_client_CA_list(ssl_ctx, names);
+	  else
+	      (void) BIO_printf(bio_err, "Failed to load client CA list.\r\n");
+      }
+  }
+
   /* Add in any certificates if you want to here ... */
   if (ssl_cert_file) {
-      if (!SSL_use_certificate_file(ssl_con, ssl_cert_file, 
-		      X509_FILETYPE_PEM)) {
-	  BIO_printf(bio_err,"Error loading %s: ",ssl_cert_file);
-	  ERR_print_errors(bio_err);
-	  BIO_printf(bio_err,"\r\n");
+      errno = 0;
+
+      if (!SSL_CTX_use_certificate_chain_file(ssl_ctx, ssl_cert_file)) {
+	  if (errno) {
+	      (void) BIO_printf(bio_err, "Error loading CRT, %s: %s\r\n",
+			 strerror(errno), ssl_cert_file);
+	  } else {
+	      (void) BIO_printf(bio_err, "Error loading CRT %s: %s, %s\r\n",
+			 ssl_cert_file,
+			 ERR_func_error_string(ERR_peek_error()),
+			 ERR_reason_error_string(ERR_peek_error()));
+	  }
+	  (void) BIO_flush(bio_err);
 	  return(0);
       } else {
 	  if (!ssl_key_file)
 	      ssl_key_file = ssl_cert_file;
-	  if (!SSL_use_RSAPrivateKey_file(ssl_con, ssl_key_file,
+	  if (!SSL_CTX_use_RSAPrivateKey_file(ssl_ctx, ssl_key_file,
 		      X509_FILETYPE_PEM)) {
-	      BIO_printf(bio_err,"Error loading %s: ",ssl_key_file);
-	      ERR_print_errors(bio_err);
-	      BIO_printf(bio_err,"\r\n");
+	      if (errno) {
+		  (void) BIO_printf(bio_err, "Error loading KEY, %s: %s\r\n",
+			     strerror(errno), ssl_key_file);
+	      } else {
+		  (void) BIO_printf(bio_err, "Error loading KEY %s: %s, %s\r\n",
+			     ssl_key_file,
+			     ERR_func_error_string(ERR_peek_error()),
+			     ERR_reason_error_string(ERR_peek_error()));
+	      }
+	      (void) BIO_flush(bio_err);
 	      return(0);
 	  }
       }
@@ -157,7 +239,26 @@ int do_ssleay_init(int server)
   SSL_set_default_verify_paths(ssl_ctx);
 #endif
 
+  /* Now create the connection.  */
+  ssl_con=(SSL *)SSL_new(ssl_ctx);
+
+  /* Select the desired cipher suites for the new connection.  */
+  ret = 1;
+  if (ssl_cipher_list == NULL) {
+    char *p = getenv("SSL_CIPHER");
+
+    if (p)
+      ret = SSL_set_cipher_list(ssl_con, p);
+  } else
+      ret = SSL_set_cipher_list(ssl_con, ssl_cipher_list);
+
+  if (!ret)
+    return(0);
+
   SSL_set_verify(ssl_con,ssl_verify_flag,client_verify_callback);
+
+  if (ssl_debug_flag)
+    (void) BIO_flush(bio_err);
 
   return(1);
 }
@@ -169,14 +270,14 @@ int where;
 int ret;
 {
   if (where==SSL_CB_CONNECT_LOOP) {
-    BIO_printf(bio_err,"SSL_connect:%s %s\r\n",
+    (void) BIO_printf(bio_err,"SSL_connect:%s %s\r\n",
 		    SSL_state_string(s),SSL_state_string_long(s));
   } else if (where==SSL_CB_CONNECT_EXIT) {
     if (ret == 0) {
-      BIO_printf(bio_err,"SSL_connect:failed in %s %s\r\n",
+      (void) BIO_printf(bio_err,"SSL_connect:failed in %s %s\r\n",
 	      SSL_state_string(s),SSL_state_string_long(s));
     } else if (ret < 0) {
-      BIO_printf(bio_err,"SSL_connect:error in %s %s\r\n",
+      (void) BIO_printf(bio_err,"SSL_connect:error in %s %s\r\n",
 	      SSL_state_string(s),SSL_state_string_long(s));
     }
   }

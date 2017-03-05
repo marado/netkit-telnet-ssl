@@ -53,6 +53,12 @@
 
 150-cross_configure.diff
 
-### UTF-8 fix
+### Now at source equivalent to netkit-telnet_0.17-41!
 
+630-recent_libssl.diff
+
+#
+# Begin expanding on abilities not present in legacy SSL code.
+#
+650-improve_abilities.diff
 700-fix_UTF8.diff

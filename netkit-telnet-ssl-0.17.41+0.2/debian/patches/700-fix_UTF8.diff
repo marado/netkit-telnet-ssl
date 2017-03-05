@@ -1,27 +1,11 @@
 Description: Fixing how we handle UTF8 characters
- .
- netkit-telnet-ssl (0.17.40+0.2-1+nmu1) unstable; urgency=low
- .
-   * Non-maintainer upload.
-   * Fixing how we handle UTF8 characters (Closes: #749322)
+
 Author: Marcos Marado <mindboosternoori@gmail.com>
 Bug-Debian: https://bugs.debian.org/749322
+Last-Update: 2017-03-05
 
----
-The information above should follow the Patch Tagging Guidelines, please
-checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
-are templates for supplementary fields that you might want to add:
-
-Origin: <vendor|upstream|other>, <url of original patch>
-Bug: <url in upstream bugtracker>
-Bug-Debian: https://bugs.debian.org/<bugnumber>
-Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
-Forwarded: <no|not-needed|url proving that it has been forwarded>
-Reviewed-By: <name and email of someone who approved the patch>
-Last-Update: <YYYY-MM-DD>
-
---- netkit-telnet-ssl-0.17.40+0.2.orig/telnet/telnet.cc
-+++ netkit-telnet-ssl-0.17.40+0.2/telnet/telnet.cc
+--- netkit-telnet-ssl-0.17.41+0.2.orig/telnet/telnet.cc
++++ netkit-telnet-ssl-0.17.41+0.2/telnet/telnet.cc
 @@ -1800,7 +1800,7 @@ static int telsnd(void) {
      }
  #endif

@@ -1,3 +1,25 @@
+netkit-telnet-ssl (0.17.41+0.2-3) unstable; urgency=low
+
+    The server now offers the SSL options 'cipher=list', 'debug=file',
+    and 'cacert=file'.  The default SSL debugging file is now set to
+    '/var/tmp/telnetd.log' at build time.  Effort has been put into
+    improvement of debugging output of various kind and in multiple
+    use cases.
+
+    The SSL option 'cert=file' now reads the full chain stored in the
+    selected file, which together with the use of 'cacert=' will make
+    full verification possible during the handshake phase.
+
+    SSL-only mode gave multiple signs of being broken when CA sets are
+    taken into account, so it has been reworked.  The simultaneous use
+    of certrequired and certsok in SSL-only mode, will in addition to
+    certificate chain verification demand that the subject identifier
+    be present in the file '/etc/ssl.users' for some user.  In the
+    contrary case the peer is rejected.  In secure mode, the old tie
+    between certsok and autologin remains untouched upon.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Mon, 22 Jan 2017 00:34:12 +0100
+
 netkit-telnet-ssl (0.17.24+0.1-21) unstable; urgency=low
 
     SSL keys/certificates generated since 2006-09-17 with Debian's openssl

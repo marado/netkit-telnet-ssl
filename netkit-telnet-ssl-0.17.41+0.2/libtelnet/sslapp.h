@@ -66,6 +66,7 @@ extern int ssl_cert_required;
 extern int ssl_certsok_flag;
 
 extern char *ssl_log_file; 
+extern char *ssl_cacert_file; 
 extern char *ssl_cert_file; 
 extern char *ssl_key_file;
 extern char *ssl_cipher_list;
@@ -76,6 +77,7 @@ extern int do_ssleay_init(int server);
 extern void display_connect_details(SSL *ssl_con, int verbose);
 extern int server_verify_callback();
 extern int client_verify_callback();
+extern int ssl_only_verify_callback();
 
 #ifdef __cplusplus
 }

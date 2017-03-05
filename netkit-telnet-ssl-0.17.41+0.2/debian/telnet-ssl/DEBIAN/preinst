@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -e
+
+dpkg-divert --quiet --package ssltelnet --remove --rename \
+                --divert /usr/bin/telnet.nossl /usr/bin/telnet
+dpkg-divert --quiet --package ssltelnet --remove --rename \
+                --divert /usr/man/man1/telnet.nossl.1.gz /usr/man/man1/telnet.1.gz
+
+

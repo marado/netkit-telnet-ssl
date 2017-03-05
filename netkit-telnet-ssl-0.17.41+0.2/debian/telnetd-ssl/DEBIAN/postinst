@@ -1,0 +1,136 @@
+#!/bin/sh
+
+set -e
+
+update_inetd_entry() {
+	if [ "$2" = "yes" ]; then
+		entry="$telnetdsslent"
+	else
+		entry="$rootent"
+	fi
+	args="`grep '^#<off>#.*/usr/sbin/in.telnetd' /etc/inetd.conf 2>/dev/null|sed 's/.*\/usr\/sbin\/in.telnetd\(.*\)/\1/'`"
+	if [ -n "$args" ]; then
+		entry="$entry$args"
+	fi
+	update-inetd --remove ".*telnet"
+	update-inetd --group STANDARD --add "$entry"
+}
+
+
+if  ! id -u telnetd-ssl >/dev/null 2>&1 ; then
+    # rename telnetd user to telnetd-ssl
+    if id -u telnetd >/dev/null 2>&1; then
+	home=~telnetd
+	set +e
+	userdel telnetd
+	err=$?
+	set -e
+	case $err in
+	0)
+		if [ "$home" = /usr/lib/telnetd ]; then
+			rmdir --ignore-fail-on-non-empty /usr/lib/telnetd || true
+		fi
+		;;
+	6)
+		;;
+	*)
+		exit $err
+		;;
+	esac
+    fi
+    if sg telnetd -c true >/dev/null 2>&1; then
+	groupdel telnetd 
+    fi
+    if sg telnetd-ssl -c true >/dev/null 2>&1 ; then
+	adduser --quiet --no-create-home --disabled-password --system --ingroup telnetd-ssl --home /nonexistent  telnetd-ssl
+    else
+	adduser --quiet --no-create-home --disabled-password --system --group --home /nonexistent telnetd-ssl
+    fi
+fi
+
+adduser --quiet telnetd-ssl utmp
+
+if [ -z "$(dpkg-statoverride --list /usr/lib/telnetlogin)" ]; then
+	chown root:telnetd-ssl /usr/lib/telnetlogin
+	chmod 4754 /usr/lib/telnetlogin
+fi
+
+rootent="telnet		stream	tcp	nowait	root	/usr/sbin/tcpd	/usr/sbin/in.telnetd"
+#telnetdent="telnet		stream	tcp	nowait	telnetd.telnetd	/usr/sbin/tcpd	/usr/sbin/in.telnetd"
+telnetdsslent="telnet		stream	tcp	nowait	telnetd-ssl	/usr/sbin/tcpd	/usr/sbin/in.telnetd"
+
+if egrep -q "^(devpts /dev/pts|devfs /dev) " /proc/mounts; then
+	devpts=yes
+else
+	devpts=
+fi
+
+case "$1" in
+abort-upgrade | abort-deconfigure | abort-remove)
+	if test -x /usr/sbin/inetd ; then
+		update-inetd --enable telnet
+	fi
+	;;
+configure)
+	if test -x /usr/sbin/update-inetd ; then
+	    if [ -z "$2" ] ||
+		dpkg --compare-versions "$2" lt 0.17.24+0.1-14 ||
+		( test -f /etc/inetd.conf &&
+		  grep -q '[	 ]telnetd[	 ]' /etc/inetd.conf )
+	    then
+		update_inetd_entry "$2" $devpts
+	    else
+		update-inetd --enable telnet
+	    fi
+	fi
+	;;
+*)
+	printf "$0: incorrect arguments: $*\n" >&2
+	exit 1
+	;;
+esac
+
+PATH=$PATH:/usr/bin/ssl
+if [ -f /etc/ssl/certs/telnetd.pem ]
+then
+	echo "Moving telnetd.pem to /etc/telnetd-ssl"
+	mv /etc/ssl/certs/telnetd.pem /etc/telnetd-ssl
+	# remove old cert hash - don't care if it fails
+	rm -f `openssl x509 -noout -hash < /etc/telnetd-ssl/telnetd.pem`.0 || true
+elif [ -f /etc/telnetd-ssl/telnetd.pem ]
+then
+    echo "You already have /etc/telnetd-ssl/telnetd.pem"
+else
+    cd /etc/telnetd-ssl
+
+    # Implement removal of any newly created seed file.
+    # 'openssl req' regularly creates RANDFILE or '~/.rnd'.
+    MYRANDFILE=${RANDFILE:-~/.rnd}
+    NEW__RND=
+    test -f "$MYRANDFILE" || NEW__RND=yes
+
+    HSTNAME=`hostname -s`
+    DOMAINNAME=`hostname -d`
+    openssl req -config /etc/telnetd-ssl/openssl.cnf  -new -x509 -nodes -out telnetd.pem -keyout telnetd.pem > /dev/null 2>&1 <<+
+.
+.
+.
+$DOMAINNAME
+$HSTNAME telnetd
+$HSTNAME${DOMAINNAME:+.$DOMAINNAME}
+root@$HSTNAME${DOMAINNAME:+.$DOMAINNAME}
++
+#    req -new -x509 -nodes -out telnetd.pem -keyout telnetd.pem
+#    ln -sf telnetd.pem `openssl x509 -noout -hash < telnetd.pem`.0
+#    chmod 644 telnetd.pem
+
+    if test x$NEW__RND = xyes && test -f "$MYRANDFILE"
+    then
+	rm "$MYRANDFILE"
+    fi
+fi
+
+chown root:telnetd-ssl /etc/telnetd-ssl/telnetd.pem
+chmod 0640 /etc/telnetd-ssl/telnetd.pem
+
+

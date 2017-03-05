@@ -1,0 +1,12 @@
+Package: telnet-ssl-dbgsym
+Source: netkit-telnet-ssl
+Version: 0.17.41+0.2-3+nmu1
+Auto-Built-Package: debug-symbols
+Architecture: i386
+Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
+Installed-Size: 322
+Depends: telnet-ssl (= 0.17.41+0.2-3+nmu1)
+Section: debug
+Priority: extra
+Description: Debug symbols for telnet-ssl
+Build-Ids: 60c9352964d9d67b112cdfbc5dd277620dfbdf57

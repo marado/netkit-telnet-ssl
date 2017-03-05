@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -e
+
+if test -x /usr/sbin/update-inetd ; then
+	update-inetd --disable telnet
+fi
+
+
+

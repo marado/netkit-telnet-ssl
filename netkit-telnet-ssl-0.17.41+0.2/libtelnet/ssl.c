@@ -47,6 +47,7 @@
 #include <string.h>
 #endif
 
+#include <syslog.h>
 #include <unistd.h>
 #include <openssl/err.h>
 
@@ -80,6 +81,9 @@
 #ifndef VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT
 #define VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT 
 #endif
+#ifndef VERIFY_ERR_SELF_SIGNED_CERT_IN_CHAIN
+# define VERIFY_ERR_SELF_SIGNED_CERT_IN_CHAIN X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN
+#endif
 #ifndef VERIFY_OK
 #define VERIFY_OK X509_V_OK
 #endif
@@ -92,6 +96,21 @@
  */
 #ifndef VERIFY_ROOT_OK
 #define VERIFY_ROOT_OK VERIFY_OK
+#endif
+
+/* Two possibilities:
+ *   X509_V_ERR_INVALID_PURPOSE
+ * or
+ *   X509_V_ERR_APPLICATION_VERIFICATION
+ *
+ * The resulting error messages are not particularly helpful.
+ */
+#ifndef VERIFY_REJECTED_BY_CERTSOK
+# define VERIFY_REJECTED_BY_CERTSOK X509_V_ERR_APPLICATION_VERIFICATION
+#endif
+
+#ifndef SSL_USERS_FILE
+# define SSL_USERS_FILE "/etc/ssl.users"
 #endif
 
 extern int netflush(void);
@@ -308,6 +327,11 @@ int cnt;
 		if (ssl_dummy_flag)
 		    return;
 
+		if (ssl_debug_flag && bio_err) {
+		    (void) BIO_printf(bio_err, "AUTH SSL is starting\r\n");
+		    (void) BIO_flush(bio_err);
+		}
+
 		if (!ssl_only_flag) {
 		    /* only want/need verify if doing certsok stuff */
 		    if (ssl_certsok_flag||ssl_cert_required) 
@@ -320,9 +344,15 @@ int cnt;
 
 			res = ERR_error_string(ERR_peek_last_error(), NULL);
 			p = strrchr(res, ':');
-			fprintf(stderr,"[SSL - SSL_accept error: %s]\r\n",
+
+			syslog(LOG_NOTICE, "SSL_accept error: %s",
 				p ? &p[1] : res);
-			fflush(stderr);
+
+			if (ssl_debug_flag && bio_err) {
+			    (void) BIO_printf(bio_err, "SSL_accept: %s\r\n",
+					      p ? &p[1] : res);
+			    (void) BIO_flush(bio_err);
+			}
 			sleep(5);
 			SSL_free(ssl_con);
 
@@ -345,6 +375,10 @@ int cnt;
 			    if (ssl_debug_flag) {
 				fprintf(stderr,"[SSL - peer check failed]\r\n");
 				fflush(stderr);
+			    }
+			    if (ssl_debug_flag && bio_err) {
+				(void) BIO_printf(bio_err, "SSL - peer sent no certificate\r\n");
+				(void) BIO_flush(bio_err);
 			    }
 
 			    /* LOGGING REQUIRED HERE! */
@@ -465,7 +499,7 @@ int level;
 	 * where user1 and user2 are usernames
 	 */
 	if (ssl_certsok_flag) {
-	    user_fp = fopen("/etc/ssl.users", "r");
+	    user_fp = fopen(SSL_USERS_FILE, "r");
 	    if (!auth_ssl_name || !user_fp || !UserNameRequested) {
 	        /* If we haven't received a certificate, then don't 
 		 * return AUTH_VALID. 
@@ -504,6 +538,15 @@ int level;
 			            !strcmp(UserNameRequested, n)) {
 			    strcpy(name, n);
 			    fclose(user_fp);
+
+			    syslog(LOG_AUTH | LOG_INFO,
+				   "Certsok autologin %s: %s",
+				   UserNameRequested, auth_ssl_name);
+			    if (ssl_debug_flag)
+				(void) BIO_printf(bio_err,
+						  "Certsok for %s: %s\r\n",
+						  UserNameRequested,
+						  auth_ssl_name);
 			    return(AUTH_VALID);
 			}
 			n = cp;
@@ -586,21 +629,21 @@ int depth, error;
     char *subject, *issuer;
 #ifdef SSLEAY8
     int depth,error;
-    char *xs;
+    X509 *xs;
 
-    depth=ctx->error_depth;
-    error=ctx->error;
-    xs=(char *)X509_STORE_CTX_get_current_cert(ctx);
+    depth = X509_STORE_CTX_get_error_depth(ctx);
+    error = X509_STORE_CTX_get_error(ctx);
+    xs = X509_STORE_CTX_get_current_cert(ctx);
 
 #endif /* SSLEAY8 */
 
-#ifdef LOCAL_DEBUG
+#ifdef EXTRA_DEBUGGING
     if (ssl_debug_flag) {
-	fprintf(stderr,"ssl:server_verify_callback:depth=%d ok=%d err=%d-%s\n",
-	    depth,ok,error,X509_cert_verify_error_string(error));
-	fflush(stderr);
+	(void) BIO_printf(bio_err,"ssl:server_verify_callback:depth=%d ok=%d err=%d - %s\n",
+	    depth,ok,error,X509_verify_cert_error_string(error));
+	(void) BIO_flush(bio_err);
     }
-#endif /* LOCAL_DEBUG */
+#endif /* EXTRA_DEBUGGING */
 
     subject=issuer=NULL;
 
@@ -650,15 +693,16 @@ int depth, error;
      * that wants to use the certificate as it is basically
      * junk of no value in this context!
      */
-    if (error==VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
+    if (error == VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT
+	|| error == VERIFY_ERR_SELF_SIGNED_CERT_IN_CHAIN) {
 	if (ssl_cert_required) {
 	    /* make 100% sure that in secure mode we drop the 
 	     * connection if the server does not have a 
 	     * real certificate!
 	     */
 	    if (ssl_debug_flag) {
-		fprintf(stderr,"SSL: rejecting connection - self-signed cert\n");
-		fflush(stderr);
+		(void) BIO_printf(bio_err,"SSL: rejecting connection - self-signed cert\n");
+		(void) BIO_flush(bio_err);
 	    }
 
 	    ok=0;
@@ -673,13 +717,13 @@ int depth, error;
     if (! ((error==VERIFY_OK)||(error==VERIFY_ROOT_OK)) ) {
 	if (ssl_cert_required) {
 	    if (ssl_debug_flag) {
-		fprintf(stderr,"SSL: rejecting connection - ");
+		(void) BIO_printf(bio_err,"SSL: rejecting connection - ");
 		if (error==VERIFY_ERR_UNABLE_TO_GET_ISSUER) {
-		    fprintf(stderr,"unknown issuer: %s\n",issuer);
+		    (void) BIO_printf(bio_err,"unknown issuer: %s\n",issuer);
 		} else {
 		    ERR_print_errors(bio_err);
 		}
-		fflush(stderr);
+		(void) BIO_flush(bio_err);
 	    }
 	    ok=0;
 	    goto return_time;
@@ -690,8 +734,8 @@ int depth, error;
 	     */
 	    if (error==VERIFY_ERR_UNABLE_TO_GET_ISSUER) {
 		if (ssl_debug_flag) {
-		    fprintf(stderr,"SSL: unknown issuer: %s\n",issuer);
-		    fflush(stderr);
+		    (void) BIO_printf(bio_err,"SSL: unknown issuer: %s\n",issuer);
+		    (void) BIO_flush(bio_err);
 		}
 	    }
 	}
@@ -733,18 +777,18 @@ int depth, error;
     char *subject, *issuer, *cnsubj;
 #ifdef SSLEAY8
     int depth,error;
-    char *xs;
+    X509 *xs;
 
-    depth=ctx->error_depth;
-    error=ctx->error;
-    xs=(char *)X509_STORE_CTX_get_current_cert(ctx);
+    depth = X509_STORE_CTX_get_error_depth(ctx);
+    error = X509_STORE_CTX_get_error(ctx);
+    xs = X509_STORE_CTX_get_current_cert(ctx);
 
 #endif /* SSLEAY8 */
 
     if(ssl_debug_flag && !ok) {
-      fprintf(stderr,"ssl:client_verify_callback:depth=%d ok=%d err=%d-%s\n",
+      (void) BIO_printf(bio_err,"ssl:client_verify_callback:depth=%d ok=%d err=%d - %s\r\n",
 	      depth,ok,error,X509_verify_cert_error_string(error));
-      fflush(stderr);
+      (void) BIO_flush(bio_err);
     }
 
     subject=issuer=cnsubj=NULL;
@@ -811,31 +855,37 @@ int depth, error;
     switch(error) {
     case VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
       fprintf(stderr,"SSL: Server has a self-signed certificate\n");
+      fprintf(stderr, "SSL: unknown Issuer: %s\n", issuer);
+      break;
+    case VERIFY_ERR_SELF_SIGNED_CERT_IN_CHAIN:
+      fprintf(stderr, "SSL: Server uses self-signed certificate in chain.\n");
+      fprintf(stderr, "SSL: unknown Issuer: %s\n", issuer);
+      break;
     case VERIFY_ERR_UNABLE_TO_GET_ISSUER:
       fprintf(stderr,"SSL: unknown issuer: %s\n",issuer);
       break;
     case X509_V_ERR_CERT_NOT_YET_VALID:
       fprintf(stderr,"SSL: Certificate not yet valid\n");
       BIO_printf(bio_err,"notBefore=");
-      ASN1_TIME_print(bio_err,X509_get_notBefore(ctx->current_cert));
+      ASN1_TIME_print(bio_err, X509_get_notBefore((X509 *) xs));
       BIO_printf(bio_err,"\n");
       break;
     case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
       fprintf(stderr,"SSL: Error in certificate notBefore field\n");
       BIO_printf(bio_err,"notBefore=");
-      ASN1_TIME_print(bio_err,X509_get_notBefore(ctx->current_cert));
+      ASN1_TIME_print(bio_err, X509_get_notBefore((X509 *) xs));
       BIO_printf(bio_err,"\n");
       break;
     case X509_V_ERR_CERT_HAS_EXPIRED:
       fprintf(stderr,"SSL: Certificate has expired\n");
       BIO_printf(bio_err,"notAfter=");
-      ASN1_TIME_print(bio_err,X509_get_notAfter(ctx->current_cert));
+      ASN1_TIME_print(bio_err, X509_get_notAfter((X509 *) xs));
       BIO_printf(bio_err,"\n");
       break;
     case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
       fprintf(stderr,"SSL: Error in certificate notAfter field\n");
       BIO_printf(bio_err,"notAfter=");
-      ASN1_TIME_print(bio_err,X509_get_notAfter(ctx->current_cert));
+      ASN1_TIME_print(bio_err, X509_get_notAfter((X509 *) xs));
       BIO_printf(bio_err,"\n");
       break;
     default:
@@ -857,7 +907,8 @@ return_time: ;
 	free(cnsubj);
     if(!ok && ssl_cert_required) {
       if(ssl_debug_flag) {
-	fprintf(stderr,"SSL: debug -> ignoring cert required!\n");
+	(void) BIO_printf(bio_err,"SSL: debug -> ignoring cert required!\n");
+	(void) BIO_flush(bio_err);
 	ok=1;
       }
       else {
@@ -869,6 +920,114 @@ return_time: ;
       
     return ok;
 }
+
+/* To be used by server when ssl_only_flag is set.  */
+int
+ssl_only_verify_callback(int ok, X509_STORE_CTX *ctx)
+{
+    static char *saved_subject = NULL;
+    char *subject;
+    int err, depth;
+    X509 *cert;
+
+    cert  = X509_STORE_CTX_get_current_cert(ctx);
+    err   = X509_STORE_CTX_get_error(ctx);
+    depth = X509_STORE_CTX_get_error_depth(ctx);
+
+# ifdef EXTRA_DEBUGGING
+    if (ssl_debug_flag) {
+	(void) BIO_printf(bio_err, "Verify callback: depth %d, err %d, %s\r\n",
+			  depth, err, X509_verify_cert_error_string(err));
+	(void) BIO_flush(bio_err);
+    }
+# endif /* EXTRA_DEBUGGING */
+
+    subject = ONELINE_NAME(X509_get_subject_name(cert));
+    if (subject == NULL) {
+	ok = 0;
+
+	if (ssl_debug_flag) 
+	    (void) BIO_printf(bio_err, "Subject name: %s\r\n",
+			      ERR_reason_error_string(ERR_peek_error()));
+    }
+
+    if (depth == 0 && subject) {
+	free(auth_ssl_name);
+	free(saved_subject);
+	auth_ssl_name = saved_subject = NULL;
+
+	if (ok)
+	    saved_subject = strdup(subject);
+
+	/* Check to see if the certsok list contains this
+	 * particular certificate subject.
+	 */
+	if (ssl_certsok_flag && ssl_cert_required) {
+	    char buf[2048];
+	    FILE *fp = fopen(SSL_USERS_FILE, "r");
+
+	    if (!fp) {
+		/* Missing file is treated as verification failure.  */
+		ok = 0;
+		SSL_set_verify_result(ssl_con, VERIFY_REJECTED_BY_CERTSOK);
+		if (ssl_debug_flag)
+		    (void) BIO_printf(bio_err, "Accessing %s: %s\r\n",
+				      SSL_USERS_FILE, strerror(errno));
+	    } else {
+		while(fgets(buf, sizeof(buf), fp)) {
+		    char *p;
+
+		    if ((p = strchr(buf, '\n')))
+			*p = '\0';
+
+		    p = buf;
+
+		    while (*p && strchr(" \t", *p))
+			p++;
+
+		    if (*p == '#')
+			continue;
+
+		    p = strchr(buf, ':');
+		    if (!p)
+			continue;
+
+		    if (strcmp(++p, subject) == 0)
+			/* An acceptable subject has been found.  */
+			break;
+		}
+
+		if (feof(fp)) {
+		    /* The file is at EOF, so no acceptable subject name
+		     * was included.  Treat this as verification failure.
+		     */
+		    ok = 0;
+		    SSL_set_verify_result(ssl_con, VERIFY_REJECTED_BY_CERTSOK);
+
+		    if (ssl_debug_flag)
+			(void) BIO_printf(bio_err, "Rejected by certsok: %s\r\n",
+					  subject);
+		} else if (ssl_debug_flag)
+		    (void) BIO_printf(bio_err, "Certsok found: %s\r\n",
+				      subject);
+
+		fclose(fp);
+	    }
+	}
+    }
+
+    /* Depth zero is examined as the very last chained certificate.
+     * An acceptable verification makes the subject name relevant.
+     */
+    if (ok && (err == VERIFY_ROOT_OK) && (depth == 0)) {
+	auth_ssl_name = saved_subject;
+	saved_subject = NULL;
+    }
+
+    free(subject);
+
+    return ok;
+} /* ssl_only_verify_callback */
 
 #endif /* USE_SSL */
 

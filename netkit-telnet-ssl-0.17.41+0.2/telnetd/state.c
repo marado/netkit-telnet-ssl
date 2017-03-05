@@ -880,6 +880,10 @@ void dooption(int option) {
 	    set_my_want_state_will(TELOPT_LOGOUT);
 	    send_will(TELOPT_LOGOUT, 0);
 	    set_my_state_will(TELOPT_LOGOUT);
+#if defined USE_SSL && defined EXTRA_DEBUGGING
+	    (void) BIO_printf(bio_err, "Peer asked for immediate logout.\r\n");
+	    (void) BIO_flush(bio_err);
+#endif /* USE_SSL && EXTRA_DEBUGGING */
 	    (void)netflush();
 	    cleanup(0);
 	    /* NOT REACHED */

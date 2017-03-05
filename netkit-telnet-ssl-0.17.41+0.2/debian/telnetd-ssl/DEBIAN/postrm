@@ -1,0 +1,69 @@
+#!/bin/sh -e
+# $Id: telnetd.postrm,v 1.7 2006-06-16 18:43:11 ianb Exp $
+
+case "$1" in
+abort-install | abort-upgrade | upgrade | failed-upgrade)
+	;;
+remove | disappear)
+	# telnetd user evidently once had a home, telnetd-ssl user never did.
+	home=~telnetd
+	set +e
+	userdel telnetd >/dev/null 2>&1
+	err=$?
+	set -e
+	case $err in
+	0)
+		if [ "$home" = /usr/lib/telnetd ]; then
+			rmdir --ignore-fail-on-non-empty /usr/lib/telnetd || true
+		fi
+		;;
+	6)
+		;;
+	*)
+		exit $err
+		;;
+	esac
+
+	set +e
+	userdel telnetd-ssl >/dev/null 2>&1
+	err=$?
+	set -e
+	case $err in
+	0 | 6)
+		;;
+	*)
+		exit $err
+		;;
+	esac
+
+	set +e
+	groupdel telnetd >/dev/null 2>&1
+	err=$?
+	set -e
+	case $err in
+	0 | 6)
+		;;
+	*)
+		exit $err
+		;;
+	esac
+	;;
+purge)
+	# If update-inetd is not installed, then we don't need to do the remove.
+	if test -x /usr/sbin/update-inetd;  then
+		update-inetd --remove "#<off># telnet"
+	fi
+	cd /etc/telnetd-ssl
+	PATH=$PATH:/usr/bin/ssl
+#	rm -f `openssl x509 -noout -hash < telnetd.pem`.0
+	rm -f telnetd.pem
+	;;
+*)
+	echo "$0: incorrect arguments: $*" >&2
+	exit 1
+	;;
+esac
+
+
+
+exit 0

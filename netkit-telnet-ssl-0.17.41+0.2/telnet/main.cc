@@ -103,7 +103,8 @@ void usage(void) {
 #endif
 #ifdef USE_SSL
         /* might as well output something useful here ... */
-	"\n\t[-z ssl] [-z secure] [-z debug] [-z verify=int]\n\t[-z cert=file] [-z key=file]\n\t",
+	"\n\t[-z ssl] [-z secure] [-z debug] [-z verify=int]\n\t"
+	"[-z cacert=file] [-z cert=file] [-z key=file]\n\t",
 #else /* !USE_SSL */
         "",
 #endif /* USE_SSL */
@@ -179,6 +180,9 @@ main(int argc, char *argv[])
 			} else if (strncmp(optarg, "verify=", 
 			                        strlen("verify=")) == 0 ) {
 			    ssl_verify_flag=atoi(optarg+strlen("verify="));
+			} else if (strncmp(optarg, "cacert=", 
+			                        strlen("cacert=")) == 0 ) {
+			    ssl_cacert_file= optarg + strlen("cacert=");
 			} else if (strncmp(optarg, "cert=", 
 			                        strlen("cert=")) == 0 ) {
 			    ssl_cert_file= optarg + strlen("cert=");

@@ -9,7 +9,7 @@ LDDEFS := -Wl,-z,defs -Wl,--as-needed
 
 CFLAGS += $(shell dpkg-buildflags --get CFLAGS) -fPIE -pie
 CXXFLAGS += $(shell dpkg-buildflags --get CXXFLAGS) -fPIE -pie
-CPPFLAGS += $(shell dpkg-buildflags --get CPPFLAGS)
+CPPFLAGS += $(shell dpkg-buildflags --get CPPFLAGS) -DSSL_LOG_FILE=\\"/var/tmp/telnetd.log\\"
 LDFLAGS += $(shell dpkg-buildflags --get LDFLAGS) -Wl,-z,now
 
 DEB_HOST_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)

@@ -168,10 +168,11 @@ Send SSL related debugging information to stderr.
 .It Ic authdebug
 Enable authentication debugging.
 .It Ic ssl
-Negotiate SSL at first, then use telnet protocol. In this mode you can
-connect to any server supporting directly SSL like Apache-SSL. Use
-.Ic telnet -z ssl ssl3.netscape.com https
-for example. telnet protocol negotiation goes encrypted.
+Negotiate SSL at first, then use TELNET protocol. In this mode you can
+connect to any server directly supporting SSL, like Apache-SSL.
+The TELNET protocol negotiation is done encrypted.
+A typical example is the call
+.Ic telnet -z ssl mail.google.com https.
 .It Ic nossl, Ic !ssl
 switch off SSL negotiation
 .It Ic certrequired
@@ -181,26 +182,28 @@ Don't switch back to unencrypted mode (no SSL) if SSL is not available.
 .It Ic verbose
 Be verbose about certificates etc.
 .It Ic verify= Ns Ar int
-.\" TODO
-Set the SSL verify flags (SSL_VERIFY_* in 
-.Ar ssl/ssl.h
+Set the SSL verify flags.  (See SSL_VERIFY_* in 
+.Ar openssl/ssl.h
 ).
-.\" TODO
+.It Ic cacert= Ns Ar CA_file
+This is used for verification of whatever certificate the remote
+server cares to send as identifier.
 .It Ic cert= Ns Ar cert_file
-.\" TODO
-Use the certificate(s) in
-.Ar cert_file .
+Present the certificate(s) in
+.Ar cert_file
+to the server.  They are in PEM-format, and the first identifies
+you as a client.
 .It Ic key= Ns Ar key_file
-.\" TODO
 Use the key(s) in
-.Ar key_file .
+.Ar key_file
+in case a key is not stored together with the certificate.
 .It Ic cipher= Ns Ar ciph_list
-.\" TODO
 Set the preferred ciphers to
 .Ar ciph_list .
 .\" TODO: possible values; comma-separated list?
+The environment variable SSL_CIPHER serves the same purpose.
 (See 
-.Ar ssl/ssl.h
+.Ar openssl/ssl.h
 ).
 .El
 .It Ar host
@@ -1320,7 +1323,9 @@ environment variables.
 Other environment variables may be propagated
 to the other side via the
 .Dv TELNET NEW-ENVIRON
-option.
+option.  The variable
+.Dv  SSL_CIPHER
+is accessed when setting up encrypted traffic.
 .Sh FILES
 .Bl -tag -width /etc/telnetrc -compact
 .It Pa /etc/telnetrc

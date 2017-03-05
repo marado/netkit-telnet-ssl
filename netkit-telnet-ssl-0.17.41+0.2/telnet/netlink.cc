@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -207,12 +208,14 @@ int netlink::connect(int debug, struct addrinfo *addr,
 	if (!do_ssleay_init(0)) {
 	  if (bio_err==NULL) {
 	    fflush(stdout);
-	    fflush(stderr);
-	    fprintf(stderr,"do_ssleay_init() failed\n");
+	    fprintf(stderr,"SSL initialisation failed\n");
 	    ERR_print_errors_fp(stderr);
+	    fflush(stderr);
 	  } else {
-	    BIO_printf(bio_err,"do_ssleay_init() failed\n");
-	    ERR_print_errors(bio_err);
+	    BIO_printf(bio_err, "SSL initialisation failed\r\n");
+	    BIO_printf(bio_err, "Error cause: %s, %s\n",
+		       ERR_func_error_string(ERR_peek_error()),
+		       ERR_reason_error_string(ERR_peek_error()));
 	  }
 	  exit(1);
 	}
@@ -259,8 +262,8 @@ int netlink::connect(int debug, struct addrinfo *addr,
 
 		exit(1);
 	    } else {
-		display_connect_details(ssl_con,ssl_debug_flag);
 		ssl_active_flag=1;
+		display_connect_details(ssl_con,ssl_debug_flag);
 	    }
 	}
 

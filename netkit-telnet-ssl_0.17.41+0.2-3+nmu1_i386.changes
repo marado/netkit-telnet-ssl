@@ -1,0 +1,54 @@
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+Format: 1.8
+Date: Sun, 05 Mar 2017 15:37:37 +0100
+Source: netkit-telnet-ssl
+Binary: telnet-ssl telnetd-ssl
+Architecture: source i386
+Version: 0.17.41+0.2-3+nmu1
+Distribution: unstable
+Urgency: low
+Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
+Changed-By: Marcos Marado <mindboosternoori@gmail.com>
+Description:
+ telnet-ssl - telnet client with SSL encryption support
+ telnetd-ssl - telnet server with SSL encryption support
+Closes: 749322
+Changes:
+ netkit-telnet-ssl (0.17.41+0.2-3+nmu1) unstable; urgency=low
+ .
+   * Non-maintainer upload.
+   * Fixing how we handle UTF8 characters (Closes: #749322)
+Checksums-Sha1:
+ cdcb87473bd6c297f5110220290d45a9d05ce1f7 1351 netkit-telnet-ssl_0.17.41+0.2-3+nmu1.dsc
+ 9dc0d1334e203bf046d12be578b7e9609c0eecd3 90344 netkit-telnet-ssl_0.17.41+0.2-3+nmu1.debian.tar.xz
+ f5f7b7b894d9eeac0d51564bb7027d4a4851746a 5790 netkit-telnet-ssl_0.17.41+0.2-3+nmu1_i386.buildinfo
+ 7bf8be8f49f4635a54d6d7b85741e92c5a7b31ce 290874 telnet-ssl-dbgsym_0.17.41+0.2-3+nmu1_i386.deb
+ 04c04e33b32a8f38c982bc7a8d048bd8a11ccbd2 98158 telnet-ssl_0.17.41+0.2-3+nmu1_i386.deb
+ 4e688a4da256ab738d6b12d0ddf25a4807e37fed 175212 telnetd-ssl-dbgsym_0.17.41+0.2-3+nmu1_i386.deb
+ 15b080b608d80b2120296aa949076b84f7edc1fa 66996 telnetd-ssl_0.17.41+0.2-3+nmu1_i386.deb
+Checksums-Sha256:
+ 78d75f508cb25074c9a1ab921311a9f03939a96b114b6b393cc641245bac58c5 1351 netkit-telnet-ssl_0.17.41+0.2-3+nmu1.dsc
+ 2a539ef1d54836bc4178c23ad3ad6b1a4f8adb6b6d8375c7fdfffc39cddcfc53 90344 netkit-telnet-ssl_0.17.41+0.2-3+nmu1.debian.tar.xz
+ 50f62e98a3ea79073cb20009b6a443ffe99b17a96ff79ebf0c10c81a20f5cee4 5790 netkit-telnet-ssl_0.17.41+0.2-3+nmu1_i386.buildinfo
+ 2f1b74e9c0d07f9926b77380baf8302cc4293b7f961a6fb11e62d8bea6be7cd6 290874 telnet-ssl-dbgsym_0.17.41+0.2-3+nmu1_i386.deb
+ 309d17e74d34705a9bba62ff1303f2baefb67ffb76cb577a776e9c238294238d 98158 telnet-ssl_0.17.41+0.2-3+nmu1_i386.deb
+ 472f37498aa5fdbdb28cd8668094b54886f371fcd35b7aa43573b6c15f9ee205 175212 telnetd-ssl-dbgsym_0.17.41+0.2-3+nmu1_i386.deb
+ 7c5db97d4ba2177fe011b788a29d8566de928e3a36e5444c30b6cbc5a6782488 66996 telnetd-ssl_0.17.41+0.2-3+nmu1_i386.deb
+Files:
+ c3de8cc835eaf2c550b14b11b0871105 1351 net extra netkit-telnet-ssl_0.17.41+0.2-3+nmu1.dsc
+ aeb0b86702fac169cfb08412404df4cf 90344 net extra netkit-telnet-ssl_0.17.41+0.2-3+nmu1.debian.tar.xz
+ 73c89bbd2ea9516f5d79da63b2e8f7a9 5790 net extra netkit-telnet-ssl_0.17.41+0.2-3+nmu1_i386.buildinfo
+ 6d05b1ab985cb72e06d860bc07c34f4a 290874 debug extra telnet-ssl-dbgsym_0.17.41+0.2-3+nmu1_i386.deb
+ 2d36584a0c6147cc588135e9a0cd4100 98158 net extra telnet-ssl_0.17.41+0.2-3+nmu1_i386.deb
+ f72554d0bc62d4cce2e4144c8a7e367b 175212 debug extra telnetd-ssl-dbgsym_0.17.41+0.2-3+nmu1_i386.deb
+ a41e925a89ed95ae06a902f7e3cbcf5d 66996 net extra telnetd-ssl_0.17.41+0.2-3+nmu1_i386.deb
+
+-----BEGIN PGP SIGNATURE-----
+
+iHkEARECADkWIQQq9wK1JFFemc5km+n+LXOccTzpGAUCWLwxGhscbWluZGJvb3N0
+ZXJub29yaUBnbWFpbC5jb20ACgkQ/i1znHE86Rh3RgCfdCYUpdf+2U7RSn+HdoPS
+/JC8CRsAoJKCzrWwMH5bEj9Nji5FAgIoRSuq
+=XkFM
+-----END PGP SIGNATURE-----
