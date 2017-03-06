@@ -1,10 +1,10 @@
 Package: telnetd-ssl
 Source: netkit-telnet-ssl
 Version: 0.17.41+0.2-3+nmu1
-Architecture: i386
+Architecture: armhf
 Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
-Installed-Size: 160
-Depends: adduser, openbsd-inetd | inet-superserver, passwd, openssl (>= 0.9.8g-9), libc6 (>= 2.15), libssl1.0.2 (>= 1.0.2d)
+Installed-Size: 186
+Depends: adduser, openbsd-inetd | inet-superserver, passwd, openssl (>= 0.9.8g-9), libc6 (>= 2.15), libssl1.0.0 (>= 1.0.0)
 Conflicts: telnetd
 Provides: telnet-server
 Section: net

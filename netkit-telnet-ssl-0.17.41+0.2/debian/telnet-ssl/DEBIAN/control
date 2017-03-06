@@ -1,10 +1,10 @@
 Package: telnet-ssl
 Source: netkit-telnet-ssl
 Version: 0.17.41+0.2-3+nmu1
-Architecture: i386
+Architecture: armhf
 Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
-Installed-Size: 213
-Depends: libc6 (>= 2.15), libssl1.0.2 (>= 1.0.2d), libstdc++6 (>= 5)
+Installed-Size: 218
+Depends: libc6 (>= 2.15), libssl1.0.0 (>= 1.0.0), libstdc++6 (>= 4.1.1)
 Provides: telnet-client
 Section: net
 Priority: extra

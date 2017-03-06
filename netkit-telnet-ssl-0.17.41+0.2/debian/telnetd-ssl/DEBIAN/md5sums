@@ -1,5 +1,5 @@
-269005b28a137b28fc4c932cf7855123  usr/lib/telnetlogin
-699adc9ebecd05843a075adf7ab3be3e  usr/sbin/in.telnetd
+19eee181bbda6d6c81d376812f5c8180  usr/lib/telnetlogin
+1d9f17b4b0b5c379b91849408337f906  usr/sbin/in.telnetd
 ef2db0e47ee7d30378c6694bc90203fe  usr/share/doc/telnetd-ssl/NEWS.Debian.gz
 89de8ddd9d47a75eec2b3df4bf7955a5  usr/share/doc/telnetd-ssl/changelog.Debian.gz
 40bf56de99b3770b9186dd30c03361e8  usr/share/doc/telnetd-ssl/changelog.gz
