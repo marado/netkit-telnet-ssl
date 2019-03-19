@@ -51,21 +51,8 @@ Bug-Debian: http://bugs.debian.org/149325
 Forwarded: no
 Last-Update: 2015-01-27
 
-diff -u netkit-telnet-0.17/configure netkit-telnet-0.17/configure
---- netkit-telnet-0.17/configure
-+++ netkit-telnet-0.17/configure
-@@ -67,7 +67,7 @@
- 
- ##################################################
- 
--WARNINGS='-Wall -W -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -Winline '
-+WARNINGS='-Wall -Wno-trigraphs '
- 
- cat << EOF > __conftest.c
-     int main() { int class=0; return class; }
-diff -u netkit-telnet-0.17/telnet/commands.cc netkit-telnet-0.17/telnet/commands.cc
---- netkit-telnet-0.17/telnet/commands.cc
-+++ netkit-telnet-0.17/telnet/commands.cc
+--- a/telnet/commands.cc
++++ b/telnet/commands.cc
 @@ -476,6 +476,7 @@
  int send_tncmd(int (*func)(int, int), const char *cmd, const char *name) {
      char **cpp;
@@ -218,9 +205,8 @@ diff -u netkit-telnet-0.17/telnet/commands.cc netkit-telnet-0.17/telnet/commands
  }
  
  #if defined(IP_OPTIONS) && defined(HAS_IPPROTO_IP)
-diff -u netkit-telnet-0.17/telnet/main.cc netkit-telnet-0.17/telnet/main.cc
---- netkit-telnet-0.17/telnet/main.cc
-+++ netkit-telnet-0.17/telnet/main.cc
+--- a/telnet/main.cc
++++ b/telnet/main.cc
 @@ -84,7 +84,7 @@
      fprintf(stderr, "Usage: %s %s%s%s%s\n",
  	    prompt,
@@ -307,9 +293,8 @@ diff -u netkit-telnet-0.17/telnet/main.cc netkit-telnet-0.17/telnet/main.cc
  		if (family) {
  			*argp++ = family == AF_INET ? "-4" : "-6";
  		}
-diff -u netkit-telnet-0.17/telnet/netlink.cc netkit-telnet-0.17/telnet/netlink.cc
---- netkit-telnet-0.17/telnet/netlink.cc
-+++ netkit-telnet-0.17/telnet/netlink.cc
+--- a/telnet/netlink.cc
++++ b/telnet/netlink.cc
 @@ -79,20 +79,56 @@
  	shutdown(net, 2);
      }
@@ -374,9 +359,8 @@ diff -u netkit-telnet-0.17/telnet/netlink.cc netkit-telnet-0.17/telnet/netlink.c
  
  #if defined(IP_OPTIONS) && defined(HAS_IPPROTO_IP)
      if (srcroute) {
-diff -u netkit-telnet-0.17/telnet/netlink.h netkit-telnet-0.17/telnet/netlink.h
---- netkit-telnet-0.17/telnet/netlink.h
-+++ netkit-telnet-0.17/telnet/netlink.h
+--- a/telnet/netlink.h
++++ b/telnet/netlink.h
 @@ -1,11 +1,15 @@
  
  class netlink {
@@ -393,9 +377,8 @@ diff -u netkit-telnet-0.17/telnet/netlink.h netkit-telnet-0.17/telnet/netlink.h
      int connect(int debug, struct addrinfo *hostaddr, 
  		char *srcroute, int srlen,
  		int tos);
-diff -u netkit-telnet-0.17/telnet/telnet.1 netkit-telnet-0.17/telnet/telnet.1
---- netkit-telnet-0.17/telnet/telnet.1
-+++ netkit-telnet-0.17/telnet/telnet.1
+--- a/telnet/telnet.1
++++ b/telnet/telnet.1
 @@ -44,6 +44,7 @@
  .Nm telnet
  .Op Fl 468ELadr
@@ -430,9 +413,8 @@ diff -u netkit-telnet-0.17/telnet/telnet.1 netkit-telnet-0.17/telnet/telnet.1
  commands associated with that host are executed.
  .It Ic quit
  Close any open session and exit
-diff -u netkit-telnet-0.17/telnet/telnet.cc netkit-telnet-0.17/telnet/telnet.cc
---- netkit-telnet-0.17/telnet/telnet.cc
-+++ netkit-telnet-0.17/telnet/telnet.cc
+--- a/telnet/telnet.cc
++++ b/telnet/telnet.cc
 @@ -88,7 +88,8 @@
  char	will_wont_resp[256];
  
@@ -443,7 +425,7 @@ diff -u netkit-telnet-0.17/telnet/telnet.cc netkit-telnet-0.17/telnet/telnet.cc
    autologin = 0,	/* Autologin anyone? */
    skiprc = 0,
    connected,
-@@ -1743,8 +1754,8 @@
+@@ -1743,8 +1744,8 @@
      send_do(TELOPT_STATUS, 1);
      if (env_getvalue("DISPLAY", 0))
        send_will(TELOPT_XDISPLOC, 1);
@@ -454,9 +436,8 @@ diff -u netkit-telnet-0.17/telnet/telnet.cc netkit-telnet-0.17/telnet/telnet.cc
    }
  #endif /* !defined(TN3270) */
    
-diff -u netkit-telnet-0.17/telnet/terminal.cc netkit-telnet-0.17/telnet/terminal.cc
---- netkit-telnet-0.17/telnet/terminal.cc
-+++ netkit-telnet-0.17/telnet/terminal.cc
+--- a/telnet/terminal.cc
++++ b/telnet/terminal.cc
 @@ -157,9 +157,11 @@
      if (localflow)
  	mode |= MODE_FLOW;
@@ -504,9 +485,8 @@ diff -u netkit-telnet-0.17/telnet/terminal.cc netkit-telnet-0.17/telnet/terminal
  
  #ifdef	SIGTSTP
  	signal(SIGTSTP, SIG_DFL);
-diff -u netkit-telnet-0.17/telnetd/ext.h netkit-telnet-0.17/telnetd/ext.h
---- netkit-telnet-0.17/telnetd/ext.h
-+++ netkit-telnet-0.17/telnetd/ext.h
+--- a/telnetd/ext.h
++++ b/telnetd/ext.h
 @@ -88,7 +88,7 @@
  #define netoprintf(fmt, ...) fprintf(netfile, fmt, ## __VA_ARGS__)
  
@@ -516,9 +496,8 @@ diff -u netkit-telnet-0.17/telnetd/ext.h netkit-telnet-0.17/telnetd/ext.h
  extern int SYNCHing;		/* we are in TELNET SYNCH mode */
  
  void _termstat(void);
-diff -u netkit-telnet-0.17/telnetd/sys_term.c netkit-telnet-0.17/telnetd/sys_term.c
---- netkit-telnet-0.17/telnetd/sys_term.c
-+++ netkit-telnet-0.17/telnetd/sys_term.c
+--- a/telnetd/sys_term.c
++++ b/telnetd/sys_term.c
 @@ -204,17 +204,17 @@
   *
   * Returns the file descriptor of the opened pty.
@@ -567,9 +546,8 @@ diff -u netkit-telnet-0.17/telnetd/sys_term.c netkit-telnet-0.17/telnetd/sys_ter
      shutdown(net, 2);
      exit(0);
  }
-diff -u netkit-telnet-0.17/telnetd/telnetd.8 netkit-telnet-0.17/telnetd/telnetd.8
---- netkit-telnet-0.17/telnetd/telnetd.8
-+++ netkit-telnet-0.17/telnetd/telnetd.8
+--- a/telnetd/telnetd.8
++++ b/telnetd/telnetd.8
 @@ -161,7 +161,7 @@
  .It Fl L Ar loginprg
  This option may be used to specify a different login program.
@@ -579,20 +557,16 @@ diff -u netkit-telnet-0.17/telnetd/telnetd.8 netkit-telnet-0.17/telnetd/telnetd.
  is used.
  .It Fl n
  Disable
-only in patch2:
-unchanged:
---- netkit-telnet-0.17.orig/telnet/defines.h
-+++ netkit-telnet-0.17/telnet/defines.h
+--- a/telnet/defines.h
++++ b/telnet/defines.h
 @@ -50,3 +50,5 @@
  #define	MODE_COMMAND_LINE(m)	((m)==-1)
  
  #define	CONTROL(x)	((x)&0x1f)		/* CTRL(x) is not portable */
 +
 +#define MODE_OUT8	0x8000			/* binary mode sans -opost */
-only in patch2:
-unchanged:
---- netkit-telnet-0.17.orig/telnet/proto.h
-+++ netkit-telnet-0.17/telnet/proto.h
+--- a/telnet/proto.h
++++ b/telnet/proto.h
 @@ -13,7 +13,7 @@
  void auth_encrypt_user(char *);
  void auth_name(unsigned char *, int);
@@ -602,10 +576,8 @@ unchanged:
  void env_init(void);
  int getconnmode(void);
  void init_network(void);
-only in patch2:
-unchanged:
---- netkit-telnet-0.17.orig/telnet/externs.h
-+++ netkit-telnet-0.17/telnet/externs.h
+--- a/telnet/externs.h
++++ b/telnet/externs.h
 @@ -48,9 +48,7 @@
  typedef unsigned char cc_t;
  #endif

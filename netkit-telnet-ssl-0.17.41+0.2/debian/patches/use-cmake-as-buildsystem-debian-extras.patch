@@ -1,0 +1,38 @@
+Description: Debian-specific changes to the cmake build system
+Author: Christoph Biedl <debian.axhn@manchmal.in-ulm.de>
+Forwarded: not-needed
+Last-Update: 2019-02-24
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -10,14 +10,18 @@
+ set(
+     CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
+     -D_GNU_SOURCE \
++    -Ddebian \
+     -DACCEPT_USERVAR \
++    -DSSL_LOG_FILE='\"/var/tmp/telnetd.log\"' \
+     -Wall \
+     -Wno-trigraphs \
+ ")
+ set(
+     CMAKE_C_FLAGS "${CMAKE_C_FLAGS} \
+     -D_GNU_SOURCE \
++    -Ddebian \
+     -DACCEPT_USERVAR \
++    -DSSL_LOG_FILE='\"/var/tmp/telnetd.log\"' \
+     -Wall \
+     -Wno-trigraphs \
+ ")
+--- a/telnetd/CMakeLists.txt
++++ b/telnetd/CMakeLists.txt
+@@ -52,9 +52,3 @@
+     DESTINATION ${MAN_DIR}/man8/
+     RENAME in.telnetd.8
+ )
+-install(
+-    CODE "execute_process( \
+-        COMMAND ${CMAKE_COMMAND} -E create_symlink \
+-        in.telnetd.8 \$ENV{DESTDIR}${MAN_DIR}/man8/telnetd.8 \
+-    )"
+-)

@@ -47,11 +47,9 @@
 130-drain_input_from_child.diff
 600-better_diagnostic.diff
 610-support_uservar.diff
-620-do_not_strip_telnetlogin.diff
 
 ### Now at source equivalent to netkit-telnet_0.17-39!
 
-150-cross_configure.diff
 
 ### Now at source equivalent to netkit-telnet_0.17-41!
 
@@ -61,4 +59,8 @@
 # Begin expanding on abilities not present in legacy SSL code.
 #
 650-improve_abilities.diff
+
+use-cmake-as-buildsystem.patch
+use-cmake-as-buildsystem-debian-extras.patch
+
 700-fix_UTF8.diff

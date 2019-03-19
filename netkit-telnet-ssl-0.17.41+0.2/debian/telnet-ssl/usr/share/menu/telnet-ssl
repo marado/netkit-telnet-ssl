@@ -1,3 +1,0 @@
-?package(telnet-ssl): \
-	needs="text" section="Applications/Network/Communication" \
-	title="Telnet-SSL" command="/usr/bin/telnet-ssl" hints="Terminal"

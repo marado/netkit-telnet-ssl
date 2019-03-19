@@ -1,9 +1,28 @@
-netkit-telnet-ssl (0.17.41+0.2-3+nmu1) unstable; urgency=low
+netkit-telnet-ssl (0.17.41+0.2-3.2+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
   * Fixing how we handle UTF8 characters (Closes: #749322)
 
- -- Marcos Marado <mindboosternoori@gmail.com>  Sun, 05 Mar 2017 15:37:37 +0100
+ -- Marcos Marado <mindboosternoori@gmail.com>  Tue, 19 Mar 2019 11:23:05 +0100
+
+netkit-telnet-ssl (0.17.41+0.2-3.2) unstable; urgency=high
+
+  * Non-maintainer upload
+  * Use cmake to build the package. Closes: #912132
+
+ -- Christoph Biedl <debian.axhn@manchmal.in-ulm.de>  Sun, 24 Feb 2019 14:38:52 +0100
+
+netkit-telnet-ssl (0.17.41+0.2-3.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Replace sg usage with getent group in postinst (Closes: #904048)
+    - note that there's still much room for related improvements, like
+      not removing users and groups in postrm (see discussion linked
+      from #228692) and not removing group created by another package,
+      maybe even use the same group for both netkit-telnet* packages
+      to simplify maintscripts if possible.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Sat, 28 Jul 2018 16:14:32 +0200
 
 netkit-telnet-ssl (0.17.41+0.2-3) unstable; urgency=low
 

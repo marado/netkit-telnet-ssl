@@ -38,34 +38,8 @@ Bug-Debian: http://bugs.debian.org/36527
 Forwarded: no
 Last-Update: 2005-03-31
 
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/Makefile
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetd/Makefile
-@@ -9,9 +9,11 @@
- # take out -DPARANOID_TTYS.
- 
- CFLAGS += '-DISSUE_FILE="/etc/issue.net"' -DPARANOID_TTYS \
--	   -DNO_REVOKE -DKLUDGELINEMODE -DDIAGNOSTICS \
--	   -DLOGIN_WRAPPER=\"/usr/lib/telnetlogin\"
--# LIBS += $(LIBTERMCAP)
-+	   -DNO_REVOKE -DKLUDGELINEMODE -DDIAGNOSTICS -DAUTHENTICATE \
-+	   -DLOGIN_WRAPPER=\"/usr/lib/telnetlogin\" \
-+	   -DUSE_SSL -I/usr/include/openssl -I..
-+LIBTELNET = ../libtelnet/libtelnet.a 
-+LIBS += $(LIBTERMCAP) $(LIBTELNET) -lssl -lcrypto
- 
- OBJS = telnetd.o state.o termstat.o slc.o sys_term.o utility.o \
- 	global.o setproctitle.o
-@@ -28,7 +30,7 @@
- telnetd.o: ../version.h
- 
- install: telnetd
--	install -s -m$(DAEMONMODE) telnetd $(INSTALLROOT)$(SBINDIR)/in.telnetd
-+	install -m$(DAEMONMODE) telnetd $(INSTALLROOT)$(SBINDIR)/in.telnetd
- 	install -m$(MANMODE) issue.net.5 $(INSTALLROOT)$(MANDIR)/man5/
- 	install -m$(MANMODE) telnetd.8 $(INSTALLROOT)$(MANDIR)/man8/in.telnetd.8
- 	ln -sf in.telnetd.8 $(INSTALLROOT)$(MANDIR)/man8/telnetd.8
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/ext.h
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetd/ext.h
+--- a/telnetd/ext.h
++++ b/telnetd/ext.h
 @@ -31,7 +31,7 @@
   * SUCH DAMAGE.
   *
@@ -94,8 +68,8 @@ Last-Update: 2005-03-31
  void netopen(void);
  
  #if defined(ENCRYPT)
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/issue.net.5
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetd/issue.net.5
+--- a/telnetd/issue.net.5
++++ b/telnetd/issue.net.5
 @@ -15,7 +15,7 @@
  .Pa /etc/issue.net
  is a text file which contains a message or system identification to be
@@ -105,8 +79,8 @@ Last-Update: 2005-03-31
  .Ic telnetd :
  .Bl -tag -offset indent -compact -width "abcde"
  .It %t
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/state.c
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetd/state.c
+--- a/telnetd/state.c
++++ b/telnetd/state.c
 @@ -35,11 +35,12 @@
   * From: @(#)state.c	5.10 (Berkeley) 3/22/91
   */
@@ -192,8 +166,8 @@ Last-Update: 2005-03-31
  	}
  	break;
      }  /* end of case TELOPT_ENVIRON */
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.8
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.8
+--- a/telnetd/telnetd.8
++++ b/telnetd/telnetd.8
 @@ -30,7 +30,7 @@
  .\" SUCH DAMAGE.
  .\"
@@ -230,8 +204,8 @@ Last-Update: 2005-03-31
  .El
  .Sh FILES
  .Pa /etc/services ,
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.c
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.c
+--- a/telnetd/telnetd.c
++++ b/telnetd/telnetd.c
 @@ -39,7 +39,7 @@
   * From: @(#)telnetd.c	5.48 (Berkeley) 3/1/91
   */
@@ -250,7 +224,7 @@ Last-Update: 2005-03-31
  	    /* in secure mode we *must* switch on the base level
  	     * verify checking otherwise we cannot abort connections
  	     * at the right place!
-@@ -571,6 +576,11 @@
+@@ -576,6 +576,11 @@
  #ifdef	AUTHENTICATE
  	fprintf(stderr, " [-X auth-type]");
  #endif
@@ -262,7 +236,7 @@ Last-Update: 2005-03-31
  	fprintf(stderr, "\n");
  	exit(1);
  }
-@@ -596,6 +606,18 @@
+@@ -601,6 +606,18 @@
      /*
       * Handle the Authentication option before we do anything else.
       */
@@ -281,7 +255,7 @@ Last-Update: 2005-03-31
      send_do(TELOPT_AUTHENTICATION, 1);
      while (his_will_wont_is_changing(TELOPT_AUTHENTICATION))
  	ttloop();
-@@ -654,7 +676,6 @@
+@@ -659,7 +676,6 @@
      send_do(TELOPT_TTYPE, 1);
      send_do(TELOPT_TSPEED, 1);
      send_do(TELOPT_XDISPLOC, 1);
@@ -289,7 +263,7 @@ Last-Update: 2005-03-31
      while (
  #if	defined(ENCRYPT)
  	   his_do_dont_is_changing(TELOPT_ENCRYPT) ||
-@@ -698,10 +719,6 @@
+@@ -703,10 +719,6 @@
  	while (sequenceIs(xdisplocsubopt, baseline))
  	    ttloop();
      }
@@ -300,7 +274,7 @@ Last-Update: 2005-03-31
      if (his_state_is_will(TELOPT_TTYPE)) {
  	char first[256], last[256];
  
-@@ -852,7 +869,7 @@
+@@ -857,7 +869,7 @@
  static void
  doit(struct sockaddr *who, socklen_t who_len)
  {
@@ -309,8 +283,8 @@ Last-Update: 2005-03-31
  	int level;
  	char user_name[256];
  	int i;
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/utility.c
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetd/utility.c
+--- a/telnetd/utility.c
++++ b/telnetd/utility.c
 @@ -35,7 +35,7 @@
   * From: @(#)utility.c	5.8 (Berkeley) 3/22/91
   */

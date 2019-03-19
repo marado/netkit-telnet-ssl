@@ -20,8 +20,7 @@
 130-drain_input_from_child.diff
 600-better_diagnostic.diff
 610-support_uservar.diff
-620-do_not_strip_telnetlogin.diff
-150-cross_configure.diff
 630-recent_libssl.diff
 650-improve_abilities.diff
-700-fix_UTF8.diff
+use-cmake-as-buildsystem.patch
+use-cmake-as-buildsystem-debian-extras.patch

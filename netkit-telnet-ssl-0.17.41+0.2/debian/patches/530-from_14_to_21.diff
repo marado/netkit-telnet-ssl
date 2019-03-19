@@ -19,38 +19,8 @@ Comment: interdiff netkit-telnet-ssl_0.17.24+0.1-{14,21}.diff
 Forwarded: no
 Last-Update: 2007-10-04
 
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/Makefile
-+++ netkit-telnet-ssl-0.17.24+0.1/telnet/Makefile
-@@ -3,12 +3,15 @@
- include ../MCONFIG
- include ../MRULES
- 
-+# ignore imported LIBS value, drags in too much
-+LIBS=
-+
- #CXXFLAGS:=$(patsubst -O2, -g, $(CXXFLAGS))
- 
- # -DAUTHENTICATE
- CXXFLAGS += -DUSE_TERMIO -DKLUDGELINEMODE -DAUTHENTICATE -DUSE_SSL \
- 	-I/usr/include/openssl -I../
--LIBTELNET = ../libtelnet/libtelnet.a 
-+LIBTELNET = ../libtelnet/libtelnet.a
- LIBS += $(LIBTERMCAP) $(LIBTELNET) -lssl -lcrypto
- 
- SRCS = commands.cc main.cc network.cc ring.cc sys_bsd.cc telnet.cc \
-@@ -16,9 +19,8 @@
- 	glue.cc glue2.cc
- 
- OBJS = $(patsubst %.cc, %.o, $(SRCS))
--
- telnet: $(OBJS) $(LIBTELNET)
--	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
-+	$(CXX) -static-libgcc $(LDFLAGS) $^ $(LIBS) -o $@
- 
- include depend.mk
- depend:
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/commands.cc
-+++ netkit-telnet-ssl-0.17.24+0.1/telnet/commands.cc
+--- a/telnet/commands.cc
++++ b/telnet/commands.cc
 @@ -35,7 +35,7 @@
   * From: @(#)commands.c	5.5 (Berkeley) 3/22/91
   */
@@ -75,8 +45,8 @@ Last-Update: 2007-10-04
  };
  
  static int auth_help (const char *, const char *);
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnet/netlink.cc
-+++ netkit-telnet-ssl-0.17.24+0.1/telnet/netlink.cc
+--- a/telnet/netlink.cc
++++ b/telnet/netlink.cc
 @@ -19,6 +19,20 @@
  #define HAS_IPPROTO_IP
  #endif
@@ -136,19 +106,8 @@ Last-Update: 2007-10-04
  	  if (!local_host[0]) {
  	    gethostname(local_host, len);        /* WAS &len!!! */
  	    local_host[sizeof(local_host)-1] = 0;
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/Makefile
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetd/Makefile
-@@ -13,7 +13,7 @@
- 	   -DLOGIN_WRAPPER=\"/usr/lib/telnetlogin\" \
- 	   -DUSE_SSL -I/usr/include/openssl -I..
- LIBTELNET = ../libtelnet/libtelnet.a 
--LIBS += $(LIBTERMCAP) $(LIBTELNET) -lssl -lcrypto
-+LIBS += $(LIBTELNET) -lssl -lcrypto
- 
- OBJS = telnetd.o state.o termstat.o slc.o sys_term.o utility.o \
- 	global.o setproctitle.o
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.8
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetd/telnetd.8
+--- a/telnetd/telnetd.8
++++ b/telnetd/telnetd.8
 @@ -315,7 +315,7 @@
  .Ed
  .Pp
@@ -158,8 +117,8 @@ Last-Update: 2007-10-04
  .Dv XTABS
  .Dv CRMOD
  enabled (see
---- netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/auth-proto.h
-+++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/auth-proto.h
+--- a/libtelnet/auth-proto.h
++++ b/libtelnet/auth-proto.h
 @@ -68,7 +68,7 @@
  #if	defined(AUTHENTICATE)
  Authenticator *findauthenticator P((int, int));
@@ -169,8 +128,8 @@ Last-Update: 2007-10-04
  int auth_cmd P((int, char **));
  void auth_request P((void));
  void auth_send P((unsigned char *, int));
---- netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/auth.c
-+++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/auth.c
+--- a/libtelnet/auth.c
++++ b/libtelnet/auth.c
 @@ -90,7 +90,7 @@
  
  
@@ -189,8 +148,8 @@ Last-Update: 2007-10-04
  	int server;
  {
  	Authenticator *ap = authenticators;
---- netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/misc.c
-+++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/misc.c
+--- a/libtelnet/misc.c
++++ b/libtelnet/misc.c
 @@ -73,7 +73,7 @@
  auth_encrypt_init(local, remote, name, server)
  	char *local;
@@ -200,20 +159,8 @@ Last-Update: 2007-10-04
  	int server;
  {
  	RemoteHostName = remote;
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetlogin/Makefile
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetlogin/Makefile
-@@ -3,6 +3,9 @@
- include ../MCONFIG
- include ../MRULES
- 
-+# ignore imported LIBS value, drags in too much
-+LIBS=
-+
- OBJS = telnetlogin.o
- 
- telnetlogin: $(OBJS)
---- netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/misc-proto.h
-+++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/misc-proto.h
+--- a/libtelnet/misc-proto.h
++++ b/libtelnet/misc-proto.h
 @@ -68,7 +68,7 @@
  extern "C" {
  #endif

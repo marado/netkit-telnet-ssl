@@ -21,42 +21,8 @@ Author: Herbert Xu, Jason Gunthorpe
 Forwarded: no
 Last-Update: 2015-01-26
 
---- netkit-telnet-0.17.orig/Makefile
-+++ netkit-telnet-0.17/Makefile
-@@ -1,8 +1,7 @@
- # You can do "make SUB=blah" to make only a few, or edit here, or both
- # You can also run make directly in the subdirs you want.
- 
--SUB =   telnet telnetd
--# not yet: telnetlogin
-+SUB =   telnet telnetd telnetlogin
- 
- %.build:
- 	(cd $(patsubst %.build, %, $@) && $(MAKE))
---- netkit-telnet-0.17.orig/configure
-+++ netkit-telnet-0.17/configure
-@@ -117,7 +117,7 @@
- 
- cat << EOF > __conftest.cc
-     template <class T> class fnord { public: T x; fnord(T y) { x=y; }};
--    int main() { fnord<int> a(0); return a.x; }
-+    int main() { fnord<int> *a = new fnord<int>(0); return a->x; }
- EOF
- 
- if [ x"$CXX" = x ]; then
---- netkit-telnet-0.17.orig/telnet/Makefile
-+++ netkit-telnet-0.17/telnet/Makefile
-@@ -7,7 +7,7 @@
- 
- # -DAUTHENTICATE
- CXXFLAGS += -DUSE_TERMIO -DKLUDGELINEMODE
--LIBS += $(LIBTERMCAP)
-+LIBS = $(LIBTERMCAP)
- 
- SRCS = commands.cc main.cc network.cc ring.cc sys_bsd.cc telnet.cc \
- 	terminal.cc tn3270.cc utilities.cc genget.cc environ.cc netlink.cc
---- netkit-telnet-0.17.orig/telnet/commands.cc
-+++ netkit-telnet-0.17/telnet/commands.cc
+--- a/telnet/commands.cc
++++ b/telnet/commands.cc
 @@ -86,10 +86,6 @@
  
  #define HELPINDENT ((int) sizeof ("connect"))
@@ -374,8 +340,8 @@ Last-Update: 2015-01-26
  #if defined(IP_OPTIONS) && defined(HAS_IPPROTO_IP)
  
  /*
---- netkit-telnet-0.17.orig/telnet/main.cc
-+++ netkit-telnet-0.17/telnet/main.cc
+--- a/telnet/main.cc
++++ b/telnet/main.cc
 @@ -45,7 +45,10 @@
  
  #include <sys/types.h>
@@ -477,8 +443,8 @@ Last-Update: 2015-01-26
  		*argp++ = argv[0];		/* host */
  		if (argc > 1)
  			*argp++ = argv[1];	/* port */
---- netkit-telnet-0.17.orig/telnet/netlink.cc
-+++ netkit-telnet-0.17/telnet/netlink.cc
+--- a/telnet/netlink.cc
++++ b/telnet/netlink.cc
 @@ -81,20 +81,23 @@
      ::close(net);
  }
@@ -545,8 +511,8 @@ Last-Update: 2015-01-26
      }
      return 2;
  }
---- netkit-telnet-0.17.orig/telnet/netlink.h
-+++ netkit-telnet-0.17/telnet/netlink.h
+--- a/telnet/netlink.h
++++ b/telnet/netlink.h
 @@ -6,8 +6,7 @@
      netlink();
      ~netlink();
@@ -557,8 +523,8 @@ Last-Update: 2015-01-26
  		char *srcroute, int srlen,
  		int tos);
      void close(int doshutdown);
---- netkit-telnet-0.17.orig/telnet/network.cc
-+++ netkit-telnet-0.17/telnet/network.cc
+--- a/telnet/network.cc
++++ b/telnet/network.cc
 @@ -40,6 +40,7 @@
  #include <sys/types.h>
  #include <sys/socket.h>
@@ -567,8 +533,8 @@ Last-Update: 2015-01-26
  #include <errno.h>
  #include <arpa/telnet.h>
  
---- netkit-telnet-0.17.orig/telnet/ring.cc
-+++ netkit-telnet-0.17/telnet/ring.cc
+--- a/telnet/ring.cc
++++ b/telnet/ring.cc
 @@ -165,7 +165,7 @@
  
  /////////////////////////////////////////////////// supply //////////////
@@ -578,8 +544,8 @@ Last-Update: 2015-01-26
      char xbuf[256];
      va_list ap;
      va_start(ap, format);
---- netkit-telnet-0.17.orig/telnet/ring.h
-+++ netkit-telnet-0.17/telnet/ring.h
+--- a/telnet/ring.h
++++ b/telnet/ring.h
 @@ -83,7 +83,7 @@
      // manual supply
      void putch(char c) { write(&c, 1); }
@@ -589,8 +555,8 @@ Last-Update: 2015-01-26
      int empty_count() { return size - count; }
  
      // automatic supply
---- netkit-telnet-0.17.orig/telnet/sys_bsd.cc
-+++ netkit-telnet-0.17/telnet/sys_bsd.cc
+--- a/telnet/sys_bsd.cc
++++ b/telnet/sys_bsd.cc
 @@ -189,18 +189,25 @@
   * Various signal handling routines.
   */
@@ -636,8 +602,8 @@ Last-Update: 2015-01-26
  #ifdef	SIGWINCH
      signal(SIGWINCH, sendwin);
  #endif
---- netkit-telnet-0.17.orig/telnet/telnet.1
-+++ netkit-telnet-0.17/telnet/telnet.1
+--- a/telnet/telnet.1
++++ b/telnet/telnet.1
 @@ -42,7 +42,7 @@
  protocol
  .Sh SYNOPSIS
@@ -706,8 +672,8 @@ Last-Update: 2015-01-26
  .It Pa ~/.telnetrc
  user customized telnet startup values
  .El
---- netkit-telnet-0.17.orig/telnet/telnet.cc
-+++ netkit-telnet-0.17/telnet/telnet.cc
+--- a/telnet/telnet.cc
++++ b/telnet/telnet.cc
 @@ -646,7 +646,7 @@
      mklist(termbuf, tname, termtypes);
      next = 0;
@@ -785,7 +751,7 @@ Last-Update: 2015-01-26
  		    LM_SLC, 0, SLC_VARIABLE, 0, IAC, SE);
    }
  }
-@@ -1142,6 +1151,7 @@
+@@ -1142,6 +1142,7 @@
    }
  }
  
@@ -793,7 +759,7 @@ Last-Update: 2015-01-26
  #define	OPT_REPLY_SIZE	256
  unsigned char *opt_reply;
  unsigned char *opt_replyp;
-@@ -1173,6 +1183,7 @@
+@@ -1173,6 +1174,7 @@
  
  void env_opt_add(const char *ep) {
    const char *vp;
@@ -801,7 +767,7 @@ Last-Update: 2015-01-26
    unsigned char c;
    
    if (opt_reply == NULL)		/*XXX*/
-@@ -1185,11 +1196,12 @@
+@@ -1185,11 +1187,12 @@
      return;
    }
    vp = env_getvalue(ep, 1);
@@ -817,8 +783,8 @@ Last-Update: 2015-01-26
        opt_reply = (unsigned char *)realloc(opt_reply, len);
        if (opt_reply == NULL) {
  	/*@*/			printf("env_opt_add: realloc() failed!!!\n");
---- netkit-telnet-0.17.orig/telnet/terminal.cc
-+++ netkit-telnet-0.17/telnet/terminal.cc
+--- a/telnet/terminal.cc
++++ b/telnet/terminal.cc
 @@ -45,6 +45,8 @@
  #include <signal.h>
  #include <errno.h>
@@ -828,8 +794,8 @@ Last-Update: 2015-01-26
  
  #include "ring.h"
  #include "defines.h"
---- netkit-telnet-0.17.orig/telnet/utilities.cc
-+++ netkit-telnet-0.17/telnet/utilities.cc
+--- a/telnet/utilities.cc
++++ b/telnet/utilities.cc
 @@ -47,6 +47,8 @@
  #include <sys/socket.h>
  #include <unistd.h>
@@ -839,20 +805,8 @@ Last-Update: 2015-01-26
  
  #include "ring.h"
  #include "defines.h"
---- netkit-telnet-0.17.orig/telnetd/Makefile
-+++ netkit-telnet-0.17/telnetd/Makefile
-@@ -9,7 +9,8 @@
- # take out -DPARANOID_TTYS.
- 
- CFLAGS += '-DISSUE_FILE="/etc/issue.net"' -DPARANOID_TTYS \
--	   -DNO_REVOKE -DKLUDGELINEMODE -DDIAGNOSTICS
-+	   -DNO_REVOKE -DKLUDGELINEMODE -DDIAGNOSTICS \
-+	   -DLOGIN_WRAPPER=\"/usr/lib/telnetlogin\"
- # LIBS += $(LIBTERMCAP)
- 
- OBJS = telnetd.o state.o termstat.o slc.o sys_term.o utility.o \
---- netkit-telnet-0.17.orig/telnetd/authenc.c
-+++ netkit-telnet-0.17/telnetd/authenc.c
+--- a/telnetd/authenc.c
++++ b/telnetd/authenc.c
 @@ -42,18 +42,6 @@
      return(0);
  }
@@ -872,8 +826,8 @@ Last-Update: 2015-01-26
  int
  telnet_spin()
  {
---- netkit-telnet-0.17.orig/telnetd/defs.h
-+++ netkit-telnet-0.17/telnetd/defs.h
+--- a/telnetd/defs.h
++++ b/telnetd/defs.h
 @@ -55,10 +55,11 @@
  #include <fcntl.h>
  #include <sys/file.h>
@@ -887,8 +841,8 @@ Last-Update: 2015-01-26
  #include <stdio.h>
  #include <stdlib.h>
  #include <signal.h>
---- netkit-telnet-0.17.orig/telnetd/ext.h
-+++ netkit-telnet-0.17/telnetd/ext.h
+--- a/telnetd/ext.h
++++ b/telnetd/ext.h
 @@ -81,12 +81,11 @@
   */
  extern char ptyobuf[BUFSIZ+NETSLOP], *pfrontp, *pbackp;
@@ -947,8 +901,8 @@ Last-Update: 2015-01-26
  extern int (*decrypt_input)(int);
  extern char *nclearto;
  #endif
---- netkit-telnet-0.17.orig/telnetd/global.c
-+++ netkit-telnet-0.17/telnetd/global.c
+--- a/telnetd/global.c
++++ b/telnetd/global.c
 @@ -87,11 +87,10 @@
  
  char	netibuf[BUFSIZ], *netip;
@@ -963,16 +917,16 @@ Last-Update: 2015-01-26
  int	pty, net;
  int	SYNCHing;		/* we are in TELNET SYNCH mode */
  
---- netkit-telnet-0.17.orig/telnetd/issue.net.5
-+++ netkit-telnet-0.17/telnetd/issue.net.5
+--- a/telnetd/issue.net.5
++++ b/telnetd/issue.net.5
 @@ -40,4 +40,4 @@
  .Sh FILES
  .Pa /etc/issue.net
  .Sh "SEE ALSO"
 -.Xr telnetd 8
 +.Xr in.telnetd 8
---- netkit-telnet-0.17.orig/telnetd/setproctitle.c
-+++ netkit-telnet-0.17/telnetd/setproctitle.c
+--- a/telnetd/setproctitle.c
++++ b/telnetd/setproctitle.c
 @@ -139,7 +139,7 @@
  	(void) strcpy(Argv[0], buf);
  	p = &Argv[0][i];
@@ -982,8 +936,8 @@ Last-Update: 2015-01-26
  	Argv[1] = NULL;
  }
  
---- netkit-telnet-0.17.orig/telnetd/state.c
-+++ netkit-telnet-0.17/telnetd/state.c
+--- a/telnetd/state.c
++++ b/telnetd/state.c
 @@ -179,6 +179,7 @@
  		   */
  	      case AO:
@@ -1003,8 +957,8 @@ Last-Update: 2015-01-26
  		      DIAG(TD_OPTIONS, printoption("td: send IAC", DM));
  		      break;
  		  }
---- netkit-telnet-0.17.orig/telnetd/sys_term.c
-+++ netkit-telnet-0.17/telnetd/sys_term.c
+--- a/telnetd/sys_term.c
++++ b/telnetd/sys_term.c
 @@ -41,8 +41,6 @@
  
  #include "telnetd.h"
@@ -1024,8 +978,8 @@ Last-Update: 2015-01-26
      fatalperror(net, loginprg);
  }
  
---- netkit-telnet-0.17.orig/telnetd/telnetd.8
-+++ netkit-telnet-0.17/telnetd/telnetd.8
+--- a/telnetd/telnetd.8
++++ b/telnetd/telnetd.8
 @@ -161,7 +161,7 @@
  .It Fl L Ar loginprg
  This option may be used to specify a different login program.
@@ -1051,8 +1005,8 @@ Last-Update: 2015-01-26
  .Sh BUGS
  Some
  .Tn TELNET
---- netkit-telnet-0.17.orig/telnetd/telnetd.c
-+++ netkit-telnet-0.17/telnetd/telnetd.c
+--- a/telnetd/telnetd.c
++++ b/telnetd/telnetd.c
 @@ -43,12 +43,16 @@
  
  #include "../version.h"
@@ -1457,8 +1411,8 @@ Last-Update: 2015-01-26
  	    netflush();
  	if (ncc > 0)
  	    telrcv();
---- netkit-telnet-0.17.orig/telnetd/utility.c
-+++ netkit-telnet-0.17/telnetd/utility.c
+--- a/telnetd/utility.c
++++ b/telnetd/utility.c
 @@ -41,6 +41,7 @@
  
  #include <stdarg.h>
@@ -2072,8 +2026,8 @@ Last-Update: 2015-01-26
 +	}
 +	return listlen != 1 ? listlen : tail->len - skip;
 +}
---- netkit-telnet-0.17.orig/telnetlogin/telnetlogin.8
-+++ netkit-telnet-0.17/telnetlogin/telnetlogin.8
+--- a/telnetlogin/telnetlogin.8
++++ b/telnetlogin/telnetlogin.8
 @@ -40,6 +40,7 @@
  .Nm telnetlogin
  .Op Fl h Ar host
@@ -2103,8 +2057,8 @@ Last-Update: 2015-01-26
  work with telnetds that perform authentication via Kerberos or SSL.
  .Pp
  THIS IS PRESENTLY EXPERIMENTAL CODE; USE WITH CAUTION.
---- netkit-telnet-0.17.orig/telnetlogin/telnetlogin.c
-+++ netkit-telnet-0.17/telnetlogin/telnetlogin.c
+--- a/telnetlogin/telnetlogin.c
++++ b/telnetlogin/telnetlogin.c
 @@ -51,20 +51,24 @@
  #include <string.h>
  #include <stdarg.h>

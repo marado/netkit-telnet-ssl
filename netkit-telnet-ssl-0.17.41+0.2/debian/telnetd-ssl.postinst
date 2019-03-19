@@ -38,10 +38,10 @@ if  ! id -u telnetd-ssl >/dev/null 2>&1 ; then
 		;;
 	esac
     fi
-    if sg telnetd -c true >/dev/null 2>&1; then
+    if getent group telnetd > /dev/null ; then
 	groupdel telnetd 
     fi
-    if sg telnetd-ssl -c true >/dev/null 2>&1 ; then
+    if getent group telnetd-ssl > /dev/null ; then
 	adduser --quiet --no-create-home --disabled-password --system --ingroup telnetd-ssl --home /nonexistent  telnetd-ssl
     else
 	adduser --quiet --no-create-home --disabled-password --system --group --home /nonexistent telnetd-ssl

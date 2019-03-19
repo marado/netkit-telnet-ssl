@@ -12,9 +12,8 @@ Author: Christoph Martin, Tim Hudson, David A. Holland, Peter Tobias,
 Forwarded: no
 Last-Update: 2015-01-28
 
-diff -Naur netkit-telnet-0.17/__conftest.cc netkit-telnet-ssl-0.17.24+0.1.orig/__conftest.cc
---- netkit-telnet-0.17/__conftest.cc	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/__conftest.cc	2004-05-27 11:47:02.000000000 +0200
+--- /dev/null
++++ b/__conftest.cc
 @@ -0,0 +1,7 @@
 +#include <stdio.h>
 +int main() {
@@ -23,9 +22,8 @@ diff -Naur netkit-telnet-0.17/__conftest.cc netkit-telnet-ssl-0.17.24+0.1.orig/_
 +    return 0;
 +}
 +
-diff -Naur netkit-telnet-0.17/libtelnet/arpa/telnet.h netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/arpa/telnet.h
---- netkit-telnet-0.17/libtelnet/arpa/telnet.h	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/arpa/telnet.h	2004-05-27 11:47:25.000000000 +0200
+--- /dev/null
++++ b/libtelnet/arpa/telnet.h
 @@ -0,0 +1,332 @@
 +/*
 + * Copyright (c) 1983, 1993
@@ -359,9 +357,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/arpa/telnet.h netkit-telnet-ssl-0.17.24+
 +#define	ENCTYPE_NAME(x)		enctype_names[x]
 +
 +#endif /* !_TELNET_H_ */
-diff -Naur netkit-telnet-0.17/libtelnet/auth.c netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/auth.c
---- netkit-telnet-0.17/libtelnet/auth.c	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/auth.c	2004-05-27 11:47:25.000000000 +0200
+--- /dev/null
++++ b/libtelnet/auth.c
 @@ -0,0 +1,631 @@
 +/* 
 + * 30-Jun-95 tjh     applied the security patch from the CERT advisory
@@ -994,9 +991,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/auth.c netkit-telnet-ssl-0.17.24+0.1.ori
 +	*buf = '\0';
 +}
 +#endif
-diff -Naur netkit-telnet-0.17/libtelnet/authenc.c netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/authenc.c
---- netkit-telnet-0.17/libtelnet/authenc.c	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/authenc.c	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/libtelnet/authenc.c
 @@ -0,0 +1,116 @@
 +/*-
 + * Copyright (c) 1991 The Regents of the University of California.
@@ -1114,9 +1110,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/authenc.c netkit-telnet-ssl-0.17.24+0.1.
 +	return(res);
 +}
 +#endif
-diff -Naur netkit-telnet-0.17/libtelnet/auth.h netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/auth.h
---- netkit-telnet-0.17/libtelnet/auth.h	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/auth.h	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/libtelnet/auth.h
 @@ -0,0 +1,96 @@
 +/*-
 + * Copyright (c) 1991 The Regents of the University of California.
@@ -1214,9 +1209,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/auth.h netkit-telnet-ssl-0.17.24+0.1.ori
 +#endif
 +
 +#endif
-diff -Naur netkit-telnet-0.17/libtelnet/auth-proto.h netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/auth-proto.h
---- netkit-telnet-0.17/libtelnet/auth-proto.h	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/auth-proto.h	2004-05-27 11:47:25.000000000 +0200
+--- /dev/null
++++ b/libtelnet/auth-proto.h
 @@ -0,0 +1,130 @@
 +/*-
 + * Copyright (c) 1991 The Regents of the University of California.
@@ -1348,9 +1342,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/auth-proto.h netkit-telnet-ssl-0.17.24+0
 +#ifdef __cplusplus
 +}
 +#endif
-diff -Naur netkit-telnet-0.17/libtelnet/enc-proto.h netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/enc-proto.h
---- netkit-telnet-0.17/libtelnet/enc-proto.h	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/enc-proto.h	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/libtelnet/enc-proto.h
 @@ -0,0 +1,111 @@
 +/*-
 + * Copyright (c) 1991 The Regents of the University of California.
@@ -1463,9 +1456,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/enc-proto.h netkit-telnet-ssl-0.17.24+0.
 +void ofb64_printsub P((unsigned char *, int, unsigned char *, int));
 +
 +#endif
-diff -Naur netkit-telnet-0.17/libtelnet/encrypt.h netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/encrypt.h
---- netkit-telnet-0.17/libtelnet/encrypt.h	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/encrypt.h	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/libtelnet/encrypt.h
 @@ -0,0 +1,106 @@
 +/*-
 + * Copyright (c) 1991 The Regents of the University of California.
@@ -1573,32 +1565,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/encrypt.h netkit-telnet-ssl-0.17.24+0.1.
 +extern int (*decrypt_input) P((int));
 +extern void (*encrypt_output) P((unsigned char *, int));
 +#endif
-diff -Naur netkit-telnet-0.17/libtelnet/Makefile netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/Makefile
---- netkit-telnet-0.17/libtelnet/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/Makefile	2004-05-27 11:47:25.000000000 +0200
-@@ -0,0 +1,19 @@
-+include ../MCONFIG
-+include ../MRULES
-+
-+LIB=	telnet
-+
-+OBJS=	auth.o misc.o ssl.o sslapp.o
-+
-+CFLAGS += -DAUTHENTICATE -DUSE_SSL -I/usr/include/openssl -I.
-+
-+lib${LIB}.a: ${OBJS}
-+	echo building standard ${LIB} library 
-+	rm -f lib${LIB}.a 
-+	ar cq lib${LIB}.a ${OBJS}; \
-+	if [ -f /usr/bin/ranlib ]; then \
-+		ranlib lib${LIB}.a; \
-+	fi;
-+
-+clean:
-+	rm -f *.o lib${LIB}.a
-diff -Naur netkit-telnet-0.17/libtelnet/misc.c netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/misc.c
---- netkit-telnet-0.17/libtelnet/misc.c	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/misc.c	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/libtelnet/misc.c
 @@ -0,0 +1,113 @@
 +/*-
 + * Copyright (c) 1991 The Regents of the University of California.
@@ -1713,9 +1681,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/misc.c netkit-telnet-ssl-0.17.24+0.1.ori
 +		++data;
 +	}
 +}
-diff -Naur netkit-telnet-0.17/libtelnet/misc.h netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/misc.h
---- netkit-telnet-0.17/libtelnet/misc.h	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/misc.h	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/libtelnet/misc.h
 @@ -0,0 +1,42 @@
 +/*-
 + * Copyright (c) 1991 The Regents of the University of California.
@@ -1759,9 +1726,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/misc.h netkit-telnet-ssl-0.17.24+0.1.ori
 +extern int ReservedPort;
 +
 +#include "misc-proto.h"
-diff -Naur netkit-telnet-0.17/libtelnet/misc-proto.h netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/misc-proto.h
---- netkit-telnet-0.17/libtelnet/misc-proto.h	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/misc-proto.h	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/libtelnet/misc-proto.h
 @@ -0,0 +1,89 @@
 +/*-
 + * Copyright (c) 1991 The Regents of the University of California.
@@ -1852,9 +1818,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/misc-proto.h netkit-telnet-ssl-0.17.24+0
 +#endif
 +
 +#endif
-diff -Naur netkit-telnet-0.17/libtelnet/sslapp.c netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/sslapp.c
---- netkit-telnet-0.17/libtelnet/sslapp.c	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/sslapp.c	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/libtelnet/sslapp.c
 @@ -0,0 +1,196 @@
 +/* sslapp.c	- ssl application code */
 +
@@ -2052,9 +2017,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/sslapp.c netkit-telnet-ssl-0.17.24+0.1.o
 +
 +#endif /* USE_SSL */
 +
-diff -Naur netkit-telnet-0.17/libtelnet/sslapp.h netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/sslapp.h
---- netkit-telnet-0.17/libtelnet/sslapp.h	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/sslapp.h	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/libtelnet/sslapp.h
 @@ -0,0 +1,85 @@
 +/* sslapp.h	- ssl application code */
 +
@@ -2141,9 +2105,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/sslapp.h netkit-telnet-ssl-0.17.24+0.1.o
 +#endif /* USE_SSL */
 +
 +
-diff -Naur netkit-telnet-0.17/libtelnet/ssl.c netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/ssl.c
---- netkit-telnet-0.17/libtelnet/ssl.c	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/ssl.c	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/libtelnet/ssl.c
 @@ -0,0 +1,831 @@
 +#ifdef	USE_SSL
 +/* 
@@ -2976,9 +2939,8 @@ diff -Naur netkit-telnet-0.17/libtelnet/ssl.c netkit-telnet-ssl-0.17.24+0.1.orig
 +#endif /* USE_SSL */
 +
 +
-diff -Naur netkit-telnet-0.17/README.SSL netkit-telnet-ssl-0.17.24+0.1.orig/README.SSL
---- netkit-telnet-0.17/README.SSL	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/README.SSL	2004-05-27 11:47:25.000000000 +0200
+--- /dev/null
++++ b/README.SSL
 @@ -0,0 +1,77 @@
 +This is the telnet(d)-ssl package with encryption support.
 +
@@ -3057,9 +3019,8 @@ diff -Naur netkit-telnet-0.17/README.SSL netkit-telnet-ssl-0.17.24+0.1.orig/READ
 +Email to ssleay@cryptsoft.com will get both Eric Young and Tim Hudson 
 +if you are not sure which one of us a problem should be directed to.
 +
-diff -Naur netkit-telnet-0.17/telnet/commands.cc netkit-telnet-ssl-0.17.24+0.1.orig/telnet/commands.cc
---- netkit-telnet-0.17/telnet/commands.cc	2015-01-27 23:31:10.449546453 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/commands.cc	2004-05-27 11:47:26.000000000 +0200
+--- a/telnet/commands.cc
++++ b/telnet/commands.cc
 @@ -73,6 +73,11 @@
  #include "ptrarray.h"
  #include "netlink.h"
@@ -3220,9 +3181,8 @@ diff -Naur netkit-telnet-0.17/telnet/commands.cc netkit-telnet-ssl-0.17.24+0.1.o
      // BIND("encrypt", encrypthelp, encrypt_cmd);
  
      BIND("z", zhelp, suspend);
-diff -Naur netkit-telnet-0.17/telnet/externs.h netkit-telnet-ssl-0.17.24+0.1.orig/telnet/externs.h
---- netkit-telnet-0.17/telnet/externs.h	2015-01-27 23:31:10.461546453 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/externs.h	2004-05-27 11:47:26.000000000 +0200
+--- a/telnet/externs.h
++++ b/telnet/externs.h
 @@ -364,3 +364,8 @@
  void inputAvailable(void);
  
@@ -3232,9 +3192,8 @@ diff -Naur netkit-telnet-0.17/telnet/externs.h netkit-telnet-ssl-0.17.24+0.1.ori
 +#include <libtelnet/sslapp.h>
 +#endif /* USE_SSL */
 +
-diff -Naur netkit-telnet-0.17/telnet/glue2.cc netkit-telnet-ssl-0.17.24+0.1.orig/telnet/glue2.cc
---- netkit-telnet-0.17/telnet/glue2.cc	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/glue2.cc	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/telnet/glue2.cc
 @@ -0,0 +1,13 @@
 +#include "ring.h"
 +#include "glue.h"
@@ -3249,9 +3208,8 @@ diff -Naur netkit-telnet-0.17/telnet/glue2.cc netkit-telnet-ssl-0.17.24+0.1.orig
 +  printsub(direction, pointer, length);
 +}
 +
-diff -Naur netkit-telnet-0.17/telnet/glue.cc netkit-telnet-ssl-0.17.24+0.1.orig/telnet/glue.cc
---- netkit-telnet-0.17/telnet/glue.cc	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/glue.cc	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/telnet/glue.cc
 @@ -0,0 +1,20 @@
 +#include "ring.h"
 +#include "glue.h"
@@ -3273,15 +3231,13 @@ diff -Naur netkit-telnet-0.17/telnet/glue.cc netkit-telnet-ssl-0.17.24+0.1.orig/
 +extern "C" int telnet_spin() {
 +  return(-1);
 +}
-diff -Naur netkit-telnet-0.17/telnet/glue.h netkit-telnet-ssl-0.17.24+0.1.orig/telnet/glue.h
---- netkit-telnet-0.17/telnet/glue.h	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/glue.h	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/telnet/glue.h
 @@ -0,0 +1,2 @@
 +void printsub_h(int direction, unsigned char *pointer, int length);
 +int netflush_h(void);
-diff -Naur netkit-telnet-0.17/telnet/main.cc netkit-telnet-ssl-0.17.24+0.1.orig/telnet/main.cc
---- netkit-telnet-0.17/telnet/main.cc	2015-01-27 23:31:10.449546453 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/main.cc	2004-05-27 11:47:26.000000000 +0200
+--- a/telnet/main.cc
++++ b/telnet/main.cc
 @@ -55,6 +55,11 @@
  #include "defines.h"
  #include "proto.h"
@@ -3346,23 +3302,8 @@ diff -Naur netkit-telnet-0.17/telnet/main.cc netkit-telnet-ssl-0.17.24+0.1.orig/
  		if (argc > 1)
  			*argp++ = argv[1];	/* port */
  		*argp = 0;
-diff -Naur netkit-telnet-0.17/telnet/Makefile netkit-telnet-ssl-0.17.24+0.1.orig/telnet/Makefile
---- netkit-telnet-0.17/telnet/Makefile	2015-01-27 23:31:03.913546617 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/Makefile	2004-05-27 11:47:26.000000000 +0200
-@@ -22,8 +22,8 @@
- 	$(CXX) $(CXXFLAGS) -MM $(SRCS) >depend.mk
- 
- install: telnet
--	install -s -m$(BINMODE) telnet $(INSTALLROOT)$(BINDIR)
--	install -m$(MANMODE) telnet.1 $(INSTALLROOT)$(MANDIR)/man1
-+	install -s -m$(BINMODE) telnet $(INSTALLROOT)$(BINDIR)/telnet-ssl
-+	install -m$(MANMODE) telnet.1 $(INSTALLROOT)$(MANDIR)/man1/telnet-ssl.1
- 
- clean:
- 	rm -f *.o telnet
-diff -Naur netkit-telnet-0.17/telnet/netlink.cc netkit-telnet-ssl-0.17.24+0.1.orig/telnet/netlink.cc
---- netkit-telnet-0.17/telnet/netlink.cc	2015-01-27 23:31:10.449546453 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/netlink.cc	2004-05-27 11:47:26.000000000 +0200
+--- a/telnet/netlink.cc
++++ b/telnet/netlink.cc
 @@ -11,6 +11,7 @@
  #include "netlink.h"
  #include "proto.h"
@@ -3463,9 +3404,8 @@ diff -Naur netkit-telnet-0.17/telnet/netlink.cc netkit-telnet-ssl-0.17.24+0.1.or
  }
  
  int netlink::getfd() {
-diff -Naur netkit-telnet-0.17/telnet/README.SSL netkit-telnet-ssl-0.17.24+0.1.orig/telnet/README.SSL
---- netkit-telnet-0.17/telnet/README.SSL	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/README.SSL	2004-05-27 11:47:26.000000000 +0200
+--- /dev/null
++++ b/telnet/README.SSL
 @@ -0,0 +1,26 @@
 +/*
 + * The modifications to support SSLeay were done by Tim Hudson
@@ -3493,9 +3433,8 @@ diff -Naur netkit-telnet-0.17/telnet/README.SSL netkit-telnet-ssl-0.17.24+0.1.or
 +	AUTHENTICATE is defined).  It has four sub-commands,
 +	"status", "debug", "disable", "enable" and "help".
 +
-diff -Naur netkit-telnet-0.17/telnet/sys_bsd.cc netkit-telnet-ssl-0.17.24+0.1.orig/telnet/sys_bsd.cc
---- netkit-telnet-0.17/telnet/sys_bsd.cc	2015-01-27 23:31:03.925546616 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/sys_bsd.cc	2004-05-27 11:47:26.000000000 +0200
+--- a/telnet/sys_bsd.cc
++++ b/telnet/sys_bsd.cc
 @@ -173,8 +173,10 @@
  }
  
@@ -3538,9 +3477,8 @@ diff -Naur netkit-telnet-0.17/telnet/sys_bsd.cc netkit-telnet-ssl-0.17.24+0.1.or
  	/* hacks for systems without SO_OOBINLINE removed */
  
  	FD_CLR(net, &ibits);
-diff -Naur netkit-telnet-0.17/telnet/telnet.1 netkit-telnet-ssl-0.17.24+0.1.orig/telnet/telnet.1
---- netkit-telnet-0.17/telnet/telnet.1	2015-01-27 23:31:10.449546453 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/telnet.1	2004-05-27 11:47:26.000000000 +0200
+--- a/telnet/telnet.1
++++ b/telnet/telnet.1
 @@ -81,10 +81,16 @@
  .It Fl E
  Disables the escape character functionality; that is, sets the escape
@@ -3613,9 +3551,8 @@ diff -Naur netkit-telnet-0.17/telnet/telnet.1 netkit-telnet-ssl-0.17.24+0.1.orig
  .It Ar host
  Specifies a host to contact over the network.
  .It Ar port
-diff -Naur netkit-telnet-0.17/telnet/telnet.cc netkit-telnet-ssl-0.17.24+0.1.orig/telnet/telnet.cc
---- netkit-telnet-0.17/telnet/telnet.cc	2015-01-27 23:31:10.457546453 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/telnet.cc	2004-05-27 11:47:26.000000000 +0200
+--- a/telnet/telnet.cc
++++ b/telnet/telnet.cc
 @@ -1,4 +1,16 @@
  /*
 + * The modifications to support SSLeay were done by Tim Hudson
@@ -3790,9 +3727,8 @@ diff -Naur netkit-telnet-0.17/telnet/telnet.cc netkit-telnet-ssl-0.17.24+0.1.ori
      send_do(TELOPT_SGA, 1);
      send_will(TELOPT_TTYPE, 1);
      send_will(TELOPT_NAWS, 1);
-diff -Naur netkit-telnet-0.17/telnet/utilities.cc netkit-telnet-ssl-0.17.24+0.1.orig/telnet/utilities.cc
---- netkit-telnet-0.17/telnet/utilities.cc	2015-01-27 23:31:03.929546616 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnet/utilities.cc	2004-05-27 11:47:27.000000000 +0200
+--- a/telnet/utilities.cc
++++ b/telnet/utilities.cc
 @@ -56,6 +56,10 @@
  #include "proto.h"
  #include "terminal.h"
@@ -3887,9 +3823,8 @@ diff -Naur netkit-telnet-0.17/telnet/utilities.cc netkit-telnet-ssl-0.17.24+0.1.
  	case TELOPT_LINEMODE:
  	    fprintf(NetTrace, "LINEMODE ");
  	    if (length < 2) {
-diff -Naur netkit-telnet-0.17/telnetd/ext.h netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/ext.h
---- netkit-telnet-0.17/telnetd/ext.h	2015-01-27 23:31:10.457546453 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/ext.h	2004-05-27 11:47:27.000000000 +0200
+--- a/telnetd/ext.h
++++ b/telnetd/ext.h
 @@ -212,3 +212,12 @@
  } clocks;
  
@@ -3903,21 +3838,8 @@ diff -Naur netkit-telnet-0.17/telnetd/ext.h netkit-telnet-ssl-0.17.24+0.1.orig/t
 +extern int debug;
 +
 +#endif /* USE_SSL */
-diff -Naur netkit-telnet-0.17/telnetd/Makefile netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/Makefile
---- netkit-telnet-0.17/telnetd/Makefile	2015-01-27 23:31:03.929546616 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/Makefile	2004-05-27 11:47:27.000000000 +0200
-@@ -21,7 +21,7 @@
- # logout.o logwtmp.o (now from -lutil)
- 
- 
--telnetd: $(OBJS)
-+telnetd: $(OBJS) $(LIBTELNET)
- 	$(CC) $(LDFLAGS) $^ $(LIBS) -o $@
- 
- $(OBJS): defs.h ext.h pathnames.h telnetd.h logwtmp.h logout.h setproctitle.h
-diff -Naur netkit-telnet-0.17/telnetd/state.c netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/state.c
---- netkit-telnet-0.17/telnetd/state.c	2015-01-27 23:31:03.929546616 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/state.c	2004-05-27 11:47:27.000000000 +0200
+--- a/telnetd/state.c
++++ b/telnetd/state.c
 @@ -38,6 +38,9 @@
    "$Id: state.c,v 1.12 1999/12/12 19:41:44 dholland Exp $";
  
@@ -3928,9 +3850,8 @@ diff -Naur netkit-telnet-0.17/telnetd/state.c netkit-telnet-ssl-0.17.24+0.1.orig
  
  int not42 = 1;
  
-diff -Naur netkit-telnet-0.17/telnetd/sys_term.c netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/sys_term.c
---- netkit-telnet-0.17/telnetd/sys_term.c	2015-01-27 23:31:10.461546453 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/sys_term.c	2004-05-27 11:47:27.000000000 +0200
+--- a/telnetd/sys_term.c
++++ b/telnetd/sys_term.c
 @@ -58,6 +58,19 @@
  
  static struct termios termbuf, termbuf2;	/* pty control structure */
@@ -3951,9 +3872,8 @@ diff -Naur netkit-telnet-0.17/telnetd/sys_term.c netkit-telnet-ssl-0.17.24+0.1.o
  /*static int cleanopen(char *line);*/
  
  /*
-diff -Naur netkit-telnet-0.17/telnetd/telnetd.8 netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.8
---- netkit-telnet-0.17/telnetd/telnetd.8	2015-01-27 23:31:10.461546453 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.8	2004-05-27 11:47:27.000000000 +0200
+--- a/telnetd/telnetd.8
++++ b/telnetd/telnetd.8
 @@ -207,6 +207,52 @@
  can be used to temporarily disable
  a specific authentication type without having to recompile
@@ -4007,9 +3927,8 @@ diff -Naur netkit-telnet-0.17/telnetd/telnetd.8 netkit-telnet-ssl-0.17.24+0.1.or
  .El
  .Pp
  If the file
-diff -Naur netkit-telnet-0.17/telnetd/telnetd.c netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.c
---- netkit-telnet-0.17/telnetd/telnetd.c	2015-01-27 23:31:03.929546616 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/telnetd.c	2004-05-27 11:47:27.000000000 +0200
+--- a/telnetd/telnetd.c
++++ b/telnetd/telnetd.c
 @@ -75,6 +75,10 @@
  static void doit(struct sockaddr *who, socklen_t who_len);
  static int terminaltypeok(const char *s);
@@ -4325,9 +4244,8 @@ diff -Naur netkit-telnet-0.17/telnetd/telnetd.c netkit-telnet-ssl-0.17.24+0.1.or
  	    ncc = read(net, netibuf, sizeof (netibuf));
  #endif	/* !defined(SO_OOBINLINE)) */
  	    if (ncc < 0 && errno == EWOULDBLOCK)
-diff -Naur netkit-telnet-0.17/telnetd/utility.c netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/utility.c
---- netkit-telnet-0.17/telnetd/utility.c	2015-01-27 23:31:03.941546616 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/telnetd/utility.c	2004-05-27 11:47:27.000000000 +0200
+--- a/telnetd/utility.c
++++ b/telnetd/utility.c
 @@ -63,6 +63,13 @@
  static int doclear;
  static struct buflist *urg;
@@ -4379,9 +4297,8 @@ diff -Naur netkit-telnet-0.17/telnetd/utility.c netkit-telnet-ssl-0.17.24+0.1.or
  		case 'h':
  			if (editedhost) {
  				putstr(editedhost);
-diff -Naur netkit-telnet-0.17/VERSION netkit-telnet-ssl-0.17.24+0.1.orig/VERSION
---- netkit-telnet-0.17/VERSION	1970-01-01 01:00:00.000000000 +0100
-+++ netkit-telnet-ssl-0.17.24+0.1.orig/VERSION	2004-05-27 11:47:25.000000000 +0200
+--- /dev/null
++++ b/VERSION
 @@ -0,0 +1,118 @@
 +Version 0.13 16-Sep-1997 tjh (tjh@cryptsoft.com)
 +	- CRLF on messages in sslapp.c

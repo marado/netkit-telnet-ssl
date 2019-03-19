@@ -41,19 +41,8 @@ Bug-Debian: http://bugs.debian.org/210749
 Forwarded: no
 Last-Update: 2004-12-05
 
---- netkit-telnet-ssl-0.17.24+0.1.orig/Makefile
-+++ netkit-telnet-ssl-0.17.24+0.1/Makefile
-@@ -1,7 +1,7 @@
- # You can do "make SUB=blah" to make only a few, or edit here, or both
- # You can also run make directly in the subdirs you want.
- 
--SUB =   telnet telnetd telnetlogin
-+SUB =   libtelnet telnet telnetd telnetlogin
- 
- %.build:
- 	(cd $(patsubst %.build, %, $@) && $(MAKE))
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetlogin/telnetlogin.8
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetlogin/telnetlogin.8
+--- a/telnetlogin/telnetlogin.8
++++ b/telnetlogin/telnetlogin.8
 @@ -28,7 +28,7 @@
  .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  .\" SUCH DAMAGE.
@@ -83,8 +72,8 @@ Last-Update: 2004-12-05
  .Pp
  THIS IS PRESENTLY EXPERIMENTAL CODE; USE WITH CAUTION.
  .Sh HISTORY
---- netkit-telnet-ssl-0.17.24+0.1.orig/telnetlogin/telnetlogin.c
-+++ netkit-telnet-ssl-0.17.24+0.1/telnetlogin/telnetlogin.c
+--- a/telnetlogin/telnetlogin.c
++++ b/telnetlogin/telnetlogin.c
 @@ -35,7 +35,7 @@
   "All rights reserved.\n";
  
@@ -125,8 +114,8 @@ Last-Update: 2004-12-05
     if (argn < argc && argv[argn][0] != '-') {
        argn++;
     }
---- netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/auth-proto.h
-+++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/auth-proto.h
+--- a/libtelnet/auth-proto.h
++++ b/libtelnet/auth-proto.h
 @@ -123,7 +123,9 @@
  int auth_ssl_status P((Authenticator *, char *, int));
  void auth_ssl_printsub P((unsigned char *, int, unsigned char *, int));
@@ -138,8 +127,8 @@ Last-Update: 2004-12-05
  #endif
  #ifdef __cplusplus
  }
---- netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/auth.c
-+++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/auth.c
+--- a/libtelnet/auth.c
++++ b/libtelnet/auth.c
 @@ -37,6 +37,9 @@
   */
  
@@ -206,8 +195,8 @@ Last-Update: 2004-12-05
  	static void
  auth_intr(sig)
  	int sig;
---- netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/misc.c
-+++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/misc.c
+--- a/libtelnet/misc.c
++++ b/libtelnet/misc.c
 @@ -32,6 +32,9 @@
   */
  
@@ -231,8 +220,8 @@ Last-Update: 2004-12-05
  
  char *RemoteHostName;
  char *LocalHostName;
---- netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/ssl.c
-+++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/ssl.c
+--- a/libtelnet/ssl.c
++++ b/libtelnet/ssl.c
 @@ -47,6 +47,9 @@
  #include <string.h>
  #endif
@@ -543,8 +532,8 @@ Last-Update: 2004-12-05
      return ok;
  }
  
---- netkit-telnet-ssl-0.17.24+0.1.orig/libtelnet/sslapp.h
-+++ netkit-telnet-ssl-0.17.24+0.1/libtelnet/sslapp.h
+--- a/libtelnet/sslapp.h
++++ b/libtelnet/sslapp.h
 @@ -45,6 +45,7 @@
  #include "x509.h"
  #include "ssl.h"
