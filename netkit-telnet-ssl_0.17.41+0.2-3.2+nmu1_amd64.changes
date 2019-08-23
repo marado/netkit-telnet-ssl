@@ -1,0 +1,43 @@
+Format: 1.8
+Date: Tue, 19 Mar 2019 11:23:05 +0100
+Source: netkit-telnet-ssl
+Binary: telnet-ssl telnet-ssl-dbgsym telnetd-ssl telnetd-ssl-dbgsym
+Architecture: source amd64
+Version: 0.17.41+0.2-3.2+nmu1
+Distribution: unstable
+Urgency: low
+Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
+Changed-By: Marcos Marado <mindboosternoori@gmail.com>
+Description:
+ telnet-ssl - telnet client with SSL encryption support
+ telnetd-ssl - telnet server with SSL encryption support
+Closes: 749322
+Changes:
+ netkit-telnet-ssl (0.17.41+0.2-3.2+nmu1) unstable; urgency=low
+ .
+   * Non-maintainer upload.
+   * Fixing how we handle UTF8 characters (Closes: #749322)
+Checksums-Sha1:
+ f7bd942fecd4116d0ad8969ded04517a5634e0c4 1088 netkit-telnet-ssl_0.17.41+0.2-3.2+nmu1.dsc
+ 3da192e5887922d483fd7cc8f4262b5ae336919d 87792 netkit-telnet-ssl_0.17.41+0.2-3.2+nmu1.debian.tar.xz
+ 6d0c64bce8dee330b4aff48add390c5954f7e758 7179 netkit-telnet-ssl_0.17.41+0.2-3.2+nmu1_amd64.buildinfo
+ b4c0b0c2e21c1923ef6575fbbe929e412da7a332 196148 telnet-ssl-dbgsym_0.17.41+0.2-3.2+nmu1_amd64.deb
+ 0349480f7f56ff74e7c8974c99b0f9ea63ce0cfa 93944 telnet-ssl_0.17.41+0.2-3.2+nmu1_amd64.deb
+ a86b730d93df44a4ba955c73377214d0a0d2be5f 104800 telnetd-ssl-dbgsym_0.17.41+0.2-3.2+nmu1_amd64.deb
+ 512c58947b6a4cfd0e0f0e471c077839262d30be 68464 telnetd-ssl_0.17.41+0.2-3.2+nmu1_amd64.deb
+Checksums-Sha256:
+ b168e4644f5f4037f870d054012d59c68c8b4942f71e6c4f275d5c001eb29d36 1088 netkit-telnet-ssl_0.17.41+0.2-3.2+nmu1.dsc
+ 2563a64efc832d11168ce0588360f9bf80e2c22b29bcc03a193556d4b335a36e 87792 netkit-telnet-ssl_0.17.41+0.2-3.2+nmu1.debian.tar.xz
+ 8ea86e72fb81fc10468edc33ca24867c9fc3fd2fe45610c8a727cd7d339a5153 7179 netkit-telnet-ssl_0.17.41+0.2-3.2+nmu1_amd64.buildinfo
+ fa58e1737b96a5c59960c1894eb4b8168578b1a66ee2286c4d88e5d06ca8393e 196148 telnet-ssl-dbgsym_0.17.41+0.2-3.2+nmu1_amd64.deb
+ 50e1823ad4c75bade52f25df87438f73d86ffc2f4edd04885d67cdd37b25d062 93944 telnet-ssl_0.17.41+0.2-3.2+nmu1_amd64.deb
+ 9b26df1d0909619d7fc701ecb531f4bf35163aa596169ebc65d86f264fabcc96 104800 telnetd-ssl-dbgsym_0.17.41+0.2-3.2+nmu1_amd64.deb
+ d808411e29ccac42be26829cd74b51240991170710665f2ea6084b05c1480f88 68464 telnetd-ssl_0.17.41+0.2-3.2+nmu1_amd64.deb
+Files:
+ 2d7f7f26282b6c8dd5a41444f8cbc384 1088 net extra netkit-telnet-ssl_0.17.41+0.2-3.2+nmu1.dsc
+ 233007815fc5b5f03eb68a4d6a6ce6e4 87792 net extra netkit-telnet-ssl_0.17.41+0.2-3.2+nmu1.debian.tar.xz
+ 48cc8c35deb41511e058b7f91f3b8a57 7179 net extra netkit-telnet-ssl_0.17.41+0.2-3.2+nmu1_amd64.buildinfo
+ 60720b01741da8651f7141e9025a1cb3 196148 debug optional telnet-ssl-dbgsym_0.17.41+0.2-3.2+nmu1_amd64.deb
+ fbdf1f771008a312773299020d6e14cb 93944 net extra telnet-ssl_0.17.41+0.2-3.2+nmu1_amd64.deb
+ d36e21b3a372fdd2a43cb0e13bed93ae 104800 debug optional telnetd-ssl-dbgsym_0.17.41+0.2-3.2+nmu1_amd64.deb
+ 66da2d5d918366ab3e684857d6a3289f 68464 net extra telnetd-ssl_0.17.41+0.2-3.2+nmu1_amd64.deb
