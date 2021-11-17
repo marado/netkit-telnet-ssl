@@ -1,0 +1,37 @@
+Format: 1.8
+Date: Wed, 17 Nov 2021 13:08:08 +0000
+Source: netkit-telnet-ssl
+Binary: telnet-ssl telnetd-ssl
+Architecture: amd64
+Version: 0.17.41+0.2-3.3+nmu1
+Distribution: unstable
+Urgency: low
+Maintainer: Mats Erik Andersson <mats.andersson@gisladisker.se>
+Changed-By: Marcos Marado <mindboosternoori@gmail.com>
+Description:
+ telnet-ssl - telnet client with SSL encryption support
+ telnetd-ssl - telnet server with SSL encryption support
+Closes: 749322
+Changes:
+ netkit-telnet-ssl (0.17.41+0.2-3.3+nmu1) unstable; urgency=low
+ .
+   * Non-maintainer upload.
+   * Fixing how we handle UTF8 characters (Closes: #749322)
+Checksums-Sha1:
+ 1cdf18f29c71274fb6a720b6b054e6479a91a386 8071 netkit-telnet-ssl_0.17.41+0.2-3.3+nmu1_amd64.buildinfo
+ 927238299bd80af2bd8772c88cf09a4a67fdf5fa 196256 telnet-ssl-dbgsym_0.17.41+0.2-3.3+nmu1_amd64.ddeb
+ 05c3e638a8f47506fc16d552b035bf2304e265ee 91076 telnet-ssl_0.17.41+0.2-3.3+nmu1_amd64.deb
+ 346b20f93c6ad3285ee6a2fcd3567f4da9f1a8e6 106492 telnetd-ssl-dbgsym_0.17.41+0.2-3.3+nmu1_amd64.ddeb
+ 151a356eec9696ec20b6eba82379efc889be212d 66180 telnetd-ssl_0.17.41+0.2-3.3+nmu1_amd64.deb
+Checksums-Sha256:
+ abbe740bca799a5a32020430be62bea1a8db4619f0b1b3fb6ea5891abdd6f84e 8071 netkit-telnet-ssl_0.17.41+0.2-3.3+nmu1_amd64.buildinfo
+ 7f49c9832eb855141d8c252a431d4a6e6ae55705df9218982463eac541586881 196256 telnet-ssl-dbgsym_0.17.41+0.2-3.3+nmu1_amd64.ddeb
+ 99edf355e3b7480764f983895203dd6d0542d4a11a1a65cefe8631c366887019 91076 telnet-ssl_0.17.41+0.2-3.3+nmu1_amd64.deb
+ 5893f172152775340cb375cacd172ce4607650308eec987b9cad575070add3e4 106492 telnetd-ssl-dbgsym_0.17.41+0.2-3.3+nmu1_amd64.ddeb
+ 4aa5e77d770e37887dd821fc75c766285580effa931928f775773d7375a8ffb8 66180 telnetd-ssl_0.17.41+0.2-3.3+nmu1_amd64.deb
+Files:
+ dcc1030260abab112ec07fff52ae99b3 8071 net extra netkit-telnet-ssl_0.17.41+0.2-3.3+nmu1_amd64.buildinfo
+ dbf867572918ad98f83dd72adb627cf9 196256 debug optional telnet-ssl-dbgsym_0.17.41+0.2-3.3+nmu1_amd64.ddeb
+ 69012c5c198e0af83965eadc8c4f5e0b 91076 net extra telnet-ssl_0.17.41+0.2-3.3+nmu1_amd64.deb
+ 9e65f62c9289db47fea6a191b9624506 106492 debug optional telnetd-ssl-dbgsym_0.17.41+0.2-3.3+nmu1_amd64.ddeb
+ c8d69e6797d38b54590e7868b53c4f14 66180 net extra telnetd-ssl_0.17.41+0.2-3.3+nmu1_amd64.deb
