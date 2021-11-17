@@ -30,7 +30,7 @@ Last-Update: 2019-02-24
 +    -Wno-trigraphs \
 +")
 +
-+find_library(USE_TERMCAP lncurses REQUIRED)
++find_library(USE_TERMCAP ncurses REQUIRED)
 +
 +add_subdirectory(telnet)
 +add_subdirectory(telnetd)

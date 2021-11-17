@@ -1,10 +1,20 @@
-netkit-telnet-ssl (0.17.41+0.2-3.2+nmu1) unstable; urgency=low
+netkit-telnet-ssl (0.17.41+0.2-3.3+nmu1) unstable; urgency=low
 
   * Non-maintainer upload.
   * Fixing how we handle UTF8 characters (Closes: #749322)
-  * Change default_bits from 1K to 2K (Closes: #920371)
 
- -- Marcos Marado <mindboosternoori@gmail.com>  Sat, 28 Mar 2020 17:36:15 +0000
+ -- Marcos Marado <mindboosternoori@gmail.com>  Wed, 17 Nov 2021 13:08:08 +0000
+
+netkit-telnet-ssl (0.17.41+0.2-3.3) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Fix FTBFS with cmake 3.18.
+  * debian/openssl.cnf: default_bits 1024 -> 4096
+    Thanks to Marcos Marado.(Closes: #920371)
+  * Remove the alternative build dependency on libssl1.0-dev.
+    (Closes: #917349)
+
+ -- Adrian Bunk <bunk@debian.org>  Fri, 05 Feb 2021 15:19:51 +0200
 
 netkit-telnet-ssl (0.17.41+0.2-3.2) unstable; urgency=high
 

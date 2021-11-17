@@ -10,23 +10,19 @@ set(USE_GLIBC 1)
 set(
     CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     -D_GNU_SOURCE \
-    -Ddebian \
     -DACCEPT_USERVAR \
-    -DSSL_LOG_FILE='\"/var/tmp/telnetd.log\"' \
     -Wall \
     -Wno-trigraphs \
 ")
 set(
     CMAKE_C_FLAGS "${CMAKE_C_FLAGS} \
     -D_GNU_SOURCE \
-    -Ddebian \
     -DACCEPT_USERVAR \
-    -DSSL_LOG_FILE='\"/var/tmp/telnetd.log\"' \
     -Wall \
     -Wno-trigraphs \
 ")
 
-find_library(USE_TERMCAP lncurses REQUIRED)
+find_library(USE_TERMCAP ncurses REQUIRED)
 
 add_subdirectory(telnet)
 add_subdirectory(telnetd)

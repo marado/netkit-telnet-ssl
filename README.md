@@ -6,4 +6,3 @@ bugfixes that weren't accepted into Debian's official package yet.
 
 ## List of bugs fixed
 * https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=749322
-* https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=920371
