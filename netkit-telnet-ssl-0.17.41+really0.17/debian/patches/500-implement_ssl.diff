@@ -1,0 +1,4420 @@
+Description: Step up from netkit-telnet_0.17-24.
+ Compute original SSL patch between sources
+ .
+   netkit-telnet_0.17-24.dsc
+ .
+   netkit-telnet-ssl_0.17.24+0.1.orig.tar.gz
+ .
+ This will be pruned to follow netkit-telnet packaging.
+
+Author: Christoph Martin, Tim Hudson, David A. Holland, Peter Tobias,
+ Eric P. Allman
+Forwarded: no
+Last-Update: 2015-01-28
+
+--- /dev/null
++++ b/__conftest.cc
+@@ -0,0 +1,7 @@
++#include <stdio.h>
++int main() {
++    void *x = (void *)snprintf;
++    printf("%lx", (long)x);
++    return 0;
++}
++
+--- /dev/null
++++ b/libtelnet/arpa/telnet.h
+@@ -0,0 +1,332 @@
++/*
++ * Copyright (c) 1983, 1993
++ *	The Regents of the University of California.  All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by the University of
++ *	California, Berkeley and its contributors.
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ *	@(#)telnet.h	8.2 (Berkeley) 12/15/93
++ */
++
++#ifndef _TELNET_H_
++#define	_TELNET_H_
++
++/*
++ * Definitions for the TELNET protocol.
++ */
++#define	IAC	255		/* interpret as command: */
++#define	DONT	254		/* you are not to use option */
++#define	DO	253		/* please, you use option */
++#define	WONT	252		/* I won't use option */
++#define	WILL	251		/* I will use option */
++#define	SB	250		/* interpret as subnegotiation */
++#define	GA	249		/* you may reverse the line */
++#define	EL	248		/* erase the current line */
++#define	EC	247		/* erase the current character */
++#define	AYT	246		/* are you there */
++#define	AO	245		/* abort output--but let prog finish */
++#define	IP	244		/* interrupt process--permanently */
++#define	BREAK	243		/* break */
++#define	DM	242		/* data mark--for connect. cleaning */
++#define	NOP	241		/* nop */
++#define	SE	240		/* end sub negotiation */
++#define EOR     239             /* end of record (transparent mode) */
++#define	ABORT	238		/* Abort process */
++#define	SUSP	237		/* Suspend process */
++#define	xEOF	236		/* End of file: EOF is already used... */
++
++#define SYNCH	242		/* for telfunc calls */
++
++#ifdef TELCMDS
++char *telcmds[] = {
++	"EOF", "SUSP", "ABORT", "EOR",
++	"SE", "NOP", "DMARK", "BRK", "IP", "AO", "AYT", "EC",
++	"EL", "GA", "SB", "WILL", "WONT", "DO", "DONT", "IAC", 0,
++};
++#else
++extern char *telcmds[];
++#endif
++
++#define	TELCMD_FIRST	xEOF
++#define	TELCMD_LAST	IAC
++#define	TELCMD_OK(x)	((unsigned int)(x) <= TELCMD_LAST && \
++			 (unsigned int)(x) >= TELCMD_FIRST)
++#define	TELCMD(x)	telcmds[(x)-TELCMD_FIRST]
++
++/* telnet options */
++#define TELOPT_BINARY	0	/* 8-bit data path */
++#define TELOPT_ECHO	1	/* echo */
++#define	TELOPT_RCP	2	/* prepare to reconnect */
++#define	TELOPT_SGA	3	/* suppress go ahead */
++#define	TELOPT_NAMS	4	/* approximate message size */
++#define	TELOPT_STATUS	5	/* give status */
++#define	TELOPT_TM	6	/* timing mark */
++#define	TELOPT_RCTE	7	/* remote controlled transmission and echo */
++#define TELOPT_NAOL 	8	/* negotiate about output line width */
++#define TELOPT_NAOP 	9	/* negotiate about output page size */
++#define TELOPT_NAOCRD	10	/* negotiate about CR disposition */
++#define TELOPT_NAOHTS	11	/* negotiate about horizontal tabstops */
++#define TELOPT_NAOHTD	12	/* negotiate about horizontal tab disposition */
++#define TELOPT_NAOFFD	13	/* negotiate about formfeed disposition */
++#define TELOPT_NAOVTS	14	/* negotiate about vertical tab stops */
++#define TELOPT_NAOVTD	15	/* negotiate about vertical tab disposition */
++#define TELOPT_NAOLFD	16	/* negotiate about output LF disposition */
++#define TELOPT_XASCII	17	/* extended ascii character set */
++#define	TELOPT_LOGOUT	18	/* force logout */
++#define	TELOPT_BM	19	/* byte macro */
++#define	TELOPT_DET	20	/* data entry terminal */
++#define	TELOPT_SUPDUP	21	/* supdup protocol */
++#define	TELOPT_SUPDUPOUTPUT 22	/* supdup output */
++#define	TELOPT_SNDLOC	23	/* send location */
++#define	TELOPT_TTYPE	24	/* terminal type */
++#define	TELOPT_EOR	25	/* end or record */
++#define	TELOPT_TUID	26	/* TACACS user identification */
++#define	TELOPT_OUTMRK	27	/* output marking */
++#define	TELOPT_TTYLOC	28	/* terminal location number */
++#define	TELOPT_3270REGIME 29	/* 3270 regime */
++#define	TELOPT_X3PAD	30	/* X.3 PAD */
++#define	TELOPT_NAWS	31	/* window size */
++#define	TELOPT_TSPEED	32	/* terminal speed */
++#define	TELOPT_LFLOW	33	/* remote flow control */
++#define TELOPT_LINEMODE	34	/* Linemode option */
++#define TELOPT_XDISPLOC	35	/* X Display Location */
++#define TELOPT_OLD_ENVIRON 36	/* Old - Environment variables */
++#define	TELOPT_AUTHENTICATION 37/* Authenticate */
++#define	TELOPT_ENCRYPT	38	/* Encryption option */
++#define TELOPT_NEW_ENVIRON 39	/* New - Environment variables */
++#define	TELOPT_EXOPL	255	/* extended-options-list */
++
++
++#define	NTELOPTS	(1+TELOPT_NEW_ENVIRON)
++#ifdef TELOPTS
++char *telopts[NTELOPTS+1] = {
++	"BINARY", "ECHO", "RCP", "SUPPRESS GO AHEAD", "NAME",
++	"STATUS", "TIMING MARK", "RCTE", "NAOL", "NAOP",
++	"NAOCRD", "NAOHTS", "NAOHTD", "NAOFFD", "NAOVTS",
++	"NAOVTD", "NAOLFD", "EXTEND ASCII", "LOGOUT", "BYTE MACRO",
++	"DATA ENTRY TERMINAL", "SUPDUP", "SUPDUP OUTPUT",
++	"SEND LOCATION", "TERMINAL TYPE", "END OF RECORD",
++	"TACACS UID", "OUTPUT MARKING", "TTYLOC",
++	"3270 REGIME", "X.3 PAD", "NAWS", "TSPEED", "LFLOW",
++	"LINEMODE", "XDISPLOC", "OLD-ENVIRON", "AUTHENTICATION",
++	"ENCRYPT", "NEW-ENVIRON",
++	0,
++};
++#define	TELOPT_FIRST	TELOPT_BINARY
++#define	TELOPT_LAST	TELOPT_NEW_ENVIRON
++#define	TELOPT_OK(x)	((unsigned int)(x) <= TELOPT_LAST)
++#define	TELOPT(x)	telopts[(x)-TELOPT_FIRST]
++#endif
++
++/* sub-option qualifiers */
++#define	TELQUAL_IS	0	/* option is... */
++#define	TELQUAL_SEND	1	/* send option */
++#define	TELQUAL_INFO	2	/* ENVIRON: informational version of IS */
++#define	TELQUAL_REPLY	2	/* AUTHENTICATION: client version of IS */
++#define	TELQUAL_NAME	3	/* AUTHENTICATION: client version of IS */
++
++#define	LFLOW_OFF		0	/* Disable remote flow control */
++#define	LFLOW_ON		1	/* Enable remote flow control */
++#define	LFLOW_RESTART_ANY	2	/* Restart output on any char */
++#define	LFLOW_RESTART_XON	3	/* Restart output only on XON */
++
++/*
++ * LINEMODE suboptions
++ */
++
++#define	LM_MODE		1
++#define	LM_FORWARDMASK	2
++#define	LM_SLC		3
++
++#define	MODE_EDIT	0x01
++#define	MODE_TRAPSIG	0x02
++#define	MODE_ACK	0x04
++#define MODE_SOFT_TAB	0x08
++#define MODE_LIT_ECHO	0x10
++
++#define	MODE_MASK	0x1f
++
++/* Not part of protocol, but needed to simplify things... */
++#define MODE_FLOW		0x0100
++#define MODE_ECHO		0x0200
++#define MODE_INBIN		0x0400
++#define MODE_OUTBIN		0x0800
++#define MODE_FORCE		0x1000
++
++#define	SLC_SYNCH	1
++#define	SLC_BRK		2
++#define	SLC_IP		3
++#define	SLC_AO		4
++#define	SLC_AYT		5
++#define	SLC_EOR		6
++#define	SLC_ABORT	7
++#define	SLC_EOF		8
++#define	SLC_SUSP	9
++#define	SLC_EC		10
++#define	SLC_EL		11
++#define	SLC_EW		12
++#define	SLC_RP		13
++#define	SLC_LNEXT	14
++#define	SLC_XON		15
++#define	SLC_XOFF	16
++#define	SLC_FORW1	17
++#define	SLC_FORW2	18
++
++#define	NSLC		18
++
++/*
++ * For backwards compatibility, we define SLC_NAMES to be the
++ * list of names if SLC_NAMES is not defined.
++ */
++#define	SLC_NAMELIST	"0", "SYNCH", "BRK", "IP", "AO", "AYT", "EOR", \
++			"ABORT", "EOF", "SUSP", "EC", "EL", "EW", "RP", \
++			"LNEXT", "XON", "XOFF", "FORW1", "FORW2", 0,
++#ifdef	SLC_NAMES
++char *slc_names[] = {
++	SLC_NAMELIST
++};
++#else
++extern char *slc_names[];
++#define	SLC_NAMES SLC_NAMELIST
++#endif
++
++#define	SLC_NAME_OK(x)	((unsigned int)(x) <= NSLC)
++#define SLC_NAME(x)	slc_names[x]
++
++#define	SLC_NOSUPPORT	0
++#define	SLC_CANTCHANGE	1
++#define	SLC_VARIABLE	2
++#define	SLC_DEFAULT	3
++#define	SLC_LEVELBITS	0x03
++
++#define	SLC_FUNC	0
++#define	SLC_FLAGS	1
++#define	SLC_VALUE	2
++
++#define	SLC_ACK		0x80
++#define	SLC_FLUSHIN	0x40
++#define	SLC_FLUSHOUT	0x20
++
++#define	OLD_ENV_VAR	1
++#define	OLD_ENV_VALUE	0
++#define	NEW_ENV_VAR	0
++#define	NEW_ENV_VALUE	1
++#define	ENV_ESC		2
++#define ENV_USERVAR	3
++
++/*
++ * AUTHENTICATION suboptions
++ */
++
++/*
++ * Who is authenticating who ...
++ */
++#define	AUTH_WHO_CLIENT		0	/* Client authenticating server */
++#define	AUTH_WHO_SERVER		1	/* Server authenticating client */
++#define	AUTH_WHO_MASK		1
++
++/*
++ * amount of authentication done
++ */
++#define	AUTH_HOW_ONE_WAY	0
++#define	AUTH_HOW_MUTUAL		2
++#define	AUTH_HOW_MASK		2
++
++#define	AUTHTYPE_NULL		0
++#define	AUTHTYPE_KERBEROS_V4	1
++#define	AUTHTYPE_KERBEROS_V5	2
++#define	AUTHTYPE_SPX		3
++#define	AUTHTYPE_MINK		4
++#define	AUTHTYPE_CNT		5
++#define AUTHTYPE_SRA		6
++
++#ifdef USE_SSL
++#define AUTHTYPE_SSL		7
++#define N_AUTHTYPE              8
++#else /* !USE_SSL */
++#define N_AUTHTYPE              7
++#endif /* USE_SSL */
++
++#define	AUTHTYPE_TEST		99
++
++#ifdef	AUTH_NAMES
++char *authtype_names[] = {
++	"NULL", "KERBEROS_V4", "KERBEROS_V5", "SPX", "MINK", "CNT", "SRA",
++#ifdef USE_SSL
++	"SSL"
++#endif
++	, 0,
++};
++#else
++extern char *authtype_names[];
++#endif
++
++#define	AUTHTYPE_NAME_OK(x)	((unsigned int)(x) < AUTHTYPE_CNT)
++#define	AUTHTYPE_NAME(x)	authtype_names[x]
++
++/*
++ * ENCRYPTion suboptions
++ */
++#define	ENCRYPT_IS		0	/* I pick encryption type ... */
++#define	ENCRYPT_SUPPORT		1	/* I support encryption types ... */
++#define	ENCRYPT_REPLY		2	/* Initial setup response */
++#define	ENCRYPT_START		3	/* Am starting to send encrypted */
++#define	ENCRYPT_END		4	/* Am ending encrypted */
++#define	ENCRYPT_REQSTART	5	/* Request you start encrypting */
++#define	ENCRYPT_REQEND		6	/* Request you send encrypting */
++#define	ENCRYPT_ENC_KEYID	7
++#define	ENCRYPT_DEC_KEYID	8
++#define	ENCRYPT_CNT		9
++
++#define	ENCTYPE_ANY		0
++#define	ENCTYPE_DES_CFB64	1
++#define	ENCTYPE_DES_OFB64	2
++#define	ENCTYPE_CNT		3
++
++#ifdef	ENCRYPT_NAMES
++char *encrypt_names[] = {
++	"IS", "SUPPORT", "REPLY", "START", "END",
++	"REQUEST-START", "REQUEST-END", "ENC-KEYID", "DEC-KEYID",
++	0,
++};
++char *enctype_names[] = {
++	"ANY", "DES_CFB64",  "DES_OFB64",  0,
++};
++#else
++extern char *encrypt_names[];
++extern char *enctype_names[];
++#endif
++
++
++#define	ENCRYPT_NAME_OK(x)	((unsigned int)(x) < ENCRYPT_CNT)
++#define	ENCRYPT_NAME(x)		encrypt_names[x]
++
++#define	ENCTYPE_NAME_OK(x)	((unsigned int)(x) < ENCTYPE_CNT)
++#define	ENCTYPE_NAME(x)		enctype_names[x]
++
++#endif /* !_TELNET_H_ */
+--- /dev/null
++++ b/libtelnet/auth.c
+@@ -0,0 +1,631 @@
++/* 
++ * 30-Jun-95 tjh     applied the security patch from the CERT advisory
++ * ................. that I'd missed earlier 
++ */
++
++/*-
++ * Copyright (c) 1991 The Regents of the University of California.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by the University of
++ *	California, Berkeley and its contributors.
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ */
++
++#ifndef lint
++static char sccsid[] = "@(#)auth.c	5.2 (Berkeley) 3/22/91";
++#endif /* not lint */
++
++/*
++ * Copyright (C) 1990 by the Massachusetts Institute of Technology
++ *
++ * Export of this software from the United States of America is assumed
++ * to require a specific license from the United States Government.
++ * It is the responsibility of any person or organization contemplating
++ * export to obtain such a license before exporting.
++ *
++ * WITHIN THAT CONSTRAINT, permission to use, copy, modify, and
++ * distribute this software and its documentation for any purpose and
++ * without fee is hereby granted, provided that the above copyright
++ * notice appear in all copies and that both that copyright notice and
++ * this permission notice appear in supporting documentation, and that
++ * the name of M.I.T. not be used in advertising or publicity pertaining
++ * to distribution of the software without specific, written prior
++ * permission.  M.I.T. makes no representations about the suitability of
++ * this software for any purpose.  It is provided "as is" without express
++ * or implied warranty.
++ */
++
++
++#if	defined(AUTHENTICATE)
++#include <stdio.h>
++#include <sys/types.h>
++#include <signal.h>
++#define	AUTH_NAMES
++#include <arpa/telnet.h>
++#ifdef	__STDC__
++#include <stdlib.h>
++#endif
++#ifdef	NO_STRING_H
++#include <strings.h>
++#else
++#include <string.h>
++#endif
++
++#include "encrypt.h"
++#include "auth.h"
++#include "misc-proto.h"
++#include "auth-proto.h"
++
++#define	typemask(x)		(1<<((x)-1))
++
++int auth_debug_mode = 0;
++static 	char	*Name = "Noname";
++static	int	Server = 0;
++static	Authenticator	*authenticated = 0;
++static	int	authenticating = 0;
++static	int	validuser = 0;
++static	unsigned char	_auth_send_data[256];
++static	unsigned char	*auth_send_data;
++static	int	auth_send_cnt = 0;
++
++/*
++ * Authentication types supported.  Plese note that these are stored
++ * in priority order, i.e. try the first one first.
++ */
++Authenticator authenticators[] = {
++#ifdef USE_SSL
++	{ AUTHTYPE_SSL, AUTH_WHO_CLIENT|AUTH_HOW_ONE_WAY,
++				auth_ssl_init,
++				auth_ssl_send,
++				auth_ssl_is,
++				auth_ssl_reply,
++				auth_ssl_status,
++				auth_ssl_printsub },
++#endif /* USE_SSL */
++#ifdef SRA
++	{ AUTHTYPE_SRA, AUTH_WHO_CLIENT|AUTH_HOW_ONE_WAY,
++				sra_init,
++				sra_send,
++				sra_is,
++				sra_reply,
++				sra_status,
++				sra_printsub },
++#endif
++#ifdef	KRB5
++	{ AUTHTYPE_KERBEROS_V5, AUTH_WHO_CLIENT|AUTH_HOW_MUTUAL,
++				kerberos5_init,
++				kerberos5_send,
++				kerberos5_is,
++				kerberos5_reply,
++				kerberos5_status,
++				kerberos5_printsub },
++	{ AUTHTYPE_KERBEROS_V5, AUTH_WHO_CLIENT|AUTH_HOW_ONE_WAY,
++				kerberos5_init,
++				kerberos5_send,
++				kerberos5_is,
++				kerberos5_reply,
++				kerberos5_status,
++				kerberos5_printsub },
++#endif
++#ifdef	KRB4
++	{ AUTHTYPE_KERBEROS_V4, AUTH_WHO_CLIENT|AUTH_HOW_MUTUAL,
++				kerberos4_init,
++				kerberos4_send,
++				kerberos4_is,
++				kerberos4_reply,
++				kerberos4_status,
++				kerberos4_printsub },
++	{ AUTHTYPE_KERBEROS_V4, AUTH_WHO_CLIENT|AUTH_HOW_ONE_WAY,
++				kerberos4_init,
++				kerberos4_send,
++				kerberos4_is,
++				kerberos4_reply,
++				kerberos4_status,
++				kerberos4_printsub },
++#endif
++	{ 0, },
++};
++
++static Authenticator NoAuth = { 0 };
++
++static int	i_support = 0;
++static int	i_wont_support = 0;
++
++	Authenticator *
++findauthenticator(type, way)
++	int type;
++	int way;
++{
++	Authenticator *ap = authenticators;
++
++	while (ap->type && (ap->type != type || ap->way != way))
++		++ap;
++	return(ap->type ? ap : 0);
++}
++
++	void
++auth_init(name, server)
++	char *name;
++	int server;
++{
++	Authenticator *ap = authenticators;
++
++	Server = server;
++	Name = name;
++
++	i_support = 0;
++	authenticated = 0;
++	authenticating = 0;
++	while (ap->type) {
++		if (!ap->init || (*ap->init)(ap, server)) {
++			i_support |= typemask(ap->type);
++			if (auth_debug_mode)
++				printf(">>>%s: I support auth type %d %d\r\n",
++					Name,
++					ap->type, ap->way);
++		}
++		++ap;
++	}
++}
++
++	void
++auth_disable_name(name)
++	char *name;
++{
++	int x;
++	for (x = 0; x < N_AUTHTYPE; ++x) {
++		if (!strcasecmp(name, AUTHTYPE_NAME(x))) {
++			i_wont_support |= typemask(x);
++			break;
++		}
++	}
++}
++
++	int
++getauthmask(type, maskp)
++	char *type;
++	int *maskp;
++{
++	register int x;
++
++	if (!strcasecmp(type, AUTHTYPE_NAME(0))) {
++		*maskp = -1;
++		return(1);
++	}
++
++	for (x = 1; x < N_AUTHTYPE; ++x) {
++		if (!strcasecmp(type, AUTHTYPE_NAME(x))) {
++			*maskp = typemask(x);
++			return(1);
++		}
++	}
++	return(0);
++}
++
++	int
++auth_enable(const char *type, const char *a)
++{
++	return(auth_onoff(type, 1));
++}
++
++	int
++auth_disable(const char *type, const char *a)
++{
++	return(auth_onoff(type, 0));
++}
++
++	int
++auth_onoff(type, on)
++	char *type;
++	int on;
++{
++	int i, mask = -1;
++	Authenticator *ap;
++
++	if (!strcasecmp(type, "?") || !strcasecmp(type, "help")) {
++                printf("auth %s 'type'\n", on ? "enable" : "disable");
++		printf("Where 'type' is one of:\n");
++		printf("\t%s\n", AUTHTYPE_NAME(0));
++                mask = 0;
++                for (ap = authenticators; ap->type; ap++) {
++                        if ((mask & (i = typemask(ap->type))) != 0)
++                                continue;
++                        mask |= i;
++                        printf("\t%s\n", AUTHTYPE_NAME(ap->type));
++		}
++		return(0);
++	}
++
++	if (!getauthmask(type, &mask)) {
++		printf("%s: invalid authentication type\n", type);
++		return(0);
++	}
++	if (on)
++		i_wont_support &= ~mask;
++	else
++		i_wont_support |= mask;
++	return(1);
++}
++
++	int
++auth_togdebug(on)
++	int on;
++{
++	if (on < 0)
++		auth_debug_mode ^= 1;
++	else
++		auth_debug_mode = on;
++	printf("auth debugging %s\n", auth_debug_mode ? "enabled" : "disabled");
++	return(1);
++}
++
++	int
++auth_status(const char *type, const char *a)
++{
++	Authenticator *ap;
++	int i, mask;
++
++	if (i_wont_support == -1)
++		printf("Authentication disabled\n");
++	else
++		printf("Authentication enabled\n");
++
++        mask = 0;
++        for (ap = authenticators; ap->type; ap++) {
++                if ((mask & (i = typemask(ap->type))) != 0)
++                        continue;
++                mask |= i;
++                printf("%s: %s\n", AUTHTYPE_NAME(ap->type),
++                         (i_wont_support & typemask(ap->type)) ?
++                                         "disabled" : "enabled");
++        }
++	return(1);
++}
++
++/*
++ * This routine is called by the server to start authentication
++ * negotiation.
++ */
++	void
++auth_request()
++{
++	static unsigned char str_request[64] = { IAC, SB,
++						 TELOPT_AUTHENTICATION,
++						 TELQUAL_SEND, };
++	Authenticator *ap = authenticators;
++	unsigned char *e = str_request + 4;
++
++	if (!authenticating) {
++		authenticating = 1;
++		while (ap->type) {
++			if (i_support & ~i_wont_support & typemask(ap->type)) {
++				if (auth_debug_mode) {
++					printf(">>>%s: Sending type %d %d\r\n",
++						Name, ap->type, ap->way);
++				}
++				*e++ = ap->type;
++				*e++ = ap->way;
++			}
++			++ap;
++		}
++		*e++ = IAC;
++		*e++ = SE;
++		writenet(str_request, e - str_request);
++		printsub('>', &str_request[2], e - str_request - 2);
++	}
++}
++
++/*
++ * This is called when an AUTH SEND is received.
++ * It should never arrive on the server side (as only the server can
++ * send an AUTH SEND).
++ * You should probably respond to it if you can...
++ *
++ * If you want to respond to the types out of order (i.e. even
++ * if he sends  LOGIN KERBEROS and you support both, you respond
++ * with KERBEROS instead of LOGIN (which is against what the
++ * protocol says)) you will have to hack this code...
++ */
++	void
++auth_send(data, cnt)
++	unsigned char *data;
++	int cnt;
++{
++	Authenticator *ap;
++	static unsigned char str_none[] = { IAC, SB, TELOPT_AUTHENTICATION,
++					    TELQUAL_IS, AUTHTYPE_NULL, 0,
++					    IAC, SE };
++	if (Server) {
++		if (auth_debug_mode) {
++			printf(">>>%s: auth_send called!\r\n", Name);
++		}
++		return;
++	}
++
++	if (auth_debug_mode) {
++		printf(">>>%s: auth_send got:", Name);
++		printd(data, cnt); printf("\r\n");
++	}
++
++	/*
++	 * Save the data, if it is new, so that we can continue looking
++	 * at it if the authorization we try doesn't work
++	 */
++	if (data < _auth_send_data ||
++	    data > _auth_send_data + sizeof(_auth_send_data)) {
++		auth_send_cnt = cnt > sizeof(_auth_send_data)
++					? sizeof(_auth_send_data)
++					: cnt;
++		memcpy((void *)_auth_send_data,(void *)data, auth_send_cnt);
++		auth_send_data = _auth_send_data;
++	} else {
++		/*
++		 * This is probably a no-op, but we just make sure
++		 */
++		auth_send_data = data;
++		auth_send_cnt = cnt;
++	}
++	while ((auth_send_cnt -= 2) >= 0) {
++		if (auth_debug_mode)
++			printf(">>>%s: He supports %d\r\n",
++				Name, *auth_send_data);
++		if ((i_support & ~i_wont_support) & typemask(*auth_send_data)) {
++			ap = findauthenticator(auth_send_data[0],
++					       auth_send_data[1]);
++			if (!ap) {
++				printf("Internal state error: cannot find authentication type %d a second time\r\n", *auth_send_data);
++			} else if (ap->send) {
++				if (auth_debug_mode)
++					printf(">>>%s: Trying %d %d\r\n",
++						Name, auth_send_data[0],
++							auth_send_data[1]);
++				if ((*ap->send)(ap)) {
++					/*
++					 * Okay, we found one we like
++					 * and did it.
++					 * we can go home now.
++					 */
++					if (auth_debug_mode)
++						printf(">>>%s: Using type %d\r\n",
++							Name, *auth_send_data);
++					auth_send_data += 2;
++					return;
++				}
++			}
++			/* else
++			 *	just continue on and look for the
++			 *	next one if we didn't do anything.
++			 */
++		}
++		auth_send_data += 2;
++	}
++	writenet(str_none, sizeof(str_none));
++	printsub('>', &str_none[2], sizeof(str_none) - 2);
++	if (auth_debug_mode)
++		printf(">>>%s: Sent failure message\r\n", Name);
++	auth_finished(0, AUTH_REJECT);
++}
++
++	void
++auth_send_retry()
++{
++	/*
++	 * if auth_send_cnt <= 0 then auth_send will end up rejecting
++	 * the authentication and informing the other side of this.
++	 */
++	auth_send(auth_send_data, auth_send_cnt);
++}
++
++	void
++auth_is(data, cnt)
++	unsigned char *data;
++	int cnt;
++{
++	Authenticator *ap;
++
++	if (cnt < 2)
++		return;
++
++	if (data[0] == AUTHTYPE_NULL) {
++		auth_finished(0, AUTH_REJECT);
++		return;
++	}
++
++	if (ap = findauthenticator(data[0], data[1])) {
++		if (ap->is)
++			(*ap->is)(ap, data+2, cnt-2);
++	} else if (auth_debug_mode)
++		printf(">>>%s: Invalid authentication in IS: %d\r\n",
++			Name, *data);
++}
++
++	void
++auth_reply(data, cnt)
++	unsigned char *data;
++	int cnt;
++{
++	Authenticator *ap;
++
++	if (cnt < 2)
++		return;
++
++	if (ap = findauthenticator(data[0], data[1])) {
++		if (ap->reply)
++			(*ap->reply)(ap, data+2, cnt-2);
++	} else if (auth_debug_mode)
++		printf(">>>%s: Invalid authentication in SEND: %d\r\n",
++			Name, *data);
++}
++
++	void
++auth_name(data, cnt)
++	unsigned char *data;
++	int cnt;
++{
++	Authenticator *ap;
++	unsigned char savename[256];
++
++	if (cnt < 1) {
++		if (auth_debug_mode)
++			printf(">>>%s: Empty name in NAME\r\n", Name);
++		return;
++	}
++	if (cnt > sizeof(savename) - 1) {
++		if (auth_debug_mode)
++			printf(">>>%s: Name in NAME (%d) exceeds %d length\r\n",
++					Name, cnt, sizeof(savename)-1);
++		return;
++	}
++	memcpy((void *)savename, (void *)data,cnt);
++	savename[cnt] = '\0';	/* Null terminate */
++	if (auth_debug_mode)
++		printf(">>>%s: Got NAME [%s]\r\n", Name, savename);
++	auth_encrypt_user(savename);
++}
++
++	int
++auth_sendname(cp, len)
++	unsigned char *cp;
++	int len;
++{
++	static unsigned char str_request[256+6]
++			= { IAC, SB, TELOPT_AUTHENTICATION, TELQUAL_NAME, };
++	register unsigned char *e = str_request + 4;
++	register unsigned char *ee = &str_request[sizeof(str_request)-2];
++
++	while (--len >= 0) {
++		if ((*e++ = *cp++) == IAC)
++			*e++ = IAC;
++		if (e >= ee)
++			return(0);
++	}
++	*e++ = IAC;
++	*e++ = SE;
++	writenet(str_request, e - str_request);
++	printsub('>', &str_request[2], e - &str_request[2]);
++	return(1);
++}
++
++	void
++auth_finished(ap, result)
++	Authenticator *ap;
++	int result;
++{
++	if (!(authenticated = ap))
++		authenticated = &NoAuth;
++	validuser = result;
++}
++
++	/* ARGSUSED */
++	static void
++auth_intr(sig)
++	int sig;
++{
++	auth_finished(0, AUTH_REJECT);
++}
++
++	int
++auth_wait(name)
++	char *name;
++{
++	if (auth_debug_mode)
++		printf(">>>%s: in auth_wait.\r\n", Name);
++
++	if (Server && !authenticating)
++		return(0);
++
++/*
++	(void) signal(SIGALRM, auth_intr);
++	alarm(30);
++*/
++	while (!authenticated)
++		if (telnet_spin())
++			break;
++/*
++	alarm(0);
++	(void) signal(SIGALRM, SIG_DFL);
++*/
++
++	/*
++	 * Now check to see if the user is valid or not
++	 */
++	if (!authenticated || authenticated == &NoAuth)
++		return(AUTH_REJECT);
++
++	if (validuser == AUTH_VALID)
++		validuser = AUTH_USER;
++
++	if (authenticated->status)
++		validuser = (*authenticated->status)(authenticated,
++						     name, validuser);
++	return(validuser);
++}
++
++	void
++auth_debug(mode)
++	int mode;
++{
++	auth_debug_mode = mode;
++}
++
++	void
++auth_printsub(data, cnt, buf, buflen)
++	unsigned char *data, *buf;
++	int cnt, buflen;
++{
++	Authenticator *ap;
++
++	if ((ap = findauthenticator(data[1], data[2])) && ap->printsub)
++		(*ap->printsub)(data, cnt, buf, buflen);
++	else
++		auth_gen_printsub(data, cnt, buf, buflen);
++}
++
++	void
++auth_gen_printsub(data, cnt, buf, buflen)
++	unsigned char *data, *buf;
++	int cnt, buflen;
++{
++	register unsigned char *cp;
++	unsigned char tbuf[16];
++
++	cnt -= 3;
++	data += 3;
++	buf[buflen-1] = '\0';
++	buf[buflen-2] = '*';
++	buflen -= 2;
++	for (; cnt > 0; cnt--, data++) {
++		sprintf((char *)tbuf, " %d", *data);
++		for (cp = tbuf; *cp && buflen > 0; --buflen)
++			*buf++ = *cp++;
++		if (buflen <= 0)
++			return;
++	}
++	*buf = '\0';
++}
++#endif
+--- /dev/null
++++ b/libtelnet/authenc.c
+@@ -0,0 +1,116 @@
++/*-
++ * Copyright (c) 1991 The Regents of the University of California.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by the University of
++ *	California, Berkeley and its contributors.
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ */
++
++#ifndef lint
++static char sccsid[] = "@(#)authenc.c	5.1 (Berkeley) 3/1/91";
++#endif /* not lint */
++
++#if	defined(ENCRYPT) || defined(AUTHENTICATE)
++#include <sys/types.h>
++#include <arpa/telnet.h>
++#include <libtelnet/encrypt.h>
++#include <libtelnet/misc.h>
++
++#include "general.h"
++#include "ring.h"
++#include "externs.h"
++#include "defines.h"
++#include "types.h"
++
++	int
++net_write(str, len)
++	unsigned char *str;
++	int len;
++{
++	if (NETROOM() > len) {
++		ring_supply_data(&netoring, str, len);
++		if (str[0] == IAC && str[1] == SE)
++			printsub('>', &str[2], len-2);
++		return(len);
++	}
++	return(0);
++}
++
++	void
++net_encrypt()
++{
++#if	defined(ENCRYPT)
++	if (encrypt_output)
++		ring_encrypt(&netoring, encrypt_output);
++	else
++		ring_clearto(&netoring);
++#endif
++}
++
++	int
++telnet_spin()
++{
++	return(-1);
++}
++
++	char *
++telnet_getenv(val)
++	char *val;
++{
++	return((char *)env_getvalue((unsigned char *)val));
++}
++
++	char *
++telnet_gets(prompt, result, length, echo)
++	char *prompt;
++	char *result;
++	int length;
++	int echo;
++{
++	extern char *getpass();
++	extern int globalmode;
++	int om = globalmode;
++	int old_localchars = localchars;
++	char *res;
++
++	TerminalNewMode(-1);
++	localchars = 0; /* SIGINT quits the application */
++
++	if (echo) {
++		printf("%s", prompt);
++		clearerr(stdin);
++		res = fgets(result, length, stdin);
++	} else if (res = getpass(prompt)) {
++		strncpy(result, res, length);
++		res = result;
++	}
++	localchars = old_localchars; /* restore old state */
++	TerminalNewMode(om);
++	return(res);
++}
++#endif
+--- /dev/null
++++ b/libtelnet/auth.h
+@@ -0,0 +1,96 @@
++/*-
++ * Copyright (c) 1991 The Regents of the University of California.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by the University of
++ *	California, Berkeley and its contributors.
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ *	@(#)auth.h	5.1 (Berkeley) 2/28/91
++ */
++
++/*
++ * Copyright (C) 1990 by the Massachusetts Institute of Technology
++ *
++ * Export of this software from the United States of America is assumed
++ * to require a specific license from the United States Government.
++ * It is the responsibility of any person or organization contemplating
++ * export to obtain such a license before exporting.
++ *
++ * WITHIN THAT CONSTRAINT, permission to use, copy, modify, and
++ * distribute this software and its documentation for any purpose and
++ * without fee is hereby granted, provided that the above copyright
++ * notice appear in all copies and that both that copyright notice and
++ * this permission notice appear in supporting documentation, and that
++ * the name of M.I.T. not be used in advertising or publicity pertaining
++ * to distribution of the software without specific, written prior
++ * permission.  M.I.T. makes no representations about the suitability of
++ * this software for any purpose.  It is provided "as is" without express
++ * or implied warranty.
++ */
++
++#ifndef	__AUTH__
++#define	__AUTH__
++
++#define	AUTH_REJECT	0	/* Rejected */
++#define	AUTH_UNKNOWN	1	/* We don't know who he is, but he's okay */
++#define	AUTH_OTHER	2	/* We know him, but not his name */
++#define	AUTH_USER	3	/* We know he name */
++#define	AUTH_VALID	4	/* We know him, and he needs no password */
++
++#if	!defined(P)
++#ifdef	__STDC__
++#define P(x)	x
++#else
++#define P(x)	()
++#endif
++#endif
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++typedef struct XauthP {
++	int	type;
++	int	way;
++	int	(*init) P((struct XauthP *, int));
++	int	(*send) P((struct XauthP *));
++	void	(*is) P((struct XauthP *, unsigned char *, int));
++	void	(*reply) P((struct XauthP *, unsigned char *, int));
++	int	(*status) P((struct XauthP *, char *, int));
++	void	(*printsub) P((unsigned char *, int, unsigned char *, int));
++} Authenticator;
++
++#include "auth-proto.h"
++
++extern int auth_debug_mode;
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
+--- /dev/null
++++ b/libtelnet/auth-proto.h
+@@ -0,0 +1,130 @@
++/*-
++ * Copyright (c) 1991 The Regents of the University of California.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by the University of
++ *	California, Berkeley and its contributors.
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ *	@(#)auth-proto.h	5.2 (Berkeley) 3/22/91
++ */
++
++/*
++ * Copyright (C) 1990 by the Massachusetts Institute of Technology
++ *
++ * Export of this software from the United States of America is assumed
++ * to require a specific license from the United States Government.
++ * It is the responsibility of any person or organization contemplating
++ * export to obtain such a license before exporting.
++ * 
++ * WITHIN THAT CONSTRAINT, permission to use, copy, modify, and
++ * distribute this software and its documentation for any purpose and
++ * without fee is hereby granted, provided that the above copyright
++ * notice appear in all copies and that both that copyright notice and
++ * this permission notice appear in supporting documentation, and that
++ * the name of M.I.T. not be used in advertising or publicity pertaining
++ * to distribution of the software without specific, written prior
++ * permission.  M.I.T. makes no representations about the suitability of
++ * this software for any purpose.  It is provided "as is" without express
++ * or implied warranty.
++ */
++
++#if	!defined(P)
++#ifdef	__STDC__
++#define	P(x)	x
++#else
++#define	P(x)	()
++#endif
++#endif
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#if	defined(AUTHENTICATE)
++Authenticator *findauthenticator P((int, int));
++
++void auth_init P((char *, int));
++int auth_cmd P((int, char **));
++void auth_request P((void));
++void auth_send P((unsigned char *, int));
++void auth_send_retry P((void));
++void auth_is P((unsigned char *, int));
++void auth_reply P((unsigned char *, int));
++void auth_finished P((Authenticator *, int));
++int auth_wait P((char *));
++void auth_disable_name P((char *));
++void auth_gen_printsub P((unsigned char *, int, unsigned char *, int));
++
++int auth_enable P((const char *, const char *));
++int auth_disable P((const char *, const char *));
++int auth_status P((const char *, const char *));
++int auth_togdebug P((int));
++void auth_name P((unsigned char *, int));
++void auth_printsub P((unsigned char *, int, unsigned char *, int));
++
++
++#ifdef	KRB4
++int kerberos4_init P((Authenticator *, int));
++int kerberos4_send P((Authenticator *));
++void kerberos4_is P((Authenticator *, unsigned char *, int));
++void kerberos4_reply P((Authenticator *, unsigned char *, int));
++int kerberos4_status P((Authenticator *, char *, int));
++void kerberos4_printsub P((unsigned char *, int, unsigned char *, int));
++#endif
++
++#ifdef	KRB5
++int kerberos5_init P((Authenticator *, int));
++int kerberos5_send P((Authenticator *));
++void kerberos5_is P((Authenticator *, unsigned char *, int));
++void kerberos5_reply P((Authenticator *, unsigned char *, int));
++int kerberos5_status P((Authenticator *, char *, int));
++void kerberos5_printsub P((unsigned char *, int, unsigned char *, int));
++#endif
++
++#ifdef SRA
++int sra_init P((Authenticator *, int));
++int sra_send P((Authenticator *));
++void sra_is P((Authenticator *, unsigned char *, int));
++void sra_reply P((Authenticator *, unsigned char *, int));
++int sra_status P((Authenticator *, char *, int));
++void sra_printsub P((unsigned char *, int, unsigned char *, int));
++#endif
++
++#ifdef USE_SSL
++int auth_ssl_init P((Authenticator *, int));
++int auth_ssl_send P((Authenticator *));
++void auth_ssl_is P((Authenticator *, unsigned char *, int));
++void auth_ssl_reply P((Authenticator *, unsigned char *, int));
++int auth_ssl_status P((Authenticator *, char *, int));
++void auth_ssl_printsub P((unsigned char *, int, unsigned char *, int));
++#endif /* USE_SSL */
++ 
++#endif
++#ifdef __cplusplus
++}
++#endif
+--- /dev/null
++++ b/libtelnet/enc-proto.h
+@@ -0,0 +1,111 @@
++/*-
++ * Copyright (c) 1991 The Regents of the University of California.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by the University of
++ *	California, Berkeley and its contributors.
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ *	@(#)enc-proto.h	5.2 (Berkeley) 3/22/91
++ */
++
++/*
++ * Copyright (C) 1990 by the Massachusetts Institute of Technology
++ *
++ * Export of this software from the United States of America is assumed
++ * to require a specific license from the United States Government.
++ * It is the responsibility of any person or organization contemplating
++ * export to obtain such a license before exporting.
++ *
++ * WITHIN THAT CONSTRAINT, permission to use, copy, modify, and
++ * distribute this software and its documentation for any purpose and
++ * without fee is hereby granted, provided that the above copyright
++ * notice appear in all copies and that both that copyright notice and
++ * this permission notice appear in supporting documentation, and that
++ * the name of M.I.T. not be used in advertising or publicity pertaining
++ * to distribution of the software without specific, written prior
++ * permission.  M.I.T. makes no representations about the suitability of
++ * this software for any purpose.  It is provided "as is" without express
++ * or implied warranty.
++ */
++#if	!defined(P)
++#ifdef	__STDC__
++#define	P(x)	x
++#else
++#define	P(x)	()
++#endif
++#endif
++
++#if	defined(ENCRYPT)
++void encrypt_init P((char *, int));
++Encryptions *findencryption P((int));
++void encrypt_send_supprt P((void));
++void encrypt_auto P((int));
++void decrypt_auto P((int));
++void encrypt_is P((unsigned char *, int));
++void encrypt_reply P((unsigned char *, int));
++void encrypt_start_input P((int));
++void encrypt_session_key P((Session_Key *, int));
++void encrypt_end_input P((void));
++void encrypt_start_output P((int));
++void encrypt_end_output P((void));
++void encrypt_send_request_start P((void));
++void encrypt_send_request_end P((void));
++void encrypt_send_end P((void));
++void encrypt_wait P((void));
++void encrypt_send_support P((void));
++void encrypt_send_keyid P((int, unsigned char *, int, int));
++int writenet P((unsigned char *, int));
++
++#ifdef	TELENTD
++void encrypt_wait P((void));
++#else
++int encrypt_cmd P((int, char **));
++void encrypt_display P((void));
++#endif
++
++void cfb64_encrypt P((unsigned char *, int));
++int cfb64_decrypt P((int));
++void cfb64_init P((int));
++int cfb64_start P((int, int));
++int cfb64_is P((unsigned char *, int));
++int cfb64_reply P((unsigned char *, int));
++void cfb64_session P((Session_Key *, int));
++int cfb64_keyid P((int, unsigned char *, int *));
++void cfb64_printsub P((unsigned char *, int, unsigned char *, int));
++
++void ofb64_encrypt P((unsigned char *, int));
++int ofb64_decrypt P((int));
++void ofb64_init P((int));
++int ofb64_start P((int, int));
++int ofb64_is P((unsigned char *, int));
++int ofb64_reply P((unsigned char *, int));
++void ofb64_session P((Session_Key *, int));
++int ofb64_keyid P((int, unsigned char *, int *));
++void ofb64_printsub P((unsigned char *, int, unsigned char *, int));
++
++#endif
+--- /dev/null
++++ b/libtelnet/encrypt.h
+@@ -0,0 +1,106 @@
++/*-
++ * Copyright (c) 1991 The Regents of the University of California.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by the University of
++ *	California, Berkeley and its contributors.
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ *	@(#)encrypt.h	5.2 (Berkeley) 3/22/91
++ */
++
++/*
++ * Copyright (C) 1990 by the Massachusetts Institute of Technology
++ *
++ * Export of this software from the United States of America is assumed
++ * to require a specific license from the United States Government.
++ * It is the responsibility of any person or organization contemplating
++ * export to obtain such a license before exporting.
++ *
++ * WITHIN THAT CONSTRAINT, permission to use, copy, modify, and
++ * distribute this software and its documentation for any purpose and
++ * without fee is hereby granted, provided that the above copyright
++ * notice appear in all copies and that both that copyright notice and
++ * this permission notice appear in supporting documentation, and that
++ * the name of M.I.T. not be used in advertising or publicity pertaining
++ * to distribution of the software without specific, written prior
++ * permission.  M.I.T. makes no representations about the suitability of
++ * this software for any purpose.  It is provided "as is" without express
++ * or implied warranty.
++ */
++
++#ifndef	__ENCRYPT__
++#define	__ENCRYPT__
++
++#define	DIR_DECRYPT		1
++#define	DIR_ENCRYPT		2
++
++typedef	unsigned char Block[8];
++typedef unsigned char *BlockT;
++typedef struct { Block _; } Schedule[16];
++
++#define	VALIDKEY(key)	( key[0] | key[1] | key[2] | key[3] | \
++			  key[4] | key[5] | key[6] | key[7])
++
++#define	SAMEKEY(k1, k2)	(!bcmp((void *)k1, (void *)k2, sizeof(Block)))
++
++typedef	struct {
++	short		type;
++	int		length;
++	unsigned char	*data;
++} Session_Key;
++
++#if	!defined(P)
++#ifdef	__STDC__
++#define P(x)	x
++#else
++#define P(x)	()
++#endif
++#endif
++
++typedef struct {
++	char	*name;
++	int	type;
++	void	(*output) P((unsigned char *, int));
++	int	(*input) P((int));
++	void	(*init) P((int));
++	int	(*start) P((int, int));
++	int	(*is) P((unsigned char *, int));
++	int	(*reply) P((unsigned char *, int));
++	void	(*session) P((Session_Key *, int));
++	int	(*keyid) P((int, unsigned char *, int *));
++	void	(*printsub) P((unsigned char *, int, unsigned char *, int));
++} Encryptions;
++
++#define	SK_DES		1	/* Matched Kerberos v5 KEYTYPE_DES */
++
++#include "enc-proto.h"
++
++extern int encrypt_debug_mode;
++extern int (*decrypt_input) P((int));
++extern void (*encrypt_output) P((unsigned char *, int));
++#endif
+--- /dev/null
++++ b/libtelnet/misc.c
+@@ -0,0 +1,113 @@
++/*-
++ * Copyright (c) 1991 The Regents of the University of California.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by the University of
++ *	California, Berkeley and its contributors.
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ */
++
++#ifndef lint
++static char sccsid[] = "@(#)misc.c	5.1 (Berkeley) 2/28/91";
++#endif /* not lint */
++
++/*
++ * Copyright (c) 1988, 1990 Regents of the University of California.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms are permitted provided
++ * that: (1) source distributions retain this entire copyright notice and
++ * comment, and (2) distributions including binaries display the following
++ * acknowledgement:  ``This product includes software developed by the
++ * University of California, Berkeley and its contributors'' in the
++ * documentation or other materials provided with the distribution and in
++ * all advertising materials mentioning features or use of this software.
++ * Neither the name of the University nor the names of its contributors may
++ * be used to endorse or promote products derived from this software without
++ * specific prior written permission.
++ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED
++ * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
++ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
++ */
++
++#include "misc.h"
++
++char *RemoteHostName;
++char *LocalHostName;
++char *UserNameRequested = 0;
++int ConnectedCount = 0;
++
++	void
++auth_encrypt_init(local, remote, name, server)
++	char *local;
++	char *remote;
++	char *name;
++	int server;
++{
++	RemoteHostName = remote;
++	LocalHostName = local;
++#if	defined(AUTHENTICATE)
++	auth_init(name, server);
++#endif
++#if	defined(ENCRYPT)
++	encrypt_init(name, server);
++#endif
++	if (UserNameRequested) {
++		free(UserNameRequested);
++		UserNameRequested = 0;
++	}
++}
++
++	void
++auth_encrypt_user(name)
++	const char *name;
++{
++	extern char *strdup();
++
++	if (UserNameRequested)
++		free(UserNameRequested);
++	UserNameRequested = name ? strdup(name) : 0;
++}
++
++	void
++auth_encrypt_connect(cnt)
++	int cnt;
++{
++}
++
++	void
++printd(data, cnt)
++	unsigned char *data;
++	int cnt;
++{
++	if (cnt > 16)
++		cnt = 16;
++	while (cnt-- > 0) {
++		printf(" %02x", *data);
++		++data;
++	}
++}
+--- /dev/null
++++ b/libtelnet/misc.h
+@@ -0,0 +1,42 @@
++/*-
++ * Copyright (c) 1991 The Regents of the University of California.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by the University of
++ *	California, Berkeley and its contributors.
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ *	@(#)misc.h	5.1 (Berkeley) 2/28/91
++ */
++
++extern char *UserNameRequested;
++extern char *LocalHostName;
++extern char *RemoteHostName;
++extern int ConnectedCount;
++extern int ReservedPort;
++
++#include "misc-proto.h"
+--- /dev/null
++++ b/libtelnet/misc-proto.h
+@@ -0,0 +1,89 @@
++/*-
++ * Copyright (c) 1991 The Regents of the University of California.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. All advertising materials mentioning features or use of this software
++ *    must display the following acknowledgement:
++ *	This product includes software developed by the University of
++ *	California, Berkeley and its contributors.
++ * 4. Neither the name of the University nor the names of its contributors
++ *    may be used to endorse or promote products derived from this software
++ *    without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
++ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
++ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
++ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
++ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ *	@(#)misc-proto.h	5.1 (Berkeley) 2/28/91
++ */
++
++/*
++ * Copyright (C) 1990 by the Massachusetts Institute of Technology
++ *
++ * Export of this software from the United States of America is assumed
++ * to require a specific license from the United States Government.
++ * It is the responsibility of any person or organization contemplating
++ * export to obtain such a license before exporting.
++ *
++ * WITHIN THAT CONSTRAINT, permission to use, copy, modify, and
++ * distribute this software and its documentation for any purpose and
++ * without fee is hereby granted, provided that the above copyright
++ * notice appear in all copies and that both that copyright notice and
++ * this permission notice appear in supporting documentation, and that
++ * the name of M.I.T. not be used in advertising or publicity pertaining
++ * to distribution of the software without specific, written prior
++ * permission.  M.I.T. makes no representations about the suitability of
++ * this software for any purpose.  It is provided "as is" without express
++ * or implied warranty.
++ */
++
++#ifndef	__MISC_PROTO__
++#define	__MISC_PROTO__
++
++#if	!defined(P)
++#ifdef	__STDC__
++#define	P(x)	x
++#else
++#define	P(x)	()
++#endif
++#endif
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++void auth_encrypt_init P((char *, char *, char *, int));
++void auth_encrypt_connect P((int));
++void auth_encrypt_user P((const char *name));
++void printd P((unsigned char *, int));
++
++/*
++ * These functions are imported from the application
++ */
++/*int writenet P((unsigned char *, int));*/
++void net_encrypt P((void));
++int telnet_spin P((void));
++char *telnet_getenv P((char *));
++char *telnet_gets P((char *, char *, int, int));
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
+--- /dev/null
++++ b/libtelnet/sslapp.c
+@@ -0,0 +1,196 @@
++/* sslapp.c	- ssl application code */
++
++/*
++ * The modifications to support SSLeay were done by Tim Hudson
++ * tjh@cryptsoft.com
++ *
++ * You can do whatever you like with these patches except pretend that
++ * you wrote them.
++ *
++ * Email ssl-users-request@mincom.oz.au to get instructions on how to
++ * join the mailing list that discusses SSLeay and also these patches.
++ *
++ */
++
++#ifdef USE_SSL
++
++#include "sslapp.h"
++
++#ifdef SSLEAY8
++#define SSL_set_pref_cipher(c,n)        SSL_set_cipher_list(c,n)
++#endif
++
++SSL_CTX *ssl_ctx;
++SSL *ssl_con;
++int ssl_debug_flag=0;
++int ssl_only_flag=0;
++int ssl_active_flag=0;
++int ssl_verify_flag=SSL_VERIFY_NONE;
++int ssl_secure_flag=0;
++int ssl_certsok_flag=0;
++int ssl_cert_required=0;
++int ssl_verbose_flag=0;
++int ssl_disabled_flag=0;
++char *ssl_cert_file=NULL;
++char *ssl_key_file=NULL;
++char *ssl_cipher_list=NULL;
++char *ssl_log_file=NULL;
++
++/* fwd decl */
++static void client_info_callback();
++
++int do_ssleay_init(int server)
++{
++  /* make sure we have somewhere we can log errors to */
++  if (bio_err==NULL) {
++    if ((bio_err=BIO_new(BIO_s_file()))!=NULL) {
++      if (ssl_log_file==NULL)
++	BIO_set_fp(bio_err,stderr,BIO_NOCLOSE);
++      else {
++	if (BIO_write_filename(bio_err,ssl_log_file)<=0) {
++	  /* not a lot we can do */
++	}
++      }
++    }
++  }
++
++  /* rather simple things these days ... the old SSL_LOG and SSL_ERR
++   * vars are long gone now SSLeay8 has rolled around and we have 
++   * a clean interface for doing things
++   */
++  if (ssl_debug_flag)
++    BIO_printf(bio_err,"SSL_DEBUG_FLAG on\r\n");
++
++
++  /* init things so we will get meaningful error messages
++   * rather than numbers 
++   */
++  SSL_load_error_strings();
++
++#ifdef SSLEAY8
++  SSLeay_add_ssl_algorithms();
++
++  /* we may require a temp 512 bit RSA key because of the
++   * wonderful way export things work ... if so we generate
++   * one now!
++   */
++  if (server) {
++    ssl_ctx=(SSL_CTX *)SSL_CTX_new(SSLv23_method());
++    if (SSL_CTX_need_tmp_RSA(ssl_ctx)) {
++      RSA *rsa;
++
++      if (ssl_debug_flag)
++	  BIO_printf(bio_err,"Generating temp (512 bit) RSA key ...\r\n");
++      rsa=RSA_generate_key(512,RSA_F4,NULL,NULL);
++      if (ssl_debug_flag)
++	  BIO_printf(bio_err,"Generation of temp (512 bit) RSA key done\r\n");
++   
++      if (!SSL_CTX_set_tmp_rsa(ssl_ctx,rsa)) {
++	BIO_printf(bio_err,"Failed to assign generated temp RSA key!\r\n");
++      }
++      RSA_free(rsa);
++      if (ssl_debug_flag)
++	  BIO_printf(bio_err,"Assigned temp (512 bit) RSA key\r\n");
++    }
++  } else {
++    ssl_ctx=(SSL_CTX *)SSL_CTX_new(SSLv23_client_method());
++  }
++
++
++  /* also switch on all the interoperability and bug
++   * workarounds so that we will communicate with people
++   * that cannot read poorly written specs :-)
++   */
++  SSL_CTX_set_options(ssl_ctx,SSL_OP_ALL);
++
++#else /* !SSLEAY8 */
++  ssl_ctx=(SSL_CTX *)SSL_CTX_new();
++#endif /* SSLEAY8 */
++
++  ssl_con=(SSL *)SSL_new(ssl_ctx);
++
++  SSL_set_verify(ssl_con,ssl_verify_flag,NULL);
++
++/*
++  if (ssl_cipher_list==NULL)
++      SSL_set_pref_cipher(ssl_con,getenv("SSL_CIPHER"));
++  else
++      SSL_set_pref_cipher(ssl_con,ssl_cipher_list);
++*/
++
++  /* for verbose we use the 0.6.x info callback that I got
++   * eric to finally add into the code :-) --tjh
++   */
++  if (ssl_verbose_flag) {
++      SSL_CTX_set_info_callback(ssl_ctx,client_info_callback);
++  }
++
++  /* Add in any certificates if you want to here ... */
++  if (ssl_cert_file) {
++      if (!SSL_use_certificate_file(ssl_con, ssl_cert_file, 
++		      X509_FILETYPE_PEM)) {
++	  BIO_printf(bio_err,"Error loading %s: ",ssl_cert_file);
++	  ERR_print_errors(bio_err);
++	  BIO_printf(bio_err,"\r\n");
++	  return(0);
++      } else {
++	  if (!ssl_key_file)
++	      ssl_key_file = ssl_cert_file;
++	  if (!SSL_use_RSAPrivateKey_file(ssl_con, ssl_key_file,
++		      X509_FILETYPE_PEM)) {
++	      BIO_printf(bio_err,"Error loading %s: ",ssl_key_file);
++	      ERR_print_errors(bio_err);
++	      BIO_printf(bio_err,"\r\n");
++	      return(0);
++	  }
++      }
++  }
++
++  /* make sure we will find certificates in the standard
++   * location ... otherwise we don't look anywhere for
++   * these things which is going to make client certificate
++   * exchange rather useless :-)
++   */
++#ifdef SSLEAY8
++  SSL_CTX_set_default_verify_paths(ssl_ctx);
++#else
++  SSL_set_default_verify_paths(ssl_ctx);
++#endif
++
++  SSL_set_verify(ssl_con,ssl_verify_flag,client_verify_callback);
++
++  return(1);
++}
++
++
++static void client_info_callback(s,where,ret)
++SSL *s;
++int where;
++int ret;
++{
++  if (where==SSL_CB_CONNECT_LOOP) {
++    BIO_printf(bio_err,"SSL_connect:%s %s\r\n",
++		    SSL_state_string(s),SSL_state_string_long(s));
++  } else if (where==SSL_CB_CONNECT_EXIT) {
++    if (ret == 0) {
++      BIO_printf(bio_err,"SSL_connect:failed in %s %s\r\n",
++	      SSL_state_string(s),SSL_state_string_long(s));
++    } else if (ret < 0) {
++      BIO_printf(bio_err,"SSL_connect:error in %s %s\r\n",
++	      SSL_state_string(s),SSL_state_string_long(s));
++    }
++  }
++}
++
++
++#else /* !USE_SSL */
++
++static void dummy_func()
++{
++  int i;
++
++  i++;
++}
++
++#endif /* USE_SSL */
++
+--- /dev/null
++++ b/libtelnet/sslapp.h
+@@ -0,0 +1,85 @@
++/* sslapp.h	- ssl application code */
++
++/*
++ * The modifications to support SSLeay were done by Tim Hudson
++ * tjh@cryptsoft.com
++ *
++ * You can do whatever you like with these patches except pretend that
++ * you wrote them.
++ *
++ * Email ssl-users-request@mincom.oz.au to get instructions on how to
++ * join the mailing list that discusses SSLeay and also these patches.
++ *
++ */
++
++#ifdef USE_SSL
++
++#include <stdio.h>
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++#include "crypto.h"
++
++#if SSLEAY_VERSION_NUMBER >= 0x0800
++#define SSLEAY8
++#endif
++ 
++#ifdef SSLEAY8
++#define ONELINE_NAME(X) X509_NAME_oneline(X,NULL,0)
++#else
++#define ONELINE_NAME(X) X509_NAME_oneline(X)
++#endif
++  
++#ifdef SSLEAY8
++#define OLDPROTO NOPROTO
++#define NOPROTO
++#include "bio.h"
++#undef NOPROTO
++#define NOPROTO OLDPROTO
++#undef OLDPROTO
++#endif
++#include "buffer.h"
++
++#include "x509.h"
++#include "ssl.h"
++#define OLDPROTO NOPROTO
++#define NOPROTO
++#include "err.h"
++#undef NOPROTO
++#define NOPROTO OLDPROTO
++#undef OLDPROTO
++
++extern BIO *bio_err;
++extern SSL *ssl_con;
++extern SSL_CTX *ssl_ctx;
++extern int ssl_debug_flag;
++extern int ssl_only_flag;
++extern int ssl_active_flag;
++extern int ssl_verify_flag;
++extern int ssl_secure_flag;
++extern int ssl_verbose_flag;
++extern int ssl_disabled_flag;
++extern int ssl_cert_required;
++extern int ssl_certsok_flag;
++
++extern char *ssl_log_file; 
++extern char *ssl_cert_file; 
++extern char *ssl_key_file;
++extern char *ssl_cipher_list;
++
++/* we hide all the initialisation code in a separate file now */
++extern int do_ssleay_init(int server);
++
++extern int display_connect_details(SSL *ssl_con, int verbose);
++extern int server_verify_callback();
++extern int client_verify_callback();
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* USE_SSL */
++
++
+--- /dev/null
++++ b/libtelnet/ssl.c
+@@ -0,0 +1,831 @@
++#ifdef	USE_SSL
++/* 
++ * The modifications to support SSLeay were done by Tim Hudson
++ * tjh@mincom.oz.au
++ *
++ * You can do whatever you like with these patches except pretend that
++ * you wrote them. 
++ *
++ * Email ssl-users-request@mincom.oz.au to get instructions on how to
++ * join the mailing list that discusses SSLeay and also these patches.
++ *
++ */
++
++/* ssl.c    - interface to Eric Young's SSLeay library (eay@mincom.oz.au)
++ *
++ * see LICENSE for details 
++ *
++ * xx-Aug-96 tjh    reworked the client certificate stuff into a form
++ * ................ where it is useful with SSLeay-0.6.x which changed
++ * ................ lots of things in the handling of the verify function
++ * 01-Jul-95 tjh    merged patches from Steven Schoch 
++ * ................ <schoch@sheba.arc.nasa.gov> that add in the certsok
++ * ................ option for using signed certificates rather than 
++ * ................ explicit passwords for authentication (modified a little
++ * ................ to add in an option that controls this feature)
++ * 26-Apr-95 tjh    original coding
++ *
++ * tjh@mincom.oz.au
++ * tjh@mincom.com
++ *
++ * Tim Hudson
++ * Mincom Pty Ltd
++ * Australia
++ * +61 7 3303 3333
++ *
++ */
++
++#include <sys/types.h>
++#include "arpa/telnet.h"
++#include <stdio.h>
++#ifdef	__STDC__
++#include <stdlib.h>
++#endif
++#ifdef	NO_STRING_H
++#include <strings.h>
++#else
++#include <string.h>
++#endif
++
++#include "auth.h"
++#include "misc.h"
++
++#include "crypto.h"
++
++#if SSLEAY_VERSION_NUMBER >= 0x0800
++#define SSLEAY8
++#endif
++ 
++#ifdef SSLEAY8
++#define ONELINE_NAME(X) X509_NAME_oneline(X,NULL,0)
++#else
++#define ONELINE_NAME(X) X509_NAME_oneline(X)
++#endif
++
++#ifdef SSLEAY8
++#include "bio.h"
++#endif
++#include "buffer.h"
++
++#include "x509.h"
++#include "ssl.h"
++
++/* quick translation ... */
++#ifndef VERIFY_ERR_UNABLE_TO_GET_ISSUER
++#define VERIFY_ERR_UNABLE_TO_GET_ISSUER X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT
++#endif
++#ifndef VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT
++#define VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT 
++#endif
++#ifndef VERIFY_OK
++#define VERIFY_OK X509_V_OK
++#endif
++#ifndef VERIFY_ERR_UNABLE_TO_GET_ISSUER
++#define VERIFY_ERR_UNABLE_TO_GET_ISSUER X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT
++#endif
++
++/* need to think about this mapping in terms of what the real
++ * equivalent of this actually is
++ */
++#ifndef VERIFY_ROOT_OK
++#define VERIFY_ROOT_OK VERIFY_OK
++#endif
++
++extern int auth_debug_mode;
++static auth_ssl_valid = 0;
++static char *auth_ssl_name = 0;    /* this holds the oneline name */
++
++extern BIO *bio_err;
++extern int ssl_only_flag;
++extern int ssl_debug_flag;
++extern int ssl_active_flag;
++extern int ssl_secure_flag;
++extern int ssl_verify_flag;
++extern int ssl_certsok_flag;       /* if this is set then we enable the
++                                    * /etc/ssl.users stuff for allowing
++				    * access - just to make sure we don't
++				    * switch it on unless we really want it
++                                    */
++extern int ssl_cert_required;      /* client certificate is mandatory! */
++
++extern int ssl_verbose_flag;
++extern int ssl_disabled_flag;
++
++int server_verify_callback();
++int client_verify_callback();
++
++extern SSL *ssl_con;
++
++#include "buffer.h"
++
++BIO *bio_err=NULL;
++
++/* compile this set to 1 to negotiate SSL but not actually start it */
++static int ssl_dummy_flag=0;
++
++static unsigned char str_data[1024] = { IAC, SB, TELOPT_AUTHENTICATION, 0,
++			  		AUTHTYPE_SSL, };
++
++#define AUTH_SSL_START     1
++#define AUTH_SSL_ACCEPT    2
++#define AUTH_SSL_REJECT    3
++
++
++/* this is called by both the ssl.c auth connect and the mainline
++ * telnet connect if we are talking straight ssl with no telnet
++ * protocol --tjh
++ */
++int
++display_connect_details(ssl_con,verbose)
++SSL *ssl_con;
++int verbose;
++{
++    X509 *peer;
++    char *cipher_list;
++
++    if (ssl_active_flag && verbose) {
++#ifdef SSLEAY8
++        char *p;
++	char buf[1024];
++	int i;
++
++	/* grab the full list of ciphers */
++	i=0;
++	buf[0]='\0';
++	while((p=SSL_get_cipher_list(ssl_con,i++))!=NULL) {
++	  if (i>0)
++	    strcat(buf,":");
++	  strcat(buf,p);
++	}
++	cipher_list=buf;
++#else /* !SSLEAY8 */
++	cipher_list=SSL_get_cipher(ssl_con);
++#endif /* !SSLEAY8 */
++
++	/* the cipher list *can* be NULL ... useless but it happens! */
++	if (cipher_list==NULL)
++	    cipher_list="<NULL>";
++	fprintf(stderr,"[SSL cipher=%s]\r\n",cipher_list);
++	peer=SSL_get_peer_certificate(ssl_con);
++	if (peer != NULL) {
++	    char *str;
++
++	    str=ONELINE_NAME(X509_get_subject_name(peer));
++	    fprintf(stderr,"[SSL subject=%s]\r\n",str);
++	    free(str);
++	    str=ONELINE_NAME(X509_get_issuer_name(peer));
++	    fprintf(stderr,"[SSL issuer=%s]\r\n",str);
++	    free(str);
++	    X509_free(peer);
++			    
++	}
++	fflush(stderr);
++    }
++}
++
++
++	void
++fprintd(fp, data, cnt)
++	FILE *fp;
++	unsigned char *data;
++	int cnt;
++{
++	if (cnt > 16)
++		cnt = 16;
++	while (cnt-- > 0) {
++		fprintf(fp," %02x", *data);
++		++data;
++	}
++}
++
++/* support routine to send out authentication message */
++static int Data(ap, type, d, c)
++Authenticator *ap;
++int type;
++void *d;
++int c;
++{
++        unsigned char *p = str_data + 4;
++	unsigned char *cd = (unsigned char *)d;
++
++	if (c == -1)
++		c = strlen((char *)cd);
++
++        if (auth_debug_mode) {
++                fprintf(stderr,"%s:%d: [%d] (%d)",
++                        str_data[3] == TELQUAL_IS ? ">>>IS" : ">>>REPLY",
++                        str_data[3],
++                        type, c);
++                fprintd(stderr,d, c);
++                fprintf(stderr,"\r\n");
++        }
++	*p++ = ap->type;
++	*p++ = ap->way;
++	*p++ = type;
++        while (c-- > 0) {
++                if ((*p++ = *cd++) == IAC)
++                        *p++ = IAC;
++        }
++        *p++ = IAC;
++        *p++ = SE;
++	if (str_data[3] == TELQUAL_IS)
++		printsub('>', &str_data[2], p - (&str_data[2]));
++        return(writenet(str_data, p - str_data));
++}
++
++int auth_ssl_init(ap, server)
++Authenticator *ap;
++int server;
++{
++	/* ssl only option skips all of this muck ... */
++	if (ssl_only_flag || ssl_disabled_flag) {
++	    return 0;
++	}
++
++	SSL_load_error_strings();
++
++	/* SSLeay-0.6 introduces the BIO stuff ... which we need for
++	 * all the error reporting things! 
++	 */
++	if (bio_err == NULL)
++		if ((bio_err=BIO_new(BIO_s_file())) != NULL)
++			BIO_set_fp(bio_err,stderr,BIO_NOCLOSE);
++
++	if (server)
++		str_data[3] = TELQUAL_REPLY;
++	else
++		str_data[3] = TELQUAL_IS;
++	return(1);
++}
++
++/* client received a go-ahead for ssl */
++int auth_ssl_send(ap)
++Authenticator *ap;
++{
++	fprintf(stderr,"[SSL - attempting to switch on SSL]\r\n");
++	fflush(stderr);
++
++	if (!Data(ap, AUTH_SSL_START, NULL, 0 )) {
++		if (auth_debug_mode)
++			fprintf(stderr,"Not enough room for start data\r\n");
++		return(0);
++	}
++
++	return(1);
++}
++
++/* server received an IS -- could (only) be SSL START */
++void auth_ssl_is(ap, data, cnt)
++Authenticator *ap;
++unsigned char *data;
++int cnt;
++{
++	int valid;
++
++	if (cnt-- < 1)
++		return;
++	switch (*data++) {
++
++	case AUTH_SSL_START:
++		Data(ap, AUTH_SSL_ACCEPT, (void *)0, 0);
++		netflush();
++
++		auth_ssl_valid = 1;
++		auth_finished(ap, AUTH_VALID);
++
++		/* server starts the SSL stuff now ... */
++		if (ssl_dummy_flag)
++		    return;
++
++		if (!ssl_only_flag) {
++		    /* only want/need verify if doing certsok stuff */
++		    if (ssl_certsok_flag||ssl_cert_required) 
++			SSL_set_verify(ssl_con,ssl_verify_flag,server_verify_callback);
++		    if (!SSL_accept(ssl_con)) {
++
++			/*
++			syslog(LOG_WARNING, "ssl_accept error");
++			*/
++
++			fprintf(stderr,"[SSL - SSL_accept error]\r\n");
++			fflush(stderr);
++			sleep(5);
++			SSL_free(ssl_con);
++
++			auth_finished(ap, AUTH_REJECT);
++
++			_exit(1);
++		    } else {
++			ssl_active_flag=1;
++		    }
++
++		    /* now check to see that we got exactly what we 
++		     * wanted from the caller ... if a certificate is
++		     * required then we make 100% sure that we were
++		     * given on during the handshake (as it is an optional
++		     * part of SSL)
++		     */
++		    if ( ssl_cert_required ) {
++		    	if (SSL_get_peer_certificate(ssl_con)==NULL) {
++
++			    if (ssl_debug_flag) {
++				fprintf(stderr,"[SSL - peer check failed]\r\n");
++				fflush(stderr);
++			    }
++
++			    /* LOGGING REQUIRED HERE! */
++			    SSL_free(ssl_con);
++			    auth_finished(ap, AUTH_REJECT);
++			    _exit(1);
++			}
++		    }
++		}
++		break;
++
++	default:
++		fprintf(stderr,"[SSL - failed to switch on SSL]\r\n");
++		fflush(stderr);
++
++		if (auth_debug_mode) {
++			fprintf(stderr,"Unknown SSL option %d\r\n", data[-1]);
++			fprintf(stderr,"[SSL - negotiation failed]\r\n");
++		}
++		Data(ap, AUTH_SSL_REJECT, (void *)0, 0);
++
++		auth_ssl_valid = 0;
++		auth_finished(ap, AUTH_REJECT);
++		break;
++	}
++}
++
++/* client received REPLY -- could be SSL ACCEPT or REJECT */
++void auth_ssl_reply(ap, data, cnt)
++Authenticator *ap;
++unsigned char *data;
++int cnt;
++{
++	int i;
++	int status;
++
++	if (cnt-- < 1)
++		return;
++	switch (*data++) {
++
++	case AUTH_SSL_ACCEPT:
++		if (auth_debug_mode)
++			fprintf(stderr,"SSL ACCEPT\r\n");
++		fprintf(stderr,"[SSL - handshake starting]\r\n");
++
++		auth_finished(ap, AUTH_VALID);
++
++		if (ssl_dummy_flag) {
++		    fprintf(stderr,"[SSL - Dummy Connected]\r\n");
++		    fflush(stderr);
++		    return;
++		}
++
++		/* right ... now we drop into the SSL library */
++		if (!ssl_only_flag) {
++		    SSL_set_verify(ssl_con,ssl_verify_flag,
++		    				client_verify_callback);
++		    if ((status = SSL_connect(ssl_con)) <= 0) {
++			fprintf(stderr,"[SSL - FAILED (%d)]\r\n", status);
++			fflush(stderr);
++
++			perror("telnet: Unable to ssl_connect to remote host");
++
++			ERR_print_errors(bio_err);
++
++			/* don't know what I "should" be doing here ... */
++
++			auth_finished(0,AUTH_REJECT);
++			return;
++		    } else {
++
++			fprintf(stderr,"[SSL - OK]\r\n");
++			fflush(stderr);
++
++			ssl_active_flag=1;
++			display_connect_details(ssl_con,ssl_debug_flag);
++		    }
++		}
++
++		/* this is handy/required? */
++		/*
++		netflush();
++		*/
++
++		break;
++
++	case AUTH_SSL_REJECT:
++		if (auth_debug_mode)
++			fprintf(stderr,"SSL REJECT\r\n");
++		fprintf(stderr,"[SSL - failed to switch on SSL]\r\n");
++		fprintf(stderr,"Trying plaintext login:\r\n");
++		fflush(stderr);
++		auth_finished(0,AUTH_REJECT);
++		break;
++
++	default:
++		if (auth_debug_mode)
++			fprintf(stderr,"Unknown SSL option %d\r\n", data[-1]);
++		return;
++	}
++}
++
++int auth_ssl_status(ap, name, level)
++Authenticator *ap;
++char *name;
++int level;
++{
++	FILE *user_fp;
++	char buf[2048];
++
++	if (level < AUTH_USER)
++		return(level);
++
++	/*
++	 * Look our name up in /etc/ssl.users.
++	 * The format of this file is lines of this form:
++	 *   user1,user2:/C=US/.....
++	 * where user1 and user2 are usernames
++	 */
++	if (ssl_certsok_flag) {
++	    user_fp = fopen("/etc/ssl.users", "r");
++	    if (!auth_ssl_name || !user_fp) {
++	        /* If we haven't received a certificate, then don't 
++		 * return AUTH_VALID. 
++		 */
++		if (UserNameRequested)
++			strcpy(name, UserNameRequested);
++		/* be tidy ... */
++		if (user_fp)
++		    fclose(user_fp);
++		return AUTH_USER;
++	    }
++	    while (fgets(buf, sizeof buf, user_fp)) {
++		char *cp;
++		char *n;
++
++		/* allow for comments in the file ... always nice
++		 * to be able to add a little novel in files and
++		 * also disable entries easily --tjh
++		 */
++		if (buf[0]=='#')
++		    continue;
++
++		if ((cp = strchr(buf, '\n')))
++		    *cp = '\0';
++		cp = strchr(buf, ':');
++		if (!cp)
++		    continue;
++		*cp++ = '\0';
++		if (strcasecmp(cp, auth_ssl_name) == 0) {
++		    n = buf;
++		    while (n) {
++			cp = strchr(n, ',');
++			if (cp)
++			    *cp++ = '\0';
++			if (!UserNameRequested || 
++			            !strcmp(UserNameRequested, n)) {
++			    strcpy(name, n);
++			    fclose(user_fp);
++			    return(AUTH_VALID);
++			}
++			n = cp;
++		    }
++		}
++	    }
++	    fclose(user_fp);
++	    return(AUTH_USER);
++	} else {
++	    return(AUTH_USER);
++	}
++}
++
++#define	BUMP(buf, len)		while (*(buf)) {++(buf), --(len);}
++#define	ADDC(buf, len, c)	if ((len) > 0) {*(buf)++ = (c); --(len);}
++
++void auth_ssl_printsub(data, cnt, buf, buflen)
++unsigned char *data, *buf;
++int cnt, buflen;
++{
++	char lbuf[32];
++	register int i;
++
++	buf[buflen-1] = '\0';		/* make sure its NULL terminated */
++	buflen -= 1;
++
++	switch(data[3]) {
++
++	case AUTH_SSL_START:
++		strncpy((char *)buf, " START ", buflen);
++		goto common;
++
++	case AUTH_SSL_REJECT:		/* Rejected (reason might follow) */
++		strncpy((char *)buf, " REJECT ", buflen);
++		goto common;
++
++	case AUTH_SSL_ACCEPT:		/* Accepted (name might follow) */
++		strncpy((char *)buf, " ACCEPT ", buflen);
++
++	common:
++		BUMP(buf, buflen);
++		if (cnt <= 4)
++			break;
++		ADDC(buf, buflen, '"');
++		for (i = 4; i < cnt; i++)
++			ADDC(buf, buflen, data[i]);
++		ADDC(buf, buflen, '"');
++		ADDC(buf, buflen, '\0');
++		break;
++
++	default:
++		sprintf(lbuf, " %d (unknown)", data[3]);
++		strncpy((char *)buf, lbuf, buflen);
++	common2:
++		BUMP(buf, buflen);
++		for (i = 4; i < cnt; i++) {
++			sprintf(lbuf, " %d", data[i]);
++			strncpy((char *)buf, lbuf, buflen);
++			BUMP(buf, buflen);
++		}
++		break;
++	}
++}
++
++
++int
++#ifdef SSLEAY8
++server_verify_callback(ok, ctx)
++int ok;
++X509_STORE_CTX *ctx;
++#else /* !SSLEAY8 */
++server_verify_callback(ok, xs, xi, depth, error)
++int ok;
++char *xs, *xi;
++int depth, error;
++#endif /* SSLEAY8 */
++{
++    static char *saved_subject=NULL;
++    X509 *peer;
++    char *subject, *issuer;
++#ifdef SSLEAY8
++    int depth,error;
++    char *xs;
++
++    depth=ctx->error_depth;
++    error=ctx->error;
++    xs=(char *)X509_STORE_CTX_get_current_cert(ctx);
++
++#endif /* SSLEAY8 */
++
++#ifdef LOCAL_DEBUG
++    if (ssl_debug_flag) {
++	fprintf(stderr,"ssl:server_verify_callback:depth=%d ok=%d err=%d-%s\n",
++	    depth,ok,error,X509_cert_verify_error_string(error));
++	fflush(stderr);
++    }
++#endif /* LOCAL_DEBUG */
++
++    subject=issuer=NULL;
++
++    /* first thing is to have a meaningful name for the current
++     * certificate that is being verified ... and if we cannot
++     * determine that then something is seriously wrong!
++     */
++    subject=(char *)ONELINE_NAME(X509_get_subject_name((X509 *)xs));
++    if (subject==NULL) {
++	if (ssl_debug_flag) 
++	    ERR_print_errors(bio_err);
++	ok=0;
++	goto return_time;
++    }
++    issuer=(char *)ONELINE_NAME(X509_get_issuer_name((X509 *)xs));
++    if (issuer==NULL) {
++	if (ssl_debug_flag)
++	    ERR_print_errors(bio_err);
++	ok=0;
++	goto return_time;
++    }
++
++    /* save the name of the first level subject as this is
++     * the name we want to use to match for a username in
++     * /etc/ssl.users later ... but *only* if we pass the
++     * full verification of the certificate chain
++     */
++    if (depth==0) {
++	/* clear things */
++	if (saved_subject!=NULL) {
++	    free(saved_subject);
++	    saved_subject=NULL;
++	}
++	if (auth_ssl_name!=NULL) {
++	    free(auth_ssl_name);
++	    auth_ssl_name=NULL;
++	}
++
++	/* save the name if at least the first level is okay */
++	if (ok)
++	    saved_subject=strdup(subject);
++    }
++
++    /* if the client is using a self signed certificate then 
++     * we need to decide if that is good enough for us to 
++     * accept ... it certainly isn't good enough for anything
++     * that wants to use the certificate as it is basically
++     * junk of no value in this context!
++     */
++    if (error==VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
++	if (ssl_cert_required) {
++	    /* make 100% sure that in secure mode we drop the 
++	     * connection if the server does not have a 
++	     * real certificate!
++	     */
++	    if (ssl_debug_flag) {
++		fprintf(stderr,"SSL: rejecting connection - self-signed cert\n");
++		fflush(stderr);
++	    }
++
++	    ok=0;
++	    goto return_time;
++	} else {
++	    ok=1;
++	    goto return_time;
++	}
++    }
++
++    /* if we have any form of error in secure mode we reject the connection */
++    if (! ((error==VERIFY_OK)||(error==VERIFY_ROOT_OK)) ) {
++	if (ssl_cert_required) {
++	    if (ssl_debug_flag) {
++		fprintf(stderr,"SSL: rejecting connection - ");
++		if (error==VERIFY_ERR_UNABLE_TO_GET_ISSUER) {
++		    fprintf(stderr,"unknown issuer: %s\n",issuer);
++		} else {
++		    ERR_print_errors(bio_err);
++		}
++		fflush(stderr);
++	    }
++	    ok=0;
++	    goto return_time;
++	} else {
++	    /* be nice and display a lot more meaningful stuff 
++	     * so that we know which issuer is unknown no matter
++	     * what the callers options are ...
++	     */
++	    if (error==VERIFY_ERR_UNABLE_TO_GET_ISSUER) {
++		if (ssl_debug_flag) {
++		    fprintf(stderr,"SSL: unknown issuer: %s\n",issuer);
++		    fflush(stderr);
++		}
++	    }
++	}
++    } else {
++	/* if we got all the way to the top of the tree then
++	 * we *can* use this certificate for a username to 
++	 * match ... in all other cases we must not!
++	 */
++	if ( (error==VERIFY_ROOT_OK) ) {
++	    auth_ssl_name = saved_subject;
++	    saved_subject = NULL;
++	}
++    }
++
++return_time: ;
++
++    /* clean up things */
++    if (subject!=NULL)
++	free(subject);
++    if (issuer!=NULL)
++	free(issuer);
++
++    return ok;
++}
++
++int
++#ifdef SSLEAY8
++client_verify_callback(ok, ctx)
++int ok;
++X509_STORE_CTX *ctx;
++#else /* !SSLEAY8 */
++client_verify_callback(ok, xs, xi, depth, error)
++int ok;
++char *xs, *xi;
++int depth, error;
++#endif /* SSLEAY8 */
++{
++    X509 *peer;
++    char *subject, *issuer;
++#ifdef SSLEAY8
++    int depth,error;
++    char *xs;
++
++    depth=ctx->error_depth;
++    error=ctx->error;
++    xs=(char *)X509_STORE_CTX_get_current_cert(ctx);
++
++#endif /* SSLEAY8 */
++
++#ifdef LOCAL_DEBUG
++    fprintf(stderr,"ssl:client_verify_callback:depth=%d ok=%d err=%d-%s\n",
++    	depth,ok,error,X509_cert_verify_error_string(error));
++    fflush(stderr);
++#endif /* LOCAL_DEBUG */
++
++    subject=issuer=NULL;
++
++    /* first thing is to have a meaningful name for the current
++     * certificate that is being verified ... and if we cannot
++     * determine that then something is seriously wrong!
++     */
++    subject=(char *)ONELINE_NAME(X509_get_subject_name((X509 *)xs));
++    if (subject==NULL) {
++	ERR_print_errors(bio_err);
++	ok=0;
++	goto return_time;
++    }
++    issuer=(char *)ONELINE_NAME(X509_get_issuer_name((X509 *)xs));
++    if (issuer==NULL) {
++	ERR_print_errors(bio_err);
++	ok=0;
++	goto return_time;
++    }
++
++    /* if the user wants us to be chatty about things then this
++     * is a good time to wizz the certificate chain past quickly :-)
++     */
++    if (ssl_verbose_flag) {
++	fprintf(stderr,"Certificate[%d] subject=%s\n",depth,subject);
++	fprintf(stderr,"Certificate[%d] issuer =%s\n",depth,issuer);
++	fflush(stderr);
++    }
++
++    /* if the server is using a self signed certificate then 
++     * we need to decide if that is good enough for us to 
++     * accept ... 
++     */
++    if (error==VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
++	if (ssl_cert_required) {
++	    /* make 100% sure that in secure more we drop the 
++	     * connection if the server does not have a 
++	     * real certificate!
++	     */
++	    fprintf(stderr,"SSL: rejecting connection - server has a self-signed certificate\n");
++	    fflush(stderr);
++
++            /* sometimes it is really handy to be able to debug things
++	     * and still get a connection!
++	     */
++	    if (ssl_debug_flag) {
++		fprintf(stderr,"SSL: debug -> ignoring cert required!\n");
++		fflush(stderr);
++		ok=1;
++	    } else {
++		ok=0;
++	    }
++	    goto return_time;
++	} else {
++	    ok=1;
++	    goto return_time;
++	}
++    }
++
++    /* if we have any form of error in secure mode we reject the connection */
++    if (! ((error==VERIFY_OK)||(error==VERIFY_ROOT_OK)) ) {
++	if (ssl_cert_required) {
++	    fprintf(stderr,"SSL: rejecting connection - ");
++	    if (error==VERIFY_ERR_UNABLE_TO_GET_ISSUER) {
++		fprintf(stderr,"unknown issuer: %s\n",issuer);
++	    } else {
++		ERR_print_errors(bio_err);
++	    }
++	    fflush(stderr);
++	    ok=0;
++	    goto return_time;
++	} else {
++	    /* be nice and display a lot more meaningful stuff 
++	     * so that we know which issuer is unknown no matter
++	     * what the callers options are ...
++	     */
++	    if (error==VERIFY_ERR_UNABLE_TO_GET_ISSUER) {
++		fprintf(stderr,"SSL: unknown issuer: %s\n",issuer);
++		fflush(stderr);
++	    }
++	}
++    }
++
++return_time: ;
++
++    /* clean up things */
++    if (subject!=NULL)
++	free(subject);
++    if (issuer!=NULL)
++	free(issuer);
++
++    return ok;
++}
++
++#endif /* USE_SSL */
++
++
+--- /dev/null
++++ b/README.SSL
+@@ -0,0 +1,77 @@
++This is the telnet(d)-ssl package with encryption support.
++
++It is derived from netkit-telnet(d) and is
++patched with the SSL-enhancement of Tim Hudson <tjh@mincom.oz.au>,
++which he did to the SRA-telnet sources.
++
++These patches were done by:
++
++Tim Hudson
++tjh@cryptsoft.com
+++61 7 32781581
++
++and
++
++Christoph Martin
++Christoph.Martin@Uni-Mainz.DE
++
++(Look at the VERSION file for details of contributors since the initial
++release)
++
++You can do whatever you like with these patches except pretend that
++you wrote them.
++
++This package uses the SSL-implementation which can be found in
++ftp://ftp.psy.uq.oz.au/pub/Crypto/SSL/SSLeay-0.8.1.tar.gz
++
++The SSLeay FAQ (which includes pointers to the porting documentation 
++and references to the other SSL-based applications) can be found at 
++http://www.psy.uq.oz.au/~ftp/Crypto
++  
++
++Test telnet like this:
++	telnet -z ssl www.netscape.com https
++then type
++	GET / HTTP/1.0 <RETURN><RETURN>
++and you should get back the HTML for the Netscape home page
++
++For installing put the path of telnetd in /etc/inetd.conf and send a
++kill -HUP to inetd. (On SCO this is not working :( ). Then you have to
++install at least the self-signed certificates
++
++I assume that the following exist:
++
++/usr/bin/ssl         (all the SSLeay utilites)
++/usr/lib/ssl         (libcrypto.a and libssl.a)
++/usr/include/ssl     (required SSLeay header files)
++
++/etc/ssl/certs       PUBLIC keys
++/etc/ssl/private     PRIVATE keys
++
++For telnetd you can operate using a self-signed certificate (this is the
++easiest way of driving SSL as a "simple" stream encryption
++library). To generate the required file you can either use
++"make certificate" or do the following:
++
++PATH=$PATH:/usr/bin/ssl
++
++# SSLeay 0.8.1 supports a quick mechanism for generating
++#                            "dummy" certificates
++cd /etc/ssl/certs
++req -new -x509 -nodes -out telnetd.pem -keyout telnetd.pem
++ln -s telnetd.pem `x509 -noout -hash < telnetd.pem`.0
++
++Then *test* that verify likes the setup
++
++verify /etc/ssl/certs/telnetd.pem
++
++SSL bugs should be directed to ssl-bugs@mincom.oz.au
++SSL comments/discussion should be directed to ssl-users@mincom.oz.au
++
++If you email ssl-users-request@mincom.oz.au you will be emailed 
++instructions on how to interact with the majordomo varient that 
++is managing this list.
++
++Email to ssleay@cryptsoft.com will get both Eric Young and Tim Hudson 
++if you are not sure which one of us a problem should be directed to.
++
+--- a/telnet/commands.cc
++++ b/telnet/commands.cc
+@@ -73,6 +73,11 @@
+ #include "ptrarray.h"
+ #include "netlink.h"
+ 
++#if defined(AUTHENTICATE)
++#include <libtelnet/auth.h>
++#include <libtelnet/misc.h>
++#endif
++
+ /* In Linux, this is an enum */
+ #if defined(__linux__) || defined(IPPROTO_IP)
+ #define HAS_IPPROTO_IP
+@@ -654,6 +659,9 @@
+ static int termdata;    /* Print out terminal data flow */
+ 
+ static int togglehelp(int);
++#if	defined(AUTHENTICATE)
++extern int auth_togdebug(int);
++#endif
+ 
+ struct togglelist {
+     const char *name;			/* name of toggle */
+@@ -672,13 +680,15 @@
+       NULL, &autosynch,
+       "send interrupt characters in urgent mode" },
+ 
+-#if 0
++#if	defined(AUTHENTICATE)
+     { "autologin", "automatic sending of login and/or authentication info",
+       NULL, &autologin,
+       "send login name and/or authentication information" },
+     { "authdebug", "Toggle authentication debugging",
+       auth_togdebug, NULL,
+       "print authentication debugging information" },
++#endif
++#if 0
+     { "autoencrypt", "automatic encryption of data stream",
+       EncryptAutoEnc, NULL,
+       "automatically encrypt output" },
+@@ -1368,6 +1378,9 @@
+ 	printf("Connection closed.\n");
+ 	connected = 0;
+ 	resettermname = 1;
++#if	defined(AUTHENTICATE)
++	auth_encrypt_connect(connected);
++#endif
+ 
+ 	/* reset options */
+ 	tninit();
+@@ -1493,6 +1506,79 @@
+  *    auth disable     Disable an authentication type
+  *    auth enable      Enable an authentication type
+  *
++ */ 
++
++#if	defined(AUTHENTICATE)
++struct authlist {
++	char	*name;
++	char	*help;
++	int	(*handler)(const char *, const char *);
++	int	narg;
++};
++
++static int auth_help (const char *, const char *);
++
++struct authlist AuthList[] = {
++    { "status",	"Display current status of authentication information",
++						auth_status,	0 },
++    { "disable", "Disable an authentication type ('auth disable ?' for more)",
++						auth_disable,	1 },
++    { "enable", "Enable an authentication type ('auth enable ?' for more)",
++						auth_enable,	1 },
++    { "help",	0,				auth_help,		0 },
++    { "?",	"Print help information",	auth_help,		0 },
++    { 0 },
++};
++
++static int auth_help(const char *, const char *)
++{
++    struct authlist *c;
++
++    for (c = AuthList; c->name; c++) {
++	if (c->help) {
++	    if (*c->help)
++		printf("%-15s %s\n", c->name, c->help);
++	    else
++		printf("\n");
++	}
++    }
++    return 0;
++}
++
++static int auth_cmd(int argc, const char *argv[])
++{
++    struct authlist *c;
++
++    if (argc < 2) {
++      fprintf(stderr,
++          "Need an argument to 'auth' command.  'auth ?' for help.\n");
++      return 0;
++    }
++
++    c = (struct authlist *)
++		genget(argv[1], (char **) AuthList, sizeof(struct authlist));
++    if (c == 0) {
++        fprintf(stderr, "'%s': unknown argument ('auth ?' for help).\n",
++    				argv[1]);
++        return 0;
++    }
++    if (c == AMBIGUOUS) {
++        fprintf(stderr, "'%s': ambiguous argument ('auth ?' for help).\n",
++    				argv[1]);
++        return 0;
++    }
++    if (c->narg + 2 != argc) {
++	fprintf(stderr,
++	    "Need %s%d argument%s to 'auth %s' command.  'auth ?' for help.\n",
++		c->narg < argc + 2 ? "only " : "",
++		c->narg, c->narg == 1 ? "" : "s", c->name);
++	return 0;
++    }
++    return((*c->handler)(argv[2], argv[3]));
++}
++#endif
++
++/*
+  * The ENCRYPT command.
+  *
+  *   encrypt enable	Enable encryption
+@@ -1823,6 +1909,9 @@
+ 	    goto nextaddr;
+ 
+ 	connected++;
++#if	defined(AUTHENTICATE)
++	auth_encrypt_connect(connected);
++#endif
+     } while (connected == 0);
+     if (tmpaddr->ai_canonname == 0) {
+ 	hostname = new char[strlen(hostp)+1];
+@@ -1874,6 +1963,9 @@
+ #ifdef TN3270
+ 	transcomhelp[] = "specify Unix command for transparent mode pipe",
+ #endif /* TN3270 */
++#if	defined(AUTHENTICATE)
++	authhelp[] =	"turn on (off) authentication ('auth ?' for more)",
++#endif
+ 	zhelp[] =	"suspend telnet",
+ /*	shellhelp[] =	"invoke a subshell", */
+ 	envhelp[] =	"change environment variables ('environ ?' for more)",
+@@ -1931,7 +2023,9 @@
+     BIND("transcom", transcomhelp, settranscom);
+ #endif /* TN3270 */
+ 
+-    // BIND("auth", authhelp, auth_cmd);
++#if	defined(AUTHENTICATE)
++    BIND("auth", authhelp, auth_cmd);
++#endif
+     // BIND("encrypt", encrypthelp, encrypt_cmd);
+ 
+     BIND("z", zhelp, suspend);
+--- a/telnet/externs.h
++++ b/telnet/externs.h
+@@ -364,3 +364,8 @@
+ void inputAvailable(void);
+ 
+ #endif	/* defined(TN3270) */
++
++#ifdef USE_SSL
++#include <libtelnet/sslapp.h>
++#endif /* USE_SSL */
++
+--- /dev/null
++++ b/telnet/glue2.cc
+@@ -0,0 +1,13 @@
++#include "ring.h"
++#include "glue.h"
++#include "externs.h"
++#include "proto.h"
++
++int netflush_h(void) {
++  return netflush();
++}
++
++void printsub_h(int direction, unsigned char *pointer, int length) {
++  printsub(direction, pointer, length);
++}
++
+--- /dev/null
++++ b/telnet/glue.cc
+@@ -0,0 +1,20 @@
++#include "ring.h"
++#include "glue.h"
++
++extern ringbuf netoring;
++
++extern "C" int netflush(void) {
++  return netflush_h();
++}
++
++extern "C" void printsub(int direction, unsigned char *pointer, int length) {
++  printsub_h(direction, pointer, length);
++}
++
++extern "C" void writenet(const char *str, int len) {
++  netoring.write(str, len);
++}
++
++extern "C" int telnet_spin() {
++  return(-1);
++}
+--- /dev/null
++++ b/telnet/glue.h
+@@ -0,0 +1,2 @@
++void printsub_h(int direction, unsigned char *pointer, int length);
++int netflush_h(void);
+--- a/telnet/main.cc
++++ b/telnet/main.cc
+@@ -55,6 +55,11 @@
+ #include "defines.h"
+ #include "proto.h"
+ 
++#if defined(AUTHENTICATE)
++#include <libtelnet/auth.h>
++#include <libtelnet/misc.h>
++#endif
++
+ /*
+  * Initialize variables.
+  */
+@@ -152,7 +157,9 @@
+ 			rlogin = escapechar = _POSIX_VDISABLE;
+ 			break;
+ 		case 'K':
+-		        //autologin = 0;
++#ifdef	AUTHENTICATE
++			autologin = 0;
++#endif
+ 			break;
+ 		case 'L':
+ 			binary |= 2;	/* binary output only */
+@@ -178,7 +185,9 @@
+ 		    }
+ 			break;
+ 		case 'X':
+-		        // disable authentication type "optarg"
++#ifdef	AUTHENTICATE
++			auth_disable_name(optarg);
++#endif
+ 			break;
+ 		case 'a':
+ 			autologin = 1;
+@@ -247,6 +256,17 @@
+ 	if (autologin == -1)
+ 		autologin = (rlogin == _POSIX_VDISABLE) ? 0 : 1;
+ 
++#ifdef USE_SSL
++        if (ssl_secure_flag||ssl_cert_required) {
++	    /* in secure mode we *must* switch on the base level
++	     * verify checking otherwise we cannot abort connections
++	     * at the right place!
++	     */
++	    if (ssl_verify_flag == 0)
++		ssl_verify_flag = 1;
++	}
++#endif /* USE_SSL */
++
+ 	argc -= optind;
+ 	argv += optind;
+ 
+@@ -269,6 +289,11 @@
+ 			*argp++ = family == AF_INET ? "-4" : "-6";
+ 		}
+ 		*argp++ = argv[0];		/* host */
++#ifdef USE_SSL
++		if (strcmp(argv[0], "localhost") != 0) {
++		  autologin = 1;
++		}
++#endif /* USE_SSL */
+ 		if (argc > 1)
+ 			*argp++ = argv[1];	/* port */
+ 		*argp = 0;
+--- a/telnet/netlink.cc
++++ b/telnet/netlink.cc
+@@ -11,6 +11,7 @@
+ #include "netlink.h"
+ #include "proto.h"
+ #include "ring.h"
++#include <libtelnet/sslapp.h>
+ 
+ /* In Linux, this is an enum */
+ #if defined(__linux__) || defined(IPPROTO_IP)
+@@ -23,7 +24,13 @@
+   public:
+     virtual int read(char *buf, int maxlen) {
+ 	int net = nlink.getfd();
+-	int l = recv(net, buf, maxlen, 0);
++	int l;
++#ifdef USE_SSL
++	if (ssl_active_flag)
++	  l = SSL_read(ssl_con, buf, maxlen);
++	else
++#endif /* USE_SSL */
++	l = recv(net, buf, maxlen, 0);
+ 	if (l<0 && errno == EWOULDBLOCK) l = 0;
+ 	return l;
+     }
+@@ -78,6 +85,16 @@
+     if (doshutdown) {
+ 	shutdown(net, 2);
+     }
++#ifdef USE_SSL
++    if (ssl_active_flag) {
++	if (ssl_debug_flag)
++	  BIO_printf(bio_err,"NetClose: calling SSL_shutdown\n");
++	SSL_shutdown(ssl_con);
++	SSL_free(ssl_con);
++	ssl_con=NULL;
++	ssl_active_flag=0;
++    }
++#endif /* USE_SSL */
+     ::close(net);
+     net = -1;
+ }
+@@ -158,6 +175,40 @@
+     if (::connect(net, addr->ai_addr, addr->ai_addrlen) < 0) {
+ 	return 1;
+     }
++#ifdef USE_SSL
++	if (!do_ssleay_init(0)) {
++	  if (bio_err==NULL) {
++	    fflush(stdout);
++	    fflush(stderr);
++	    fprintf(stderr,"do_ssleay_init() failed\n");
++	    ERR_print_errors_fp(stderr);
++	  } else {
++	    BIO_printf(bio_err,"do_ssleay_init() failed\n");
++	    ERR_print_errors(bio_err);
++	  }
++	  exit(1);
++	}
++	
++	/* bind in the network descriptor */
++    	SSL_set_fd(ssl_con,net);
++
++	/* if we are doing raw SSL then start it now ... */
++	if (ssl_only_flag) {
++	    if (!SSL_connect(ssl_con)) {
++		static char errbuf[1024];
++
++		ERR_print_errors_fp(stderr);
++		perror("SSL_connect");
++		fflush(stderr);
++
++		exit(1);
++	    } else {
++		display_connect_details(ssl_con,ssl_debug_flag);
++		ssl_active_flag=1;
++	    }
++	}
++
++#endif /* USE_SSL */
+     return 2;
+ }
+ 
+@@ -201,11 +252,18 @@
+ }
+ 
+ int netlink::send(const char *s, int n, int f) {
++#ifdef USE_SSL
++    if (ssl_active_flag)
++        return SSL_write(ssl_con, s, n); /* normal write */
++    else
++#endif /* USE_SSL */
+     return ::send(net, s, n, f);
+ }
+ 
+ void netlink::nonblock(int onoff) {
++#ifndef USE_SSL
+     ioctl(net, FIONBIO, &onoff);
++#endif /* !USE_SSL */
+ }
+ 
+ int netlink::getfd() {
+--- /dev/null
++++ b/telnet/README.SSL
+@@ -0,0 +1,26 @@
++/*
++ * The modifications to support SSLeay were done by Tim Hudson
++ * tjh@cryptsoft.com
++ *
++ * You can do whatever you like with these patches except pretend that
++ * you wrote them.
++ *
++ * Email ssl-users-request@mincom.oz.au to get instructions on how to
++ * join the mailing list that discusses SSLeay and also these patches.
++ *
++ * The modifications for this version of telnet where done by
++ * Christoph Martin <christoph.martin@uni-mainz.de>
++ */
++
++    Features:
++
++	This version of telnet/telnetd has support for the
++	AUTHENTICATION option.  The AUTHENTICATION option is fairly
++	well defined, and an option number has been assigned to
++	it. The code is provided in this release for experimental and
++	testing purposes.
++
++	A new telnet command, "auth" has been added (if
++	AUTHENTICATE is defined).  It has four sub-commands,
++	"status", "debug", "disable", "enable" and "help".
++
+--- a/telnet/sys_bsd.cc
++++ b/telnet/sys_bsd.cc
+@@ -173,8 +173,10 @@
+ }
+ 
+ #if defined(TN3270)
++#ifndef USE_SSL
+ void NetSigIO(int fd, int onoff) {
+     ioctl(fd, FIOASYNC, (char *)&onoff);	/* hear about input */
++#endif /* !USE_SSL */
+ }
+ 
+ void NetSetPgrp(int fd) {
+@@ -293,6 +295,8 @@
+ 		 */
+     int returnValue = 0;
+     static struct timeval TimeValue = { 0, 0 };
++
++    int ssl_pending;
+     
+     int net = nlink.getfd();
+     int tin = tlink_getifd();
+@@ -318,6 +322,12 @@
+     if (maxfd < tin) maxfd=tin;
+     if (maxfd < tout) maxfd=tout;
+ 
++    ssl_pending = netin && SSL_pending(ssl_con);
++
++    /*    if (ssl_pending) {
++      printf("SSL_pending, poll=%d\n", poll);
++    }*/
++
+     if ((c = select(maxfd+1, &ibits, &obits, &xbits,
+ 			(poll == 0)? (struct timeval *)0 : &TimeValue)) < 0) {
+ 	if (c == -1) {
+@@ -377,7 +387,7 @@
+     /*
+      * Something to read from the network...
+      */
+-    if (FD_ISSET(net, &ibits)) {
++    if (ssl_pending || FD_ISSET(net, &ibits)) {
+ 	/* hacks for systems without SO_OOBINLINE removed */
+ 
+ 	FD_CLR(net, &ibits);
+--- a/telnet/telnet.1
++++ b/telnet/telnet.1
+@@ -81,10 +81,16 @@
+ .It Fl E
+ Disables the escape character functionality; that is, sets the escape
+ character to ``no character''.
++.It Fl K
++Specifies no automatic login to the remote system.
+ .It Fl L
+ Specifies an 8-bit data path on output.  This causes the 
+ .Dv TELNET BINARY 
+ option to be negotiated on just output.
++.It Fl X Ar atype 
++Disables the
++.Ar atype
++type of authentication.
+ .It Fl a
+ Attempt automatic login.  Currently, this sends the user name via the
+ .Ev USER
+@@ -144,6 +150,54 @@
+ See the
+ .Ic set tracefile
+ command below.
++.It Fl z Ar option
++Set SSL (Secure Socket Layer) parameters. The default is to negotiate
++via telnet protocoll if SSL is availlable at server side and then to
++switch it on. In this mode you can connect to both conventional and
++SSL enhanced telnetd's.
++.Pp
++The SSL parameters are:
++.Bl -tag -width Fl
++.It Ic Ar debug
++Send SSL related debugging information to stderr.
++.It Ic Ar authdebug
++Enable authentication debugging.
++.It Ic Ar ssl
++Negotiate SSL at first, then use telnet protocol. In this mode you can
++connect to any server supporting directly SSL like Apache-SSL. Use
++.Ic telnet -z ssl ssl3.netscape.com https
++for example. telnet protocol negotiation goes encrypted.
++.It Ic Ar nossl, Ar !ssl
++switch of SSL negotiation
++.It Ic Ar certrequired
++client certificate is mandatory
++.It Ic Ar secure
++Don't switch back to unencrypted mode (no SSL) if SSL is not available.
++.It Ic Ar verbose
++Be verbose about certificates etc.
++.It Ic Ar verify=int
++.\" TODO
++Set the SSL verify flags (SSL_VERIFY_* in 
++.Ar ssl/ssl.h
++).
++.\" TODO
++.It Ic Ar cert=cert_file
++.\" TODO
++Use the certificate(s) in
++.Ar cert_file .
++.It Ic Ar key=key_file
++.\" TODO
++Use the key(s) in
++.Ar key_file .
++.It Ic Ar cipher=ciph_list
++.\" TODO
++Set the preferred ciphers to
++.Ar ciph_list .
++.\" TODO: possible values; comma-separated list?
++(See 
++.Ar ssl/ssl.h
++).
++.El
+ .It Ar host
+ Specifies a host to contact over the network.
+ .It Ar port
+--- a/telnet/telnet.cc
++++ b/telnet/telnet.cc
+@@ -1,4 +1,16 @@
+ /*
++ * The modifications to support SSLeay were done by Tim Hudson
++ * tjh@cryptsoft.com and Christoph Martin martin@uni-mainz.de
++ *
++ * You can do whatever you like with these patches except pretend that
++ * you wrote them.
++ *
++ * Email ssl-users-request@mincom.oz.au to get instructions on how to
++ * join the mailing list that discusses SSLeay and also these patches.
++ *
++ */
++
++/*
+  * Copyright (c) 1988, 1990 Regents of the University of California.
+  * All rights reserved.
+  *
+@@ -67,6 +79,10 @@
+ #include <term.h>
+ #endif
+ 
++#if defined(AUTHENTICATE)
++#include <libtelnet/auth.h>
++#include <libtelnet/misc-proto.h>
++#endif
+ 
+ #define	strip(x)	((x)&0x7f)
+ 
+@@ -179,6 +195,10 @@
+   memset(options, 0, sizeof(options));
+   
+   connected = In3270 = ISend = localflow = donebinarytoggle = 0;
++
++#if	defined(ENCRYPT) || defined(AUTHENTICATE)
++  auth_encrypt_connect(connected);
++#endif
+   
+   SYNCHing = 0;
+   
+@@ -340,6 +360,9 @@
+       settimer(modenegotiated);
+       /* FALL THROUGH */
+     case TELOPT_STATUS:
++#if	defined(AUTHENTICATE)
++    case TELOPT_AUTHENTICATION:
++#endif
+       new_state_ok = 1;
+       break;
+       
+@@ -400,6 +423,21 @@
+       set_my_state_dont(option);
+       return;		/* Never reply to TM will's/wont's */
+       
++#ifdef USE_SSL
++      /* don't know if this is needed here ... don't
++       * really want to think about it myself
++       * at the moment --tjh 
++       */
++    case TELOPT_AUTHENTICATION:
++      if (ssl_secure_flag && !ssl_only_flag) {
++	fflush(stderr);
++	printf("[SSL not available]\n");
++	fflush(stdout);
++	/* abort quickly ... */
++	exit(1);
++      }
++#endif /* USE_SSL */
++
+     default:
+       break;
+     }
+@@ -455,6 +493,12 @@
+       case TELOPT_ENVIRON:	/* environment variable option */
+ 	new_state_ok = 1;
+ 	break;
++#if	defined(AUTHENTICATE)
++      case TELOPT_AUTHENTICATION:
++	if (autologin)
++	  new_state_ok = 1;
++	break;
++#endif
+ 	
+       case TELOPT_XDISPLOC:	/* X Display location */
+ 	if (env_getvalue("DISPLAY", 0))
+@@ -520,6 +564,19 @@
+     case TELOPT_LINEMODE:
+       linemode = 0;	/* put us back to the default state */
+       break;
++#ifdef USE_SSL
++    case TELOPT_AUTHENTICATION:
++      if (ssl_secure_flag && !ssl_only_flag) {
++	fflush(stderr);
++	printf("[SSL not available]\n");
++	fflush(stdout);
++	/* abort quickly ... */
++	exit(1);
++      } else {
++	fprintf(stderr,"[SSL not available]\n");
++	fflush(stderr);
++      }
++#endif /* USE_SSL */
+     }
+     /* we always accept a DONT */
+     set_my_want_state_wont(option);
+@@ -786,6 +843,38 @@
+     }
+     break;
+     
++#if	defined(AUTHENTICATE)
++  case TELOPT_AUTHENTICATION: {
++    if (!autologin)
++      break;
++    if (SB_EOF())
++      return;
++    switch(SB_GET()) {
++    case TELQUAL_IS:
++      if (my_want_state_is_dont(TELOPT_AUTHENTICATION))
++	return;
++      auth_is(subpointer, SB_LEN());
++      break;
++    case TELQUAL_SEND:
++      if (my_want_state_is_wont(TELOPT_AUTHENTICATION))
++	return;
++      auth_send(subpointer, SB_LEN());
++      break;
++    case TELQUAL_REPLY:
++      if (my_want_state_is_wont(TELOPT_AUTHENTICATION))
++	return;
++      auth_reply(subpointer, SB_LEN());
++      break;
++    case TELQUAL_NAME:
++      if (my_want_state_is_dont(TELOPT_AUTHENTICATION))
++	return;
++      auth_name(subpointer, SB_LEN());
++      break;
++    }
++  }
++  break;
++#endif
++
+   default:
+     break;
+   }
+@@ -1728,12 +1817,29 @@
+ /*
+  * Select from tty and network...
+  */
+-void telnet(const char * /*user*/) {
++void telnet(const char *user) {
+   sys_telnet_init();
+   
++#if defined(AUTHENTICATE)
++  {
++    static char local_host[256] = { 0 };
++    int len = sizeof(local_host);
++    
++    if (!local_host[0]) {
++      gethostname(local_host, len);        /* WAS &len!!! */
++      local_host[sizeof(local_host)-1] = 0;
++    }
++    auth_encrypt_init(local_host, hostname, "TELNET", 0);
++    auth_encrypt_user(user);
++  }
++#endif
+   
+ #if !defined(TN3270)
+   if (telnetport) {
++#if	defined(AUTHENTICATE)
++    if (autologin)
++      send_will(TELOPT_AUTHENTICATION, 1);
++#endif
+     send_do(TELOPT_SGA, 1);
+     send_will(TELOPT_TTYPE, 1);
+     send_will(TELOPT_NAWS, 1);
+--- a/telnet/utilities.cc
++++ b/telnet/utilities.cc
+@@ -56,6 +56,10 @@
+ #include "proto.h"
+ #include "terminal.h"
+ 
++#if defined(AUTHENTICATE)
++#include <libtelnet/auth.h>
++#endif
++
+ FILE *NetTrace = 0;		/* Not in bss, since needs to stay */ /* ? */
+ char NetTraceFile[256] = "(standard output)";
+ 
+@@ -253,7 +257,7 @@
+ /* length: length of suboption data */
+ void printsub(int direction, unsigned char *pointer, int length) {
+     register int i = 0;
+-
++    unsigned char buf[512];
+     extern int want_status_response;
+ 
+     if (showoptions || direction == 0 ||
+@@ -370,6 +374,73 @@
+ 		fprintf(NetTrace, " ?%d?", pointer[i]);
+ 	    break;
+ 
++#if	defined(AUTHENTICATE)
++	case TELOPT_AUTHENTICATION:
++	    fprintf(NetTrace, "AUTHENTICATION");
++	    if (length < 2) {
++		fprintf(NetTrace, " (empty suboption???)");
++		break;
++	    }
++	    switch (pointer[1]) {
++	    case TELQUAL_REPLY:
++	    case TELQUAL_IS:
++		fprintf(NetTrace, " %s ", (pointer[1] == TELQUAL_IS) ?
++							"IS" : "REPLY");
++		if (AUTHTYPE_NAME_OK(pointer[2]))
++		    fprintf(NetTrace, "%s ", AUTHTYPE_NAME(pointer[2]));
++		else
++		    fprintf(NetTrace, "%d ", pointer[2]);
++		if (length < 3) {
++		    fprintf(NetTrace, "(partial suboption???)");
++		    break;
++		}
++		fprintf(NetTrace, "%s|%s",
++			((pointer[3] & AUTH_WHO_MASK) == AUTH_WHO_CLIENT) ?
++			"CLIENT" : "SERVER",
++			((pointer[3] & AUTH_HOW_MASK) == AUTH_HOW_MUTUAL) ?
++			"MUTUAL" : "ONE-WAY");
++
++		auth_printsub(&pointer[1], length - 1, buf, sizeof(buf));
++		fprintf(NetTrace, "%s", buf);
++		break;
++
++	    case TELQUAL_SEND:
++		i = 2;
++		fprintf(NetTrace, " SEND ");
++		while (i < length) {
++		    if (AUTHTYPE_NAME_OK(pointer[i]))
++			fprintf(NetTrace, "%s ", AUTHTYPE_NAME(pointer[i]));
++		    else
++			fprintf(NetTrace, "%d ", pointer[i]);
++		    if (++i >= length) {
++			fprintf(NetTrace, "(partial suboption???)");
++			break;
++		    }
++		    fprintf(NetTrace, "%s|%s ",
++			((pointer[i] & AUTH_WHO_MASK) == AUTH_WHO_CLIENT) ?
++							"CLIENT" : "SERVER",
++			((pointer[i] & AUTH_HOW_MASK) == AUTH_HOW_MUTUAL) ?
++							"MUTUAL" : "ONE-WAY");
++		    ++i;
++		}
++		break;
++
++	    case TELQUAL_NAME:
++		i = 2;
++		fprintf(NetTrace, " NAME \"");
++		while (i < length)
++		    putc(pointer[i++], NetTrace);
++		putc('"', NetTrace);
++		break;
++
++	    default:
++		    for (i = 2; i < length; i++)
++			fprintf(NetTrace, " ?%d?", pointer[i]);
++		    break;
++	    }
++	    break;
++#endif
++
+ 	case TELOPT_LINEMODE:
+ 	    fprintf(NetTrace, "LINEMODE ");
+ 	    if (length < 2) {
+--- a/telnetd/ext.h
++++ b/telnetd/ext.h
+@@ -212,3 +212,12 @@
+ } clocks;
+ 
+ #define DEFAULT_IM	"%i\r\n%s %r (%h) (%t)\r\n\r\n"
++
++#ifdef USE_SSL
++
++#include <libtelnet/sslapp.h>
++
++/* make telnetd global debug flag visible */
++extern int debug;
++
++#endif /* USE_SSL */
+--- a/telnetd/state.c
++++ b/telnetd/state.c
+@@ -38,6 +38,9 @@
+   "$Id: state.c,v 1.12 1999/12/12 19:41:44 dholland Exp $";
+ 
+ #include "telnetd.h"
++#if	defined(AUTHENTICATE)
++#include <libtelnet/auth.h>
++#endif
+ 
+ int not42 = 1;
+ 
+--- a/telnetd/sys_term.c
++++ b/telnetd/sys_term.c
+@@ -58,6 +58,19 @@
+ 
+ static struct termios termbuf, termbuf2;	/* pty control structure */
+ 
++#ifdef USE_SSL
++#define DO_SHUTDOWN(x,y) \
++			 if (debug) { \
++			   fprintf(stderr,"Doing SSL_shutdown\n");\
++			   fflush(stderr); \
++			 } \
++			 if (ssl_active_flag) \
++			   SSL_shutdown(ssl_con); \
++			 shutdown((x),(y))
++#else
++#define DO_SHUTDOWN(x,y) shutdown((x),(y))
++#endif
++
+ /*static int cleanopen(char *line);*/
+ 
+ /*
+--- a/telnetd/telnetd.8
++++ b/telnetd/telnetd.8
+@@ -207,6 +207,52 @@
+ can be used to temporarily disable
+ a specific authentication type without having to recompile
+ .Nm telnetd .
++.It Fl z Ar SSL-parameter
++This option is only valid if
++.Nm telnetd
++has been built with SSL (Secure Socket Layer) support.
++.Bl -tag -width Fl
++.It Ic debug
++Enable SSL related debugging.
++.It Ic ssl
++Negotiate SSL at first, then use telnet protocol. In this mode telnetd
++only accepts connections from SSL enhanced telnet with option 
++.Ic -z ssl
++.It Ic nossl, !ssl
++switch of SSL negotiation
++.It Ic certsok
++Look username up in /etc/ssl.users. The format of this file is lines
++of this form: 
++.Ar user1,user2:/C=US/.....
++where user1 and user2 are usernames. If client certificate is valid,
++authenticate without password.
++.It Ic certrequired
++client certificate is mandatory
++.It Ic secure
++Don't switch back to unencrypted mode (no SSL) if SSL is not available.
++.It Ic verify=int
++.\" TODO
++Set the SSL verify flags (SSL_VERIFY_* in 
++.Ar ssl/ssl.h
++).
++.\" TODO
++.It Ic cert=cert_file
++.\" TODO
++Use the certificate(s) in
++.Ar cert_file .
++.It Ic key=key_file
++.\" TODO
++Use the key(s) in
++.Ar key_file .
++.It Ic cipher=ciph_list
++.\" TODO
++Set the preferred ciphers to
++.Ar ciph_list .
++.\" TODO: possible values; comma-separated list?
++(See 
++.Ar ssl/ssl.h
++).
++.El
+ .El
+ .Pp
+ If the file
+--- a/telnetd/telnetd.c
++++ b/telnetd/telnetd.c
+@@ -75,6 +75,10 @@
+ static void doit(struct sockaddr *who, socklen_t who_len);
+ static int terminaltypeok(const char *s);
+ 
++#ifdef USE_SSL 
++static char cert_filepath[1024];
++#endif /* USE_SSL */
++
+ /*
+  * I/O data buffers,
+  * pointers, and counters.
+@@ -202,6 +206,7 @@
+ 	int on = 1;
+ 	socklen_t fromlen;
+ 	register int ch;
++	int i;
+ 
+ #if	defined(HAS_IPPROTO_IP) && defined(IP_TOS)
+ 	int tos = -1;
+@@ -212,9 +217,82 @@
+ 	pfrontp = pbackp = ptyobuf;
+ 	netip = netibuf;
+ 
+-	while ((ch = getopt(argc, argv, "d:a:e:lhnr:I:D:B:sS:a:X:L:")) != EOF) {
++#ifdef USE_SSL
++	/* we need to know the fullpath to the location of the
++	 * certificate that we will be running with as we cannot
++	 * be sure of the cwd when we are launched
++	 */
++	sprintf(cert_filepath,"%s/%s",X509_get_default_cert_dir(),
++	        "telnetd.pem");
++	ssl_cert_file=cert_filepath;
++	ssl_key_file=NULL;
++#endif /* USE_SSL */
++
++	while ((ch = getopt(argc, argv, "d:a:e:lhnr:I:D:B:sS:a:X:L:z:")) != EOF) {
+ 		switch(ch) {
+ 
++#ifdef USE_SSL
++                case 'z':
++		        { 
++			char *origopt;
++
++			origopt=strdup(optarg);
++			optarg=strtok(origopt,",");
++
++			while(optarg!=NULL) {
++
++		        if (strcmp(optarg, "debug") == 0 ) {
++			    ssl_debug_flag=1;
++			} else if (strcmp(optarg, "ssl") == 0 ) {
++			    ssl_only_flag=1;
++			} else if (strcmp(optarg, "certsok") == 0 ) {
++			    ssl_certsok_flag=1;
++			} else if ( (strcmp(optarg, "!ssl") == 0) ||
++		             (strcmp(optarg, "nossl") == 0) ) {
++			    /* we may want to switch SSL negotiation off
++			     * for testing or other reasons 
++			     */
++			    ssl_disabled_flag=1;
++			} else if (strcmp(optarg, "certrequired") == 0 ) {
++			    ssl_cert_required=1;
++			} else if (strcmp(optarg, "secure") == 0 ) {
++			    ssl_secure_flag=1;
++			} else if (strncmp(optarg, "verify=", 
++			                strlen("verify=")) == 0 ) {
++			    ssl_verify_flag=atoi(optarg+strlen("verify="));
++			} else if (strncmp(optarg, "cert=", 
++			                strlen("cert=")) == 0 ) {
++			    ssl_cert_file=optarg+strlen("cert=");
++			} else if (strncmp(optarg, "key=", 
++			                strlen("key=")) == 0 ) {
++			    ssl_key_file=optarg+strlen("key=");
++			} else if (strncmp(optarg,"cipher=",
++			                strlen("cipher="))==0) {
++			    ssl_cipher_list=optarg+strlen("cipher=");
++			} else {
++			    /* report when we are given rubbish so that
++			     * if the user makes a mistake they have to
++			     * correct it!
++			     */
++			    fprintf(stderr,"Unknown SSL option %s\n",optarg);
++			    fflush(stderr);
++			    exit(1);
++			}
++
++			/* get the next one ... */
++                        optarg=strtok(NULL,",");
++
++			}
++
++			/*
++			if (origopt!=NULL)
++			    free(origopt);
++			*/
++
++			}
++			break;
++#endif /* USE_SSL */
++
+ #ifdef	AUTHENTICATE
+ 		case 'a':
+ 			/*
+@@ -347,6 +425,46 @@
+ 		}
+ 	}
+ 
++#ifdef USE_SSL
++
++        if (ssl_secure_flag || ssl_cert_required) {
++	    /* in secure mode we *must* switch on the base level
++	     * verify checking otherwise we cannot abort connections
++	     * at the right place!
++	     */
++	    if (ssl_verify_flag==0)
++		ssl_verify_flag=1;
++	}
++
++	/* if we are not running in debug then any error
++	 * stuff from SSL debug *must* not go down
++	 * the socket (which 0,1,2 are all pointing to by
++	 * default)
++	 */
++	if (ssl_debug_flag)
++	    ssl_log_file="/telnetd.log";
++
++	if (!do_ssleay_init(1)) {
++	  if (bio_err!=NULL) {
++	    BIO_printf(bio_err,"do_ssleay_init() failed\n");
++	    ERR_print_errors(bio_err);
++	  } else {
++	    fflush(stderr);
++	    fprintf(stderr,"do_ssleay_init() failed\n");
++	    ERR_print_errors_fp(stderr);
++	  }
++	  exit(1);
++	}
++
++	if (ssl_debug_flag) {
++	  BIO_printf(bio_err,"secure %d certrequired %d verify %d\n",
++	      ssl_secure_flag,ssl_cert_required,ssl_verify_flag);
++	  for(i=0;i<argc;i++)
++	      BIO_printf(bio_err,"argv[%d]=\"%s\"\n",i,argv[i]);
++	}
++
++#endif /* USE_SSL */
++
+ 	argc -= optind;
+ 	argv += optind;
+ 
+@@ -384,6 +502,39 @@
+ 			syslog(LOG_WARNING, "setsockopt (IP_TOS): %m");
+ 	}
+ #endif	/* defined(HAS_IPPROTO_IP) && defined(IP_TOS) */
++
++#ifdef USE_SSL
++        /* do the SSL stuff now ... before we play with pty's */
++	SSL_set_fd(ssl_con,0);
++
++	if (ssl_only_flag) {
++	    /* hmm ... only when running talking to things like
++	     * https servers should we hit this code and then
++	     * we really don't care *who* we talk to :-)
++	     */
++	    SSL_set_verify(ssl_con,ssl_verify_flag,NULL);
++
++	    if (SSL_accept(ssl_con) <= 0) {
++		static char errbuf[1024];
++	    
++	        sprintf(errbuf,"SSL_accept error %s\n",
++		    ERR_error_string(ERR_get_error(),NULL));
++
++		syslog(LOG_WARNING, errbuf);
++
++		BIO_printf(bio_err,errbuf);
++
++		/* go to sleep to make sure we are noticed */
++		sleep(10);
++		SSL_free(ssl_con);
++
++		_exit(1);
++	    } else {
++		ssl_active_flag=1;
++	    }
++	}
++#endif /* USE_SSL */
++
+ 	net = 0;
+ 	netopen();
+ 	doit((struct sockaddr *)&from, fromlen);
+@@ -451,6 +602,50 @@
+     if (his_state_is_will(TELOPT_AUTHENTICATION)) {
+ 	retval = auth_wait(name);
+     }
++
++#ifdef USE_SSL
++    /* if SSL is required then we will stop if we don't
++     * have it *now*
++     */
++    if (ssl_secure_flag) {
++	if (!ssl_active_flag) {
++	    /* we need to indicate to the user that SSL
++	     * is required ... need to think about how
++	     * to do this cleanly at this point!
++	     */
++
++#if 0
++            /* this muck is needed so that the message
++	     * actually makes it back to the user ...
++	     */
++	    send_do(TELOPT_TTYPE, 1);
++	    send_do(TELOPT_TSPEED, 1);
++	    send_do(TELOPT_XDISPLOC, 1);
++	    send_do(TELOPT_ENVIRON, 1);
++
++	    while (
++#if	defined(ENCRYPT)
++		   his_do_dont_is_changing(TELOPT_ENCRYPT) ||
++#endif
++		   his_will_wont_is_changing(TELOPT_TTYPE) ||
++		   his_will_wont_is_changing(TELOPT_TSPEED) ||
++		   his_will_wont_is_changing(TELOPT_XDISPLOC) ||
++		   his_will_wont_is_changing(TELOPT_ENVIRON)) {
++		ttloop();
++	    }
++#endif
++
++            if (ssl_debug_flag) {
++		fprintf(stderr,"[SSL required - connection rejected]");
++		fflush(stderr);
++	    }
++
++	    fatal(net,"[SSL required - connection rejected]");
++
++	}
++    }
++#endif /* USE_SSL */
++
+ #endif
+ 
+ #if	defined(ENCRYPT)
+@@ -710,12 +905,29 @@
+ 
+ 	/* TODO list stuff provided by Laszlo Vecsey <master@internexus.net> */
+ 
++#ifdef USE_SSL
++	if (debug) {
++	    fprintf(stderr,"doit - ALIVE\n");
++	    fflush(stderr);
++	    sleep(2);
++	}
++#endif /* USE_SSL */
++
++
+ 	/*
+ 	 * Set REMOTEHOST environment variable
+ 	 */
+ 	setproctitle("%s", host);
+ 	setenv("REMOTEHOST", host, 0);
+ 
++#ifdef USE_SSL
++	if (debug) {
++	    fprintf(stderr,"doit - starting telnet protocol itself\n");
++	    fflush(stderr);
++	    sleep(2);
++	}
++#endif /* USE_SSL */
++
+ 	/*
+ 	 * Start up the login process on the slave side of the terminal
+ 	 */
+@@ -853,7 +1065,10 @@
+      */
+     telrcv();
+     
++#ifndef USE_SSL
+     ioctl(f, FIONBIO, (char *)&on);
++#endif /* !USE_SSL */
++
+     ioctl(p, FIONBIO, (char *)&on);
+ 
+ #if defined(SO_OOBINLINE)
+@@ -1007,6 +1222,7 @@
+ 	     * fails (and AFTER we did the normal mode read
+ 	     * to clear "at the mark").
+ 	     */
++#ifndef USE_SSL
+ 	    if (SYNCHing) {
+ 		int atmark;
+ 		
+@@ -1024,11 +1240,23 @@
+ 		    ncc = read(net, netibuf, sizeof (netibuf));
+ 		}
+ 	    } 
+-	    else {
++	    else
++#endif /* !USE_SSL */
++	    {
++#ifdef USE_SSL
++			if (ssl_active_flag)
++			    ncc = SSL_read(ssl_con, netibuf, sizeof (netibuf));
++			else
++#endif /* USE_SSL */
+ 		ncc = read(net, netibuf, sizeof (netibuf));
+ 	    }
+ 	    settimer(didnetreceive);
+ #else	/* !defined(SO_OOBINLINE)) */
++#ifdef USE_SSL
++		    if (ssl_active_flag)
++			ncc = SSL_read(ssl_con, netibuf, sizeof (netibuf));
++		    else
++#endif /* USE_SSL */
+ 	    ncc = read(net, netibuf, sizeof (netibuf));
+ #endif	/* !defined(SO_OOBINLINE)) */
+ 	    if (ncc < 0 && errno == EWOULDBLOCK)
+--- a/telnetd/utility.c
++++ b/telnetd/utility.c
+@@ -63,6 +63,13 @@
+ static int doclear;
+ static struct buflist *urg;
+ 
++int
++telnet_spin()
++{
++    ttloop();
++    return(0);
++}
++
+ /*
+  * ttloop
+  *
+@@ -351,6 +358,12 @@
+ 	}
+ #endif
+ 	(void) write(f, buf, (int)strlen(buf));
++#ifdef USE_SSL
++        if (debug) {
++	    fprintf(stderr,"fatal called: %s\r\n",msg);
++	    fflush(stderr);
++	}
++#endif /* USE_SSL */
+ 	sleep(1);	/*XXX*/
+ 	exit(1);
+ }
+@@ -452,6 +465,23 @@
+ 				putstr(slash+1);
+ 			break;
+ 
++#ifdef USE_SSL
++                case 'V':
++			/* output prog ver and SSLeay ver */
++		        putstr("[SSL 0.10-");
++			putstr(SSLeay_version(SSLEAY_VERSION));
++			putstr("] ");
++		        break;
++#else /* !USE_SSL */
++
++		/* ignore the version token ... so we can have 
++		 * just the one version string which we hack
++		 * here rather than all over the place
++		 */
++                case 'V':
++		        break;
++#endif /* USE_SSL */
++
+ 		case 'h':
+ 			if (editedhost) {
+ 				putstr(editedhost);
+--- /dev/null
++++ b/VERSION
+@@ -0,0 +1,118 @@
++Version 0.13 16-Sep-1997 tjh (tjh@cryptsoft.com)
++	- CRLF on messages in sslapp.c
++	- fixed built-in service name to port number code for sites that
++	  don't have SSL things in their services list (https, telnets, etc)
++	- work around gcc 2.7.2 solaris 2.5.1 compiler bug in telnet/commands.c
++
++Version 0.12 02-Aug-1997 tjh (tjh@cryptsoft.com)
++	- fixed up check for secure mode when running with ssl_only 
++	  set - thanks to Simon Gerraty (sjg@zen.quick.com.au) for 
++	  pointing this combination out.
++
++Version 0.11 01-Jun-1997 tjh (tjh@cryptsoft.com)
++	- SSLeay-0.8.0 port
++	- reorganised the code so that most of the SSLeay stuff is
++	  now in lib/libtelnet/sslapp.c and is shared between the
++	  client and the server so things are easier to maintain
++
++Version 0.10 06-Aug-1996 tjh (tjh@mincom.oz.au)
++	- updated the messages from telnet on startup so that the
++	  user is 100% sure of when SSL is being used and when it 
++	  is not being used (thanks to Eric for hassling me to do this)
++        - extra options for working with SSLeay-0.6.x which changed
++	  a lot of the verify handling stuff with support for 
++	  client certificate exchange ... still to be documented
++	  in detail
++	    telnetd -z certrequired -z secure -z verify=1 -z certsok
++	    telnet  -z secure -z cert=FILENAME.pem -z key=FILENAME.pem
++	- added in support for all the telnetd args being comma separated
++	  so that braindead inetd's (SunOS 5.3) can have lots of options
++	  in the one option to work around arg count limits! You can
++	  now do this
++	    telnet -z certrequired,secure,debug,certsok
++
++	- there is now documentation for SSL telnet ... and it should
++	  be read especially if you are going to use certificates for
++	  authentication
++
++Version 0.9 01-Jul-1996 tjh (tjh@mincom.oz.au)
++        - hmm ... merged in some additional things ... and I don't
++	  recollect exactly what :-)
++
++Version 0.8 01-Jan-1996 tjh (tjh@mincom.oz.au)
++        - fixed up gettimeofday to add the extra parameter that
++  	  is required under SunOS 5.4+ (by default) ... thanks to 
++	   J.J.Bailey <jjb@bcc.com>
++	- get the checking for -z secure correct - thanks to 
++	  James Walter Martin III <jwm3@harriet.jwm3.org> for pointing out
++          that I had it wrong initially
++	- fixed major security flaw in lib/libtelnet/ssl.c thanks to 
++	  Christop Martin for pointing this one out!
++
++
++Version 0.7 21-Dec-1995 tjh (tjh@mincom.oz.au)
++        - SSLeay 0.5.0b support
++	=> note: now using telnetd.pem for public+private key
++	(telnetd/ext.h now displays the SSLtelnetd version)
++
++Version 0.6 03-Nov-1995 tjh (tjh@mincom.oz.au)
++
++Version 0.5 18-Sep-1995 tjh (tjh@mincom.oz.au)
++        - fixed up SSL_accept, SSL_connect as Eric changed the return 
++        codes on me without letting me know (again)!
++	- fixed up inet_addr.c for SunOS 4.1.3 as per email from
++	Nicolas Pioch <pioch@Email.ENST.Fr>
++	- yet another linux patch - this time to fix termio includes
++	thanks to Warwick Heath <warwick@rcc-irc.si>
++	- include the security patch (modified) for removing unwanted
++	things from the environment of telnetd (things that effect
++	shared libraries) as per the CERT announcement. Note that
++	this patch doesn't log a hack attempt explicitly - perhaps
++	it should. (01-Nov-95) 
++	
++Version 0.4 18-Jul-1995 tjh (tjh@mincom.oz.au) 
++        - updated to the new error handling stuff in SSLeay-0.4.4
++	and added -cipher=cipherlist and printout of subject
++	and issuer of the certificate offered by the server.
++
++Version 0.3 09-Jul-1995 tjh (tjh@mincom.oz.au)
++        - 01-Jul-95 tjh - merged patches from Steven Schoch 
++	<schoch@sheba.arc.nasa.gov> that add in the option of having
++	a file that allows you to not have to enter a password if you
++	have a matching certificate (and the server is running with
++	the new -z certsok option and the user is in /etc/ssl.users)
++	[look in lib/libtelnet/ssl.c for more details until I document
++	this a little better]
++        - 30-Jun-95 tjh - applied the CERT advisory security patch that
++	I happened to have missed before to bring the code up to date
++	with the "current" BSD telnetd auth stuff
++        -  set utmp entry to be tn0xff0xff so that comsat doesn't find
++	the entry twice - really need to know what the *real* id should
++	be set to. (SunOS 5.x) ... and this is still not *right*
++        -  fixed up building under SunOS 4.1.3 
++	thanks to Nicolas Pioch <pioch@Email.ENST.Fr>
++	- telnet client now builds cleanly on 
++	SunOS 4.x, SunOS 5.x, IRIX 5.x, HPUX 9.x, DGUX 5.x, Linux
++        - telnetd fixes for Linux from bogk@inf.fu-berlin.de (Andreas Bogk) 
++        to work around an ncurses "feature" ... see terminaltypeok()
++	which was also emailed in by aeppert@dialin.ind.net a few weeks 
++	later
++	- telnetd has now been tested on
++	SunOS 5.x, IRIX 5.x, Linux
++
++Version 0.2 09-Jun-1995 tjh (tjh@mincom.oz.au)
++        - fixed up the handling of utmpx so that we can use the "normal"
++	/bin/login program rather than our separate login program which
++	fixed the SunOS 5.3 problem
++	No utmpx entry. You must exec "login" from the lowest level "shell".
++	- thanks to bogk@inf.fu-berlin.de (Andreas Bogk) for pointing
++	out that I hadn't cleaned up that part of the SRA base I've 
++	built on top of.
++	- HPUX builds now ... still need to put in the pty handling code
++	if I want telnetd to work I think
++
++Version 0.1 06-Jun-1995 tjh (tjh@mincom.oz.au)
++        - first "released" version. Code is really still pre-alpha as
++	it was implemented last night so at the moment use it at your
++	own risk. :-)
++

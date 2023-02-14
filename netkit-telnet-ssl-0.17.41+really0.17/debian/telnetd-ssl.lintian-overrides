@@ -1,0 +1,3 @@
+# dont/wont is valid as part of telnet IAC DONT/WONT commands
+spelling-error-in-binary dont don't [usr/sbin/in.telnetd]
+spelling-error-in-binary wont won't [usr/sbin/in.telnetd]

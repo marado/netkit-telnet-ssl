@@ -1,0 +1,609 @@
+Description: Incremental patches from 0.17-18 to 0.17-24.
+ A large set of mixed code patches on top of upstream's source.
+ It has been pruned to reproduce the step from source package
+ netkit-telnet_0.17-18 to netkit-telnet_0.17-24.
+ .
+ Support also Hurd.
+ [telnetd/sys_term.c, telnetd/ext.h]
+ .
+ Do not reset access mode and owner of TTY when client ends the session.
+ [telnetd/sys_term.c (cleanup)] 
+ .
+ Path of telnetlogin.
+ [telnetd/telnetd.8]
+ .
+ Adjust 8-bit mode to be without mandatory binary option.
+ A new command line switch `-7' is added to telnet.
+ [telnet/main.cc, telnet/telnet.cc, telnet/terminal.cc,
+ telnet/defines.h, telnet/externs.h]
+ .
+ Allow telnetrc files to specify a port in addition to host name.
+ [telnet/commands.cc, telnet/proto.h, telnet/telnet.1]
+ .
+ Disable 8-bit mode of client if parity bit is enabled.
+ [telnet/main.cc]
+ .
+ Remove obsolete compiler warnings, and disable trigraph warning.
+ Protect tokens ifter #endif.
+ [configure, telnet/terminal.cc]
+ .
+ Support option `-b' in client.
+ [telnet/commands.cc, telnet/main.cc, telnet/netlink.cc,
+ telnet/netlink.h, telnet/telnet.1]
+ .
+ Accept numeric telnet options.
+ [telnet/command.cc]
+ .
+ Buffer overflow due to $HOME, moved to a separate file.
+ .
+ Remote DOS hole, CAN-2004-0911, moved to a separate file.
+ .
+ Buffer overflow, CAN-2005-0469, moved to a separate file.
+
+Comment: interdiff netkit-telnet_0.17-{18woody3,29}.diff
+Author: Herbert Xu, Robert Millan
+Bug-Debian: http://bugs.debian.org/149325
+ http://bugs.debian.org/150812
+ http://bugs.debian.org/144921
+ http://bugs.debian.org/194736
+ http://bugs.debian.org/203544
+ http://bugs.debian.org/242018
+Forwarded: no
+Last-Update: 2015-01-27
+
+--- a/telnet/commands.cc
++++ b/telnet/commands.cc
+@@ -476,6 +476,7 @@
+ int send_tncmd(int (*func)(int, int), const char *cmd, const char *name) {
+     char **cpp;
+     extern char *telopts[];
++    long opt;
+ 
+     if (isprefix(name, "help") || isprefix(name, "?")) {
+ 	register int col, len;
+@@ -502,16 +503,23 @@
+ 					name, cmd);
+ 	return 0;
+     }
++
++    opt = cpp - telopts;
+     if (cpp == 0) {
+-	fprintf(stderr, "'%s': unknown argument ('send %s ?' for help).\n",
++	char *end;
++
++	opt = strtol(name, &end, 10);
++	if (*end || opt < 0 || opt > 255) {
++	    fprintf(stderr, "'%s': unknown argument ('send %s ?' for help).\n",
+ 					name, cmd);
+-	return 0;
++	    return 0;
++	}
+     }
+     if (!connected) {
+ 	printf("?Need to be connected first.\n");
+ 	return 0;
+     }
+-    (*func)(cpp - telopts, 1);
++    (*func)(opt, 1);
+     return 1;
+ }
+ 
+@@ -1615,7 +1623,7 @@
+     char *srp = NULL;
+     int srlen;
+     int family = 0;
+-    const char *cmd, *volatile user = 0;
++    const char *cmd, *volatile user = 0, *srchostp = 0;
+     const char *portp = NULL;
+     char *hostp = NULL;
+     char *resolv_hostp;
+@@ -1662,6 +1670,14 @@
+ 	    --argc;
+ 	    continue;
+ 	}
++	if (strcmp(*argv, "-b") == 0) {
++	    --argc; ++argv;
++	    if (argc == 0)
++		goto usage;
++	    srchostp = *argv++;
++	    --argc;
++	    continue;
++	}
+ 	if (strcmp(*argv, "-a") == 0) {
+ 	    --argc; ++argv;
+ 	    autologin = 1;
+@@ -1744,6 +1760,20 @@
+     hints.ai_socktype = SOCK_STREAM;
+     hints.ai_flags = AI_NUMERICHOST;
+     hints.ai_family = family;
++
++    if (srchostp) {
++	res = getaddrinfo(srchostp, "0", &hints, &hostaddr);
++	if (res) {
++	    fprintf(stderr, "telnet: could not resolve %s: %s\n", srchostp,
++		    gai_strerror(res));
++	    return 0;
++	}
++	hints.ai_family = hostaddr->ai_family;
++	res = nlink.bind(hostaddr);
++	freeaddrinfo(hostaddr);
++	if (res < 0)
++	    return 0;
++    }
+         
+     /* Resolve both the host and service simultaneously. */
+     res = getaddrinfo(resolv_hostp, portp, &hints, &hostaddr);
+@@ -1803,7 +1833,7 @@
+ 	strcpy(hostname, tmpaddr->ai_canonname);
+     }
+ 
+-    cmdrc(hostp, hostname);
++    cmdrc(hostp, hostname, portp);
+     freeaddrinfo(hostaddr);
+     if (autologin && user == NULL) {
+ 	struct passwd *pw;
+@@ -2050,15 +2080,21 @@
+     return 0;
+ }
+ 
+-static void readrc(const char *m1, const char *m2, const char *rcname) {
++static void readrc(const char *m1, const char *m2, const char *port,
++		   const char *rcname)
++{
+     FILE *rcfile;
+     int gotmachine = 0;
+     int l1 = strlen(m1);
+     int l2 = strlen(m2);
+-    char m1save[strlen(m1) + 1];
++    int lport = strlen(port);
++    char m1save[l1 + 1];
++    char portsave[lport + 1];
+ 
+     strcpy(m1save, m1);
+     m1 = m1save;
++    strcpy(portsave, port);
++    port = portsave;
+ 
+     rcfile = fopen(rcname, "r");
+     if (!rcfile) return;
+@@ -2083,6 +2119,13 @@
+ 		strncpy(line, &line[7], sizeof(line) - 7);
+ 	    else
+ 		continue;
++
++	    if (line[0] == ':') {
++		if (!strncasecmp(&line[1], port, lport))
++		    continue;
++		strncpy(line, &line[lport + 1], sizeof(line) - lport - 1);
++	    }
++
+ 	    if (line[0] != ' ' && line[0] != '\t' && line[0] != '\n')
+ 		continue;
+ 	    gotmachine = 1;
+@@ -2095,13 +2138,13 @@
+     fclose(rcfile);
+ }
+ 
+-void cmdrc(const char *m1, const char *m2) {
++void cmdrc(const char *m1, const char *m2, const char *port) {
+     static char *rcname = 0;
+     static char rcbuf[128];
+ 
+     if (skiprc) return;
+ 
+-    readrc(m1, m2, "/etc/telnetrc");
++    readrc(m1, m2, port, "/etc/telnetrc");
+     if (rcname == 0) {
+ 	rcname = getenv("HOME");
+ 	if (rcname)
+@@ -2111,7 +2154,7 @@
+ 	strcat(rcbuf, "/.telnetrc");
+ 	rcname = rcbuf;
+     }
+-    readrc(m1, m2, rcname);
++    readrc(m1, m2, port, rcname);
+ }
+ 
+ #if defined(IP_OPTIONS) && defined(HAS_IPPROTO_IP)
+--- a/telnet/main.cc
++++ b/telnet/main.cc
+@@ -84,7 +84,7 @@
+     fprintf(stderr, "Usage: %s %s%s%s%s\n",
+ 	    prompt,
+ 	    "[-4] [-6] [-8] [-E] [-L] [-a] [-d] [-e char] [-l user]",
+-	    "\n\t[-n tracefile]",
++	    "\n\t[-n tracefile] [ -b addr ]",
+ #ifdef TN3270
+ 	    "\n\t"
+ 	    "[-noasynch] [-noasynctty] [-noasyncnet] [-r] [-t transcom]\n\t",
+@@ -106,7 +106,7 @@
+ 	extern char *optarg;
+ 	extern int optind;
+ 	int ch;
+-	char *user;
++	char *user, *srcaddr;
+ 	int family;
+ 
+ 	tninit();		/* Clear out things */
+@@ -115,19 +115,22 @@
+ #endif
+ 
+ 	TerminalSaveState();
++	if ((old_tc.c_cflag & (CSIZE|PARENB)) != CS8)
++		eight = 0;
+ 
+ 	if ((prompt = strrchr(argv[0], '/'))!=NULL)
+ 		++prompt;
+ 	else
+ 		prompt = argv[0];
+ 
+-	user = NULL;
++	user = srcaddr = NULL;
+ 	family = 0;
+ 
+ 	rlogin = (strncmp(prompt, "rlog", 4) == 0) ? '~' : _POSIX_VDISABLE;
+ 	autologin = -1;
+ 
+-	while ((ch = getopt(argc, argv, "468EKLS:X:ade:k:l:n:rt:x")) != EOF) {
++	while ((ch = getopt(argc, argv,
++			    "4678EKLS:X:ab:de:k:l:n:rt:x")) != EOF) {
+ 		switch(ch) {
+ 		case '4':
+ 			family = AF_INET;
+@@ -139,8 +142,11 @@
+ 			fputs("IPv6 unsupported\n", stderr);
+ #endif
+ 			break;
++		case '7':
++			eight = 0;	/* 7-bit ouput and input */
++			break;
+ 		case '8':
+-			eight = 3;	/* binary output and input */
++			binary = 3;	/* binary output and input */
+ 			break;
+ 		case 'E':
+ 			rlogin = escapechar = _POSIX_VDISABLE;
+@@ -149,7 +155,7 @@
+ 		        //autologin = 0;
+ 			break;
+ 		case 'L':
+-			eight |= 2;	/* binary output only */
++			binary |= 2;	/* binary output only */
+ 			break;
+ 		case 'S':
+ 		    {
+@@ -229,6 +235,9 @@
+ 				"%s: -x ignored, no encryption support.\n",
+ 				prompt);
+ 			break;
++		case 'b':
++			srcaddr = optarg;
++			break;
+ 		case '?':
+ 		default:
+ 			usage();
+@@ -252,6 +261,10 @@
+ 			*argp++ = "-l";
+ 			*argp++ = user;
+ 		}
++		if (srcaddr) {
++			*argp++ = "-b";
++			*argp++ = srcaddr;
++		}
+ 		if (family) {
+ 			*argp++ = family == AF_INET ? "-4" : "-6";
+ 		}
+--- a/telnet/netlink.cc
++++ b/telnet/netlink.cc
+@@ -79,20 +79,56 @@
+ 	shutdown(net, 2);
+     }
+     ::close(net);
++    net = -1;
++}
++
++int netlink::bind(struct addrinfo *addr)
++{
++    int res;
++
++    res = socket(addr->ai_family);
++    if (res < 2) {
++	if (res == 1)
++	    perror("telnet: socket");
++	return -1;
++    }
++
++    if (::bind(net, addr->ai_addr, addr->ai_addrlen) < 0) {
++	perror("telnet: bind");
++	return -1;
++    }
++
++    return 0;
++}
++
++int netlink::socket(int family)
++{
++    if (this->family != family)
++	close(0);
++
++    if (net < 0) {
++	this->family = family;
++	net = ::socket(family, SOCK_STREAM, 0);
++	if (net < 0) {
++	    if (errno == EAFNOSUPPORT)
++		return 1;
++	    perror("telnet: socket");
++	    return 0;
++	}
++    }
++
++    return 2;
+ }
+ 
+ int netlink::connect(int debug, struct addrinfo *addr, 
+ 		     char *srcroute, int srlen, int tos) 
+ {
+     int on=1;
++    int res;
+ 
+-    net = socket(addr->ai_family, SOCK_STREAM, 0);
+-    if (net < 0) {
+-	if (errno == EAFNOSUPPORT)
+-	    return 1;
+-	perror("telnet: socket");
+-	return 0;
+-    }
++    res = socket(addr->ai_family);
++    if (res < 2)
++	return res;
+ 
+ #if defined(IP_OPTIONS) && defined(HAS_IPPROTO_IP)
+     if (srcroute) {
+--- a/telnet/netlink.h
++++ b/telnet/netlink.h
+@@ -1,11 +1,15 @@
+ 
+ class netlink {
++ private:
++    int family;
+  protected:
+     int net;
+  public:
+     netlink();
+     ~netlink();
+ 
++    int bind(struct addrinfo *hostaddr);
++    int socket(int family);
+     int connect(int debug, struct addrinfo *hostaddr, 
+ 		char *srcroute, int srlen,
+ 		int tos);
+--- a/telnet/telnet.1
++++ b/telnet/telnet.1
+@@ -44,6 +44,7 @@
+ .Nm telnet
+ .Op Fl 468ELadr
+ .Op Fl S Ar tos
++.Op Fl b Ar address
+ .Op Fl e Ar escapechar
+ .Op Fl l Ar user
+ .Op Fl n Ar tracefile
+@@ -93,6 +94,8 @@
+ option if supported by the remote system. The username is retrieved
+ via
+ .Xr getlogin 3 .
++.It Fl b Ar address
++Use bind(2) on the local socket to bind it to a specific local address.
+ .It Fl d
+ Sets the initial value of the
+ .Ic debug
+@@ -492,7 +495,15 @@
+ indented by whitespace; lines beginning without whitespace are
+ interpreted as hostnames.  Lines beginning with the special hostname
+ .Ql DEFAULT
+-will apply to all hosts.  Upon connecting to a particular host, the
++will apply to all hosts.  Hostnames including
++.Ql DEFAULT
++may be followed immediately by a colon and a port number or string.
++If a port is specified it must match exactly with what is specified
++on the command line.  If no port was specified on the command line,
++then the value
++.Ql telnet
++is used.
++Upon connecting to a particular host, the
+ commands associated with that host are executed.
+ .It Ic quit
+ Close any open session and exit
+--- a/telnet/telnet.cc
++++ b/telnet/telnet.cc
+@@ -88,7 +88,8 @@
+ char	will_wont_resp[256];
+ 
+ int
+-eight = 0,
++  eight = 3,
++  binary = 0,
+   autologin = 0,	/* Autologin anyone? */
+   skiprc = 0,
+   connected,
+@@ -1743,8 +1744,8 @@
+     send_do(TELOPT_STATUS, 1);
+     if (env_getvalue("DISPLAY", 0))
+       send_will(TELOPT_XDISPLOC, 1);
+-    if (eight)
+-      tel_enter_binary(eight);
++    if (binary)
++      tel_enter_binary(binary);
+   }
+ #endif /* !defined(TN3270) */
+   
+--- a/telnet/terminal.cc
++++ b/telnet/terminal.cc
+@@ -157,9 +157,11 @@
+     if (localflow)
+ 	mode |= MODE_FLOW;
+ 
+-    if (my_want_state_is_will(TELOPT_BINARY))
++    if ((eight & 1) || my_want_state_is_will(TELOPT_BINARY))
+ 	mode |= MODE_INBIN;
+ 
++    if (eight & 2)
++	mode |= MODE_OUT8;
+     if (his_want_state_is_will(TELOPT_BINARY))
+ 	mode |= MODE_OUTBIN;
+ 
+@@ -451,10 +453,13 @@
+ 		// breaks SunOS.
+ 	 	tmp_tc.c_iflag |= ISTRIP;
+ 	}
+-	if (f & MODE_OUTBIN) {
++	if (f & (MODE_OUTBIN|MODE_OUT8)) {
+ 		tmp_tc.c_cflag &= ~(CSIZE|PARENB);
+ 		tmp_tc.c_cflag |= CS8;
+-		tmp_tc.c_oflag &= ~OPOST;
++		if (f & MODE_OUTBIN)
++			tmp_tc.c_oflag &= ~OPOST;
++		else
++			tmp_tc.c_oflag |= OPOST;
+ 	} else {
+ 		tmp_tc.c_cflag &= ~(CSIZE|PARENB);
+ 		tmp_tc.c_cflag |= old_tc.c_cflag & (CSIZE|PARENB);
+@@ -470,7 +475,7 @@
+ 
+ #ifdef	SIGINFO
+ 	signal(SIGINFO, ayt);
+-#endif	SIGINFO
++#endif	/* SIGINFO */
+ 
+ #if defined(NOKERNINFO)
+ 	tmp_tc.c_lflag |= NOKERNINFO;
+@@ -506,7 +511,7 @@
+ 
+ #ifdef	SIGINFO
+ 	signal(SIGINFO, ayt_status);
+-#endif	SIGINFO
++#endif	/* SIGINFO */
+ 
+ #ifdef	SIGTSTP
+ 	signal(SIGTSTP, SIG_DFL);
+--- a/telnetd/ext.h
++++ b/telnetd/ext.h
+@@ -88,7 +88,7 @@
+ #define netoprintf(fmt, ...) fprintf(netfile, fmt, ## __VA_ARGS__)
+ 
+ extern int pty, net;
+-extern char *line;
++extern const char *line;
+ extern int SYNCHing;		/* we are in TELNET SYNCH mode */
+ 
+ void _termstat(void);
+--- a/telnetd/sys_term.c
++++ b/telnetd/sys_term.c
+@@ -204,17 +204,17 @@
+  *
+  * Returns the file descriptor of the opened pty.
+  */
+-static char linedata[PATH_MAX];
+-char *line = linedata;
++const char *line;
+ 
+ static int ptyslavefd=-1;
+ 
+ int getpty(void) {
+     int masterfd;
+ 
+-    if (openpty(&masterfd, &ptyslavefd, line, NULL, NULL)) {
++    if (openpty(&masterfd, &ptyslavefd, NULL, NULL, NULL)) {
+ 	return -1;
+     }
++    line = ttyname(ptyslavefd);
+     return masterfd;
+ }
+ 
+@@ -720,25 +720,11 @@
+  * clean up anything that needs to be cleaned up.
+  */
+ void cleanup(int sig) {
+-    char *p;
++    const char *p;
+     (void)sig;
+ 
+     p = line + sizeof("/dev/") - 1;
+     if (logout(p)) logwtmp(p, "", "");
+-#ifdef PARANOID_TTYS
+-    /*
+-     * dholland 16-Aug-96 chmod the tty when not in use
+-     * This will make it harder to attach unwanted stuff to it
+-     * (which is a security risk) but will break some programs.
+-     */
+-    chmod(line, 0600);
+-#else
+-    chmod(line, 0666);
+-#endif
+-    chown(line, 0, 0);
+-    *p = 'p';
+-    chmod(line, 0666);
+-    chown(line, 0, 0);
+     shutdown(net, 2);
+     exit(0);
+ }
+--- a/telnetd/telnetd.8
++++ b/telnetd/telnetd.8
+@@ -161,7 +161,7 @@
+ .It Fl L Ar loginprg
+ This option may be used to specify a different login program.
+ By default, 
+-.Pa /usr/sbin/telnetlogin
++.Pa /usr/lib/telnetlogin
+ is used.
+ .It Fl n
+ Disable
+--- a/telnet/defines.h
++++ b/telnet/defines.h
+@@ -50,3 +50,5 @@
+ #define	MODE_COMMAND_LINE(m)	((m)==-1)
+ 
+ #define	CONTROL(x)	((x)&0x1f)		/* CTRL(x) is not portable */
++
++#define MODE_OUT8	0x8000			/* binary mode sans -opost */
+--- a/telnet/proto.h
++++ b/telnet/proto.h
+@@ -13,7 +13,7 @@
+ void auth_encrypt_user(char *);
+ void auth_name(unsigned char *, int);
+ void auth_printsub(unsigned char *, int, unsigned char *, int);
+-void cmdrc(const char *m1, const char *m2);
++void cmdrc(const char *, const char *, const char *);
+ void env_init(void);
+ int getconnmode(void);
+ void init_network(void);
+--- a/telnet/externs.h
++++ b/telnet/externs.h
+@@ -48,9 +48,7 @@
+ typedef unsigned char cc_t;
+ #endif
+ 
+-#ifdef __linux__
+ #include <unistd.h>   /* get _POSIX_VDISABLE */
+-#endif
+ 
+ #ifndef	_POSIX_VDISABLE
+ #error "Please fix externs.h to define _POSIX_VDISABLE"
+@@ -60,7 +58,8 @@
+ 
+ extern int autologin;		/* Autologin enabled */
+ extern int skiprc;		/* Don't process the ~/.telnetrc file */
+-extern int eight;		/* use eight bit mode (binary in and/or out */
++extern int eight;		/* use eight bit mode (binary in and/or out) */
++extern int binary;		/* use binary option (in and/or out) */
+ extern int flushout;		/* flush output */
+ extern int connected;		/* Are we connected to the other side? */
+ extern int globalmode;		/* Mode tty should be in */
+@@ -225,6 +224,8 @@
+ 
+ //#if 0
+ extern struct termios new_tc;
++extern struct termios old_tc;
++
+ 
+ #define termEofChar		new_tc.c_cc[VEOF]
+ #define termEraseChar		new_tc.c_cc[VERASE]

@@ -1,0 +1,769 @@
+Description: Changes to telnet between 0.17.24+0.1-1 and -7.1.
+ Alterations to the subdirectory `telnet'.
+ .
+ Update CXXFLAGS, LIBS, OBJS and SRCS.  Make 'telnet' depend on $(LIBTELNET).
+ Do not strip 'telnet-ssl'.
+ [telnet/Makefile]
+ .
+ Implement program switch '-z opt'.  Add '-K', '-X', and '-z' to usage.
+ Force autologin when either of certificate file or key file is present.
+ [telnet/main.cc].
+ .
+ Complete the TELOPT_ENVIRON exchange as first protocol step, even before
+ announcing TELOPT_AUTHENTICATION.
+ [telnet/telnet.cc].
+ .
+ Separate autologin from SSL.  Implement a toggling function for change
+ of 'autologin', since the environment variable USER is involved.
+ [telnet/commands.cc]
+ .
+ Autologin defaults to off.
+ .
+ Verification of commonName as claimed by server.
+ [telnet/netlink.cc (connect)]
+ .
+ Enable '-z authdebug'.
+ .
+ Enable SSL when opening a connection at the prompt.  Establish 'hostname'
+ inside connection loop, and check for suppressed SSL for 'localhost'.
+ [telnet/commands]
+ .
+ Diagnostics and clean exit at failed certificate verification.
+ .
+ Make option '-z verify=3' simulate '-z certrequired', by forcing
+ 'ssl_cert_require'.
+ [telnet/main.cc]
+
+Author: Ian Beckwith, Christoph Martin, Herbert Xu
+Comment: Computed from netkit-telnet-ssl_0.17.24+0.1-7.1.diff.
+Bug-Debian: http://bugs.debian.org/156454
+ http://bugs.debian.org/57149
+ http://bugs.debian.org/57266
+ http://bugs.debian.org/59295
+ http://bugs.debian.org/62198
+ http://bugs.debian.org/83306
+ http://bugs.debian.org/210749
+ http://bugs.debian.org/145551
+ http://bugs.debian.org/26994
+Forwarded: no
+Last-Update: 2005-03-31
+
+--- a/telnet/commands.cc
++++ b/telnet/commands.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)commands.c	5.5 (Berkeley) 3/22/91
+  */
+ char cmd_rcsid[] = 
+-  "$Id: commands.cc,v 1.34 2000/07/23 04:16:24 dholland Exp $";
++  "$Id: commands.cc,v 1.8 2004/11/21 14:40:44 ianb Exp $";
+ 
+ #include <string.h>
+ 
+@@ -653,6 +653,21 @@
+     return 1;
+ }
+ 
++#ifdef AUTHENTICATE
++
++static int tog_autologin(int) {
++  if(autologin == 0) {
++    autologin=1;
++    env_export("USER");
++  }
++  else {
++    autologin=0;
++    env_unexport("USER");
++  }	
++  return 1;
++}
++
++#endif /* AUTHENTICATE */
+ 
+ static int netdata;		/* Print out network data flow */
+ static int prettydump;	/* Print "netdata" output in user readable format */
+@@ -682,13 +697,13 @@
+ 
+ #if	defined(AUTHENTICATE)
+     { "autologin", "automatic sending of login and/or authentication info",
+-      NULL, &autologin,
++      tog_autologin, NULL,
+       "send login name and/or authentication information" },
+     { "authdebug", "Toggle authentication debugging",
+       auth_togdebug, NULL,
+       "print authentication debugging information" },
+ #endif
+-#if 0
++#ifdef ENCRYPT
+     { "autoencrypt", "automatic encryption of data stream",
+       EncryptAutoEnc, NULL,
+       "automatically encrypt output" },
+@@ -701,7 +716,7 @@
+     { "encdebug", "Toggle encryption debugging",
+       EncryptDebug, NULL,
+       "print encryption debugging information" },
+-#endif
++#endif /* ENCRYPT */
+ 
+     { "skiprc", "don't read the telnetrc files",
+       NULL, &skiprc,
+@@ -750,7 +765,7 @@
+       NULL, &showoptions,
+       "show option processing" },
+ 
+-    { "termdata", "(debugging) toggle printing of hexadecimal terminal data",
++    { "termdata", "toggle printing of hexadecimal terminal data (debugging)",
+       NULL, &termdata,
+       "print hexadecimal representation of terminal traffic" },
+ 
+@@ -1902,6 +1917,16 @@
+ 		    NI_NUMERICHOST | NI_NUMERICSERV);
+ 
+ 	printf("Trying %s...\n", name);
++
++	if (tmpaddr->ai_canonname == 0) {
++	  hostname = new char[strlen(hostp)+1];
++	  strcpy(hostname, hostp);
++	}
++	else {
++	  hostname = new char[strlen(tmpaddr->ai_canonname)+1];
++	  strcpy(hostname, tmpaddr->ai_canonname);
++	}
++
+ 	x = nlink.connect(debug, tmpaddr, srp, srlen, tos);
+ 	if (!x)
+ 	    goto err;
+@@ -1909,18 +1934,18 @@
+ 	    goto nextaddr;
+ 
+ 	connected++;
++
++#ifdef USE_SSL
++	if (strcmp(hostp, "localhost") != 0) {
++	  /* autologin = 1; */
++	  use_authentication=1;
++	}
++#endif /* USE_SSL */
++
+ #if	defined(AUTHENTICATE)
+ 	auth_encrypt_connect(connected);
+ #endif
+     } while (connected == 0);
+-    if (tmpaddr->ai_canonname == 0) {
+-	hostname = new char[strlen(hostp)+1];
+-	strcpy(hostname, hostp);
+-    }
+-    else {
+-	hostname = new char[strlen(tmpaddr->ai_canonname)+1];
+-	strcpy(hostname, tmpaddr->ai_canonname);
+-    }
+ 
+     cmdrc(hostp, hostname, portp);
+     freeaddrinfo(hostaddr);
+--- a/telnet/externs.h
++++ b/telnet/externs.h
+@@ -31,7 +31,7 @@
+  * SUCH DAMAGE.
+  *
+  *	from: @(#)externs.h	5.3 (Berkeley) 3/22/91
+- *	$Id: externs.h,v 1.20 1999/08/19 09:34:15 dholland Exp $
++ *	$Id: externs.h,v 1.2 2004/11/17 15:28:51 ianb Exp $
+  */
+ 
+ #ifndef	BSD
+@@ -57,6 +57,7 @@
+ #define	SUBBUFSIZE	256
+ 
+ extern int autologin;		/* Autologin enabled */
++extern int use_authentication;		/* use SSL authentication */
+ extern int skiprc;		/* Don't process the ~/.telnetrc file */
+ extern int eight;		/* use eight bit mode (binary in and/or out) */
+ extern int binary;		/* use binary option (in and/or out) */
+--- a/telnet/main.cc
++++ b/telnet/main.cc
+@@ -39,7 +39,7 @@
+  * From: @(#)main.c	5.4 (Berkeley) 3/22/91
+  */
+ char main_rcsid[] = 
+-  "$Id: main.cc,v 1.14 1999/08/01 05:06:37 dholland Exp $";
++  "$Id: main.cc,v 1.6 2004/11/22 20:26:37 ianb Exp $";
+ 
+ #include "../version.h"
+ 
+@@ -86,16 +86,27 @@
+  *       -X <atype> disable specified auth type
+  */ 
+ void usage(void) {
+-    fprintf(stderr, "Usage: %s %s%s%s%s\n",
++    fprintf(stderr, "Usage: %s %s%s%s%s%s\n",
+ 	    prompt,
++#ifdef	AUTHENTICATE
++	    "[-4] [-6] [-8] [-E] [-K] [-L] [-X atype] [-a] [-d] [-e char]",
++	    "\n\t[-l user] [-n tracefile] [ -b addr ]",
++#else
+ 	    "[-4] [-6] [-8] [-E] [-L] [-a] [-d] [-e char] [-l user]",
+ 	    "\n\t[-n tracefile] [ -b addr ]",
++#endif
+ #ifdef TN3270
+ 	    "\n\t"
+ 	    "[-noasynch] [-noasynctty] [-noasyncnet] [-r] [-t transcom]\n\t",
+ #else
+ 	    " [-r] ",
+ #endif
++#ifdef USE_SSL
++        /* might as well output something useful here ... */
++	"\n\t[-z ssl] [-z secure] [-z debug] [-z verify=int]\n\t[-z cert=file] [-z key=file]\n\t",
++#else /* !USE_SSL */
++        "",
++#endif /* USE_SSL */
+ 	    "[host-name [port]]"
+ 	);
+ 	exit(1);
+@@ -135,8 +146,73 @@
+ 	autologin = -1;
+ 
+ 	while ((ch = getopt(argc, argv,
+-			    "4678EKLS:X:ab:de:k:l:n:rt:x")) != EOF) {
++			    "4678EKLS:X:ab:de:k:l:n:rt:xz:")) != EOF) {
+ 		switch(ch) {
++#ifdef USE_SSL
++                case 'z':
++		        { 
++			char *origopt;
++
++			origopt=strdup(optarg);
++			optarg=strtok(origopt,",");
++
++			while(optarg!=NULL) {
++
++		        if (strcmp(optarg, "debug") == 0 ) {
++			    ssl_debug_flag=1;
++			} else if (strcmp(optarg, "authdebug") == 0 ) {
++			    auth_debug_mode=1;
++			} else if (strcmp(optarg, "ssl") == 0 ) {
++			    ssl_only_flag=1;
++			} else if ( (strcmp(optarg, "!ssl") == 0) ||
++		             (strcmp(optarg, "nossl") == 0) ) {
++			    /* we may want to switch SSL negotiation off
++			     * for testing or other reasons 
++			     */
++			    ssl_disabled_flag=1;
++			} else if (strcmp(optarg, "certrequired") == 0 ) {
++			    ssl_cert_required=1;
++			} else if (strcmp(optarg, "secure") == 0 ) {
++			    ssl_secure_flag=1;
++			} else if (strcmp(optarg, "verbose") == 0 ) {
++			    ssl_verbose_flag=1;
++			} else if (strncmp(optarg, "verify=", 
++			                        strlen("verify=")) == 0 ) {
++			    ssl_verify_flag=atoi(optarg+strlen("verify="));
++			} else if (strncmp(optarg, "cert=", 
++			                        strlen("cert=")) == 0 ) {
++			    ssl_cert_file= optarg + strlen("cert=");
++			} else if (strncmp(optarg, "key=", 
++			                        strlen("key=")) == 0 ) {
++			    ssl_key_file= optarg + strlen("key=");
++			} else if (strncmp(optarg,"cipher=",
++			                strlen("cipher="))==0) {
++			    ssl_cipher_list=optarg+strlen("cipher=");
++			} else {
++			    /* report when we are given rubbish so that
++			     * if the user makes a mistake they have to
++			     * correct it!
++			     */
++			    fprintf(stderr,"Unknown SSL option %s\n",optarg);
++			    fflush(stderr);
++			    exit(1);
++			}
++
++			/* get the next one ... */
++                        optarg=strtok(NULL,",");
++
++			}
++
++			/*
++			if (origopt!=NULL)
++			    free(origopt);
++			*/
++
++			}
++
++			break;
++#endif /* USE_SSL */
++
+ 		case '4':
+ 			family = AF_INET;
+ 			break;
+@@ -257,14 +333,25 @@
+ 		autologin = (rlogin == _POSIX_VDISABLE) ? 0 : 1;
+ 
+ #ifdef USE_SSL
++	if((ssl_cert_file != NULL) || (ssl_key_file != NULL)) {
++	  autologin = 1;
++	}
++
+         if (ssl_secure_flag||ssl_cert_required) {
+ 	    /* in secure mode we *must* switch on the base level
+ 	     * verify checking otherwise we cannot abort connections
+ 	     * at the right place!
+ 	     */
+ 	    if (ssl_verify_flag == 0)
+-		ssl_verify_flag = 1;
++		ssl_verify_flag = SSL_VERIFY_PEER;;
+ 	}
++
++	/* client mode ignores SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
++	   so simulate it using certrequired */
++	if(ssl_verify_flag & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
++	  ssl_cert_required=1;
++	}
++	
+ #endif /* USE_SSL */
+ 
+ 	argc -= optind;
+@@ -289,11 +376,6 @@
+ 			*argp++ = family == AF_INET ? "-4" : "-6";
+ 		}
+ 		*argp++ = argv[0];		/* host */
+-#ifdef USE_SSL
+-		if (strcmp(argv[0], "localhost") != 0) {
+-		  autologin = 1;
+-		}
+-#endif /* USE_SSL */
+ 		if (argc > 1)
+ 			*argp++ = argv[1];	/* port */
+ 		*argp = 0;
+--- a/telnet/netlink.cc
++++ b/telnet/netlink.cc
+@@ -12,6 +12,7 @@
+ #include "proto.h"
+ #include "ring.h"
+ #include <libtelnet/sslapp.h>
++#include <libtelnet/misc-proto.h>
+ 
+ /* In Linux, this is an enum */
+ #if defined(__linux__) || defined(IPPROTO_IP)
+@@ -142,7 +143,8 @@
+ {
+     int on=1;
+     int res;
+-
++    extern char *hostname;
++    
+     res = socket(addr->ai_family);
+     if (res < 2)
+ 	return res;
+@@ -192,10 +194,24 @@
+ 	/* bind in the network descriptor */
+     	SSL_set_fd(ssl_con,net);
+ 
++#if defined(AUTHENTICATE)
++	/* moved from telnet() so client_verify_callback knows RemoteHostName -ianb */
++	{
++	  static char local_host[256] = { 0 };
++	  int len = sizeof(local_host);
++	  
++	  if (!local_host[0]) {
++	    gethostname(local_host, len);        /* WAS &len!!! */
++	    local_host[sizeof(local_host)-1] = 0;
++	  }
++	  auth_encrypt_init(local_host, hostname, "TELNET", 0);
++	}
++#endif
++
+ 	/* if we are doing raw SSL then start it now ... */
+ 	if (ssl_only_flag) {
+ 	    if (!SSL_connect(ssl_con)) {
+-		static char errbuf[1024];
++	      /* static char errbuf[1024]; */
+ 
+ 		ERR_print_errors_fp(stderr);
+ 		perror("SSL_connect");
+--- a/telnet/proto.h
++++ b/telnet/proto.h
+@@ -10,9 +10,11 @@
+ int TerminalSpecialChars(int);
+ void TerminalSpeeds(long *ispeed, long *ospeed);
+ int TerminalWindowSize(long *rows, long *cols);
++#if 0
+ void auth_encrypt_user(char *);
+ void auth_name(unsigned char *, int);
+ void auth_printsub(unsigned char *, int, unsigned char *, int);
++#endif
+ void cmdrc(const char *, const char *, const char *);
+ void env_init(void);
+ int getconnmode(void);
+--- a/telnet/telnet.1
++++ b/telnet/telnet.1
+@@ -30,7 +30,7 @@
+ .\" SUCH DAMAGE.
+ .\"
+ .\"	from: @(#)telnet.1	6.16 (Berkeley) 7/27/91
+-.\"	$Id: telnet.1,v 1.15 2000/07/30 23:57:08 dholland Exp $
++.\"	$Id: telnet.1,v 1.3 2004/11/19 19:49:23 ianb Exp $
+ .\"
+ .Dd August 15, 1999
+ .Dt TELNET 1
+@@ -42,12 +42,14 @@
+ protocol
+ .Sh SYNOPSIS
+ .Nm telnet
+-.Op Fl 468ELadr
++.Op Fl 468EKLadr
+ .Op Fl S Ar tos
++.Op Fl X Ar authtype
+ .Op Fl b Ar address
+ .Op Fl e Ar escapechar
+ .Op Fl l Ar user
+ .Op Fl n Ar tracefile
++.Op Fl z Ar option
+ .Oo
+ .Ar host
+ .Op Ar port
+@@ -152,44 +154,45 @@
+ command below.
+ .It Fl z Ar option
+ Set SSL (Secure Socket Layer) parameters. The default is to negotiate
+-via telnet protocoll if SSL is availlable at server side and then to
++via telnet protocol if SSL is available at server side and then to
+ switch it on. In this mode you can connect to both conventional and
+-SSL enhanced telnetd's.
++SSL enhanced telnetd's. If the connection is made to localhost then
++SSL is not enabled.
+ .Pp
+ The SSL parameters are:
+ .Bl -tag -width Fl
+-.It Ic Ar debug
++.It Ic debug
+ Send SSL related debugging information to stderr.
+-.It Ic Ar authdebug
++.It Ic authdebug
+ Enable authentication debugging.
+-.It Ic Ar ssl
++.It Ic ssl
+ Negotiate SSL at first, then use telnet protocol. In this mode you can
+ connect to any server supporting directly SSL like Apache-SSL. Use
+ .Ic telnet -z ssl ssl3.netscape.com https
+ for example. telnet protocol negotiation goes encrypted.
+-.It Ic Ar nossl, Ar !ssl
+-switch of SSL negotiation
+-.It Ic Ar certrequired
+-client certificate is mandatory
+-.It Ic Ar secure
++.It Ic nossl, Ic !ssl
++switch off SSL negotiation
++.It Ic certrequired
++server certificate is mandatory
++.It Ic secure
+ Don't switch back to unencrypted mode (no SSL) if SSL is not available.
+-.It Ic Ar verbose
++.It Ic verbose
+ Be verbose about certificates etc.
+-.It Ic Ar verify=int
++.It Ic verify= Ns Ar int
+ .\" TODO
+ Set the SSL verify flags (SSL_VERIFY_* in 
+ .Ar ssl/ssl.h
+ ).
+ .\" TODO
+-.It Ic Ar cert=cert_file
++.It Ic cert= Ns Ar cert_file
+ .\" TODO
+ Use the certificate(s) in
+ .Ar cert_file .
+-.It Ic Ar key=key_file
++.It Ic key= Ns Ar key_file
+ .\" TODO
+ Use the key(s) in
+ .Ar key_file .
+-.It Ic Ar cipher=ciph_list
++.It Ic cipher= Ns Ar ciph_list
+ .\" TODO
+ Set the preferred ciphers to
+ .Ar ciph_list .
+@@ -319,10 +322,6 @@
+ List the current status of the various types of
+ authentication.
+ .El
+-.Pp
+-Note that the current version of 
+-.Nm telnet
+-does not support authentication.
+ .It Ic close
+ Close the connection to the remote host, if any, and return to command
+ mode.
+@@ -332,49 +331,49 @@
+ and
+ .Ic toggle
+ values (see below).
+-.It Ic encrypt Ar argument ...
+-The encrypt command controls the
+-.Dv TELNET ENCRYPT
+-protocol option. If 
+-.Nm telnet
+-was compiled without encryption, the
+-.Ic encrypt
+-command will not be supported. 
+-.Pp
+-Valid arguments are as follows:
+-.Bl -tag -width Ar
+-.It Ic disable Ar type Ic [input|output]
+-Disable the specified type of encryption.  If you do not specify input
+-or output, encryption of both is disabled.  To obtain a list of
+-available types, use ``encrypt disable \&?''.
+-.It Ic enable Ar type Ic [input|output]
+-Enable the specified type of encryption.  If you do not specify input
+-or output, encryption of both is enabled.  To obtain a list of
+-available types, use ``encrypt enable \&?''.
+-.It Ic input
+-This is the same as ``encrypt start input''.
+-.It Ic -input
+-This is the same as ``encrypt stop input''.
+-.It Ic output
+-This is the same as ``encrypt start output''.
+-.It Ic -output
+-This is the same as ``encrypt stop output''.
+-.It Ic start Ic [input|output]
+-Attempt to begin encrypting.  If you do not specify input or output, 
+-encryption of both input and output is started. 
+-.It Ic status
+-Display the current status of the encryption module.
+-.It Ic stop Ic [input|output]
+-Stop encrypting.  If you do not specify input or output, encryption of
+-both is stopped.
+-.It Ic type Ar type
+-Sets the default type of encryption to be used with later ``encrypt start''
+-or ``encrypt stop'' commands.
+-.El
+-.Pp
+-Note that the current version of 
+-.Nm telnet
+-does not support encryption.
++.\" .It Ic encrypt Ar argument ...
++.\" The encrypt command controls the
++.\" .Dv TELNET ENCRYPT
++.\" protocol option. If 
++.\" .Nm telnet
++.\" was compiled without encryption, the
++.\" .Ic encrypt
++.\" command will not be supported. 
++.\" .Pp
++.\" Valid arguments are as follows:
++.\" .Bl -tag -width Ar
++.\" .It Ic disable Ar type Ic [input|output]
++.\" Disable the specified type of encryption.  If you do not specify input
++.\" or output, encryption of both is disabled.  To obtain a list of
++.\" available types, use ``encrypt disable \&?''.
++.\" .It Ic enable Ar type Ic [input|output]
++.\" Enable the specified type of encryption.  If you do not specify input
++.\" or output, encryption of both is enabled.  To obtain a list of
++.\" available types, use ``encrypt enable \&?''.
++.\" .It Ic input
++.\" This is the same as ``encrypt start input''.
++.\" .It Ic -input
++.\" This is the same as ``encrypt stop input''.
++.\" .It Ic output
++.\" This is the same as ``encrypt start output''.
++.\" .It Ic -output
++.\" This is the same as ``encrypt stop output''.
++.\" .It Ic start Ic [input|output]
++.\" Attempt to begin encrypting.  If you do not specify input or output, 
++.\" encryption of both input and output is started. 
++.\" .It Ic status
++.\" Display the current status of the encryption module.
++.\" .It Ic stop Ic [input|output]
++.\" Stop encrypting.  If you do not specify input or output, encryption of
++.\" both is stopped.
++.\" .It Ic type Ar type
++.\" Sets the default type of encryption to be used with later ``encrypt start''
++.\" or ``encrypt stop'' commands.
++.\" .El
++.\" .Pp
++.\" Note that the current version of 
++.\" .Nm telnet
++.\" does not support encryption.
+ .It Ic environ Ar arguments... 
+ The
+ .Ic environ
+@@ -1079,17 +1078,17 @@
+ .Dv FALSE
+ (see
+ .Xr stty  1  ) .
+-.It Ic autodecrypt
+-When the
+-.Dv TELNET ENCRYPT
+-option is negotiated, by
+-default the actual encryption (decryption) of the data
+-stream does not start automatically.  The autoencrypt
+-(autodecrypt) command states that encryption of the
+-output (input) stream should be enabled as soon as
+-possible.
+-.Pp
+-Note that this flag exists only if encryption support is enabled.
++.\" .It Ic autodecrypt
++.\" When the
++.\" .Dv TELNET ENCRYPT
++.\" option is negotiated, by
++.\" default the actual encryption (decryption) of the data
++.\" stream does not start automatically.  The autoencrypt
++.\" (autodecrypt) command states that encryption of the
++.\" output (input) stream should be enabled as soon as
++.\" possible.
++.\" .Pp
++.\" Note that this flag exists only if encryption support is enabled.
+ .It Ic autologin
+ If the remote side supports the
+ .Dv TELNET AUTHENTICATION
+@@ -1174,9 +1173,9 @@
+ .Ic super user ) .
+ The initial value for this toggle is
+ .Dv FALSE .
+-.It Ic encdebug
+-Turns on debugging information for the encryption code.
+-Note that this flag only exists if encryption support is available.
++.\" .It Ic encdebug
++.\" Turns on debugging information for the encryption code.
++.\" Note that this flag only exists if encryption support is available.
+ .It Ic localchars
+ If this is
+ .Dv TRUE ,
+@@ -1263,16 +1262,16 @@
+ Toggles the display of all terminal data (in hexadecimal format).
+ The initial value for this toggle is
+ .Dv FALSE .
+-.It Ic verbose_encrypt
+-When the
+-.Ic verbose_encrypt
+-toggle is
+-.Dv TRUE ,
+-.Tn TELNET
+-prints out a message each time encryption is enabled or
+-disabled.  The initial value for this toggle is
+-.Dv FALSE.
+-This flag only exists if encryption support is available.
++.\" .It Ic verbose_encrypt
++.\" When the
++.\" .Ic verbose_encrypt
++.\" toggle is
++.\" .Dv TRUE ,
++.\" .Tn TELNET
++.\" prints out a message each time encryption is enabled or
++.\" disabled.  The initial value for this toggle is
++.\" .Dv FALSE.
++.\" This flag only exists if encryption support is available.
+ .It Ic \&?
+ Displays the legal
+ .Ic toggle
+--- a/telnet/telnet.cc
++++ b/telnet/telnet.cc
+@@ -47,7 +47,7 @@
+  * From: @(#)telnet.c	5.53 (Berkeley) 3/22/91
+  */
+ char telnet_rcsid[] = 
+-"$Id: telnet.cc,v 1.36 2000/07/23 03:24:53 dholland Exp $";
++"$Id: telnet.cc,v 1.6 2004/12/05 13:02:58 ianb Exp $";
+ 
+ #include <string.h>
+ #include <sys/types.h>
+@@ -107,6 +107,7 @@
+   eight = 3,
+   binary = 0,
+   autologin = 0,	/* Autologin anyone? */
++  use_authentication = 0,
+   skiprc = 0,
+   connected,
+   showoptions,
+@@ -495,7 +496,8 @@
+ 	break;
+ #if	defined(AUTHENTICATE)
+       case TELOPT_AUTHENTICATION:
+-	if (autologin)
++	/* if (autologin) */
++	if (use_authentication)
+ 	  new_state_ok = 1;
+ 	break;
+ #endif
+@@ -722,6 +724,7 @@
+  */
+ 
+ static void suboption(void) {
++  extern int auth_failed;
+   printsub('<', subbuffer, SB_LEN()+2);
+   switch (SB_GET()) {
+   case TELOPT_TTYPE:
+@@ -845,7 +848,8 @@
+     
+ #if	defined(AUTHENTICATE)
+   case TELOPT_AUTHENTICATION: {
+-    if (!autologin)
++    /* if (!autologin) */
++    if (!use_authentication)
+       break;
+     if (SB_EOF())
+       return;
+@@ -864,6 +868,10 @@
+       if (my_want_state_is_wont(TELOPT_AUTHENTICATION))
+ 	return;
+       auth_reply(subpointer, SB_LEN());
++      if(auth_failed) {
++	/* auth rejected, quit */
++	quit();
++      }
+       break;
+     case TELQUAL_NAME:
+       if (my_want_state_is_dont(TELOPT_AUTHENTICATION))
+@@ -1828,25 +1836,19 @@
+  */
+ void telnet(const char *user) {
+   sys_telnet_init();
+-  
+-#if defined(AUTHENTICATE)
+-  {
+-    static char local_host[256] = { 0 };
+-    int len = sizeof(local_host);
+-    
+-    if (!local_host[0]) {
+-      gethostname(local_host, len);        /* WAS &len!!! */
+-      local_host[sizeof(local_host)-1] = 0;
+-    }
+-    auth_encrypt_init(local_host, hostname, "TELNET", 0);
+-    auth_encrypt_user(user);
+-  }
++    
++#ifdef AUTHENTICATE
++  auth_encrypt_user(user);
+ #endif
+-  
++
+ #if !defined(TN3270)
+   if (telnetport) {
++
++    send_will(TELOPT_ENVIRON, 1);
++
+ #if	defined(AUTHENTICATE)
+-    if (autologin)
++    /* if (autologin) */
++    if (use_authentication)
+       send_will(TELOPT_AUTHENTICATION, 1);
+ #endif
+     send_do(TELOPT_SGA, 1);
+@@ -1855,7 +1857,6 @@
+     send_will(TELOPT_TSPEED, 1);
+     send_will(TELOPT_LFLOW, 1);
+     send_will(TELOPT_LINEMODE, 1);
+-    send_will(TELOPT_ENVIRON, 1);
+     send_do(TELOPT_STATUS, 1);
+     if (env_getvalue("DISPLAY", 0))
+       send_will(TELOPT_XDISPLOC, 1);
+--- a/telnet/glue.cc
++++ b/telnet/glue.cc
+@@ -11,8 +11,9 @@
+   printsub_h(direction, pointer, length);
+ }
+ 
+-extern "C" void writenet(const char *str, int len) {
++extern "C" int writenet(const char *str, int len) {
+   netoring.write(str, len);
++  return 1;
+ }
+ 
+ extern "C" int telnet_spin() {

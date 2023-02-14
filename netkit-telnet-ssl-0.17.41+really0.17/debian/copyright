@@ -1,0 +1,120 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: netkit-telnet-0.17
+Upstream-Contact: <netbug@ftp.uk.linux.org>
+Source: ftp://ftp.uk.linux.org/pub/linux/Networking/netkit/
+ The SSL patches were downloaded from
+ ftp://ftp.uni-mainz.de/pub/software/security/ssl/SSL-MZapps/netkit-telnet-0.17+ssl-0.1.diff.gz
+
+Files: *
+Copyright: 1981, 1983, 1988, 1989, 1990, 1991, 1993 The Regents of the University of California.
+           1983, 1995 Eric P. Allman (setproctitle.[ch])
+           1994       Peter Tobias <tobias@et-inf.fho-emden.de, tobias@server.et-inf.fho-emden.de>
+           1994, 1995 Christopher G. Demetriou (setproctitle.3)
+           1995, 2000 David A. Holland <dholland@ftp.uk.linux.org>
+License: BSD-4-clause-UC
+
+Files: telnetlogin/*
+Copyright: 2000 David A. Holland
+License: BSD-4-clause-Holland
+
+Files: debian/patches/500-implement_ssl.diff
+Copyright: 1983, 1991, 1993 The Regents of the University of California.  All rights reserved.
+           1990 by the Massachusetts Institute of Technology
+           Christoph Martin, Tim Hudson, David A. Holland, Peter Tobias, Eric P. Allman
+License: BSD-4-clause-UC and MIT-Export and netkit-telnet-ssl
+
+Files: debian/*
+Copyright: 1998-2004  Herbert Xu <herbert@debian.org>
+           2004       Robert Millan <rmh@debian.org>
+           2005-2008  Alberto Gonzalez Iniesta <agi@inittab.org>
+           2008       Ian Beckwith
+           2015-2016  Mats Erik Andersson <mats.andersson@gisladisker.se>
+           2018, 2021 Andreas Henriksson <andreas@fatal.se>
+           2019       Christoph Biedl <debian.axhn@manchmal.in-ulm.de>
+           2021       Hugo Torres de Lima <hugotorres@protonmail.com>
+           2022       Simon Josefsson <simon@josefsson.org>
+License: BSD-4-clause-UC
+
+License: BSD-4-clause-UC
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. <deleted>
+ 4. Neither the name of the University nor the names of its contributors
+    may be used to endorse or promote products derived from this software
+    without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ SUCH DAMAGE.
+
+License: BSD-4-clause-Holland
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. All advertising materials mentioning features or use of this software
+    must display the following acknowledgement:
+     This product includes software developed by David A. Holland.
+ 4. Neither the name of the University nor the names of its contributors
+    may be used to endorse or promote products derived from this software
+    without specific prior written permission.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND ANY CONTRIBUTORS ``AS IS'' AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR ANY CONTRIBUTORS BE LIABLE
+ FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ SUCH DAMAGE.
+
+License: netkit-telnet-ssl
+ The modifications to support SSLeay were done by Tim Hudson
+ tjh@cryptsoft.com
+ .
+ You can do whatever you like with these patches except pretend that
+ you wrote them.
+ .
+ Email ssl-users-request@mincom.oz.au to get instructions on how to
+ join the mailing list that discusses SSLeay and also these patches.
+ .
+ The modifications for this version of telnet where done by
+ Christoph Martin <christoph.martin@uni-mainz.de>
+
+License: MIT-Export
+ Export of this software from the United States of America is assumed
+ to require a specific license from the United States Government.
+ It is the responsibility of any person or organization contemplating
+ export to obtain such a license before exporting.
+ .
+ WITHIN THAT CONSTRAINT, permission to use, copy, modify, and
+ distribute this software and its documentation for any purpose and
+ without fee is hereby granted, provided that the above copyright
+ notice appear in all copies and that both that copyright notice and
+ this permission notice appear in supporting documentation, and that
+ the name of M.I.T. not be used in advertising or publicity pertaining
+ to distribution of the software without specific, written prior
+ permission.  M.I.T. makes no representations about the suitability of
+ this software for any purpose.  It is provided "as is" without express
+ or implied warranty.

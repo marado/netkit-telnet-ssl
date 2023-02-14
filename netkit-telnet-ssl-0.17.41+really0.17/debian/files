@@ -1,0 +1,5 @@
+netkit-telnet-ssl_0.17.41+really0.17-2_armhf.buildinfo net optional
+telnet-ssl-dbgsym_0.17.41+really0.17-2_armhf.deb debug optional automatic=yes
+telnet-ssl_0.17.41+really0.17-2_armhf.deb net optional
+telnetd-ssl-dbgsym_0.17.41+really0.17-2_armhf.deb debug optional automatic=yes
+telnetd-ssl_0.17.41+really0.17-2_armhf.deb net optional

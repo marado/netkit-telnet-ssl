@@ -1,0 +1,11 @@
+1e0a3483b7f198fb24ba14456e641e96  usr/bin/telnet-ssl
+1d0d99b9eb93f11939bbd4181f6f8a6e  usr/share/doc/telnet-ssl/NEWS.Debian.gz
+8d1846a637fc6c5d73c9b9b91a3e63ab  usr/share/doc/telnet-ssl/README
+44060ec32c7171f44a00d7d959db9549  usr/share/doc/telnet-ssl/README.SSL
+a8aa951b88ca4f4c4835d88865fb4ee8  usr/share/doc/telnet-ssl/README.old.gz
+9f95cc02944a43f30288031a6f084ddf  usr/share/doc/telnet-ssl/VERSION.gz
+f4c3adff1d9ab94343123af95bb0698b  usr/share/doc/telnet-ssl/changelog.Debian.gz
+40bf56de99b3770b9186dd30c03361e8  usr/share/doc/telnet-ssl/changelog.gz
+40128d4d675f942eb56f6a8ee09a1661  usr/share/doc/telnet-ssl/copyright
+6f3a9deee93ab819ae81240b271e5ae5  usr/share/lintian/overrides/telnet-ssl
+19062ec849914cb190f6d97be7c549f1  usr/share/man/man1/telnet-ssl.1.gz

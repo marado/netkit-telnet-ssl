@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export DEB_CFLAGS_MAINT_APPEND = -fPIE
+export DEB_CXXFLAGS_MAINT_APPEND = -fPIE
+export DEB_LDFLAGS_MAINT_APPEND = -fPIE -pie -Wl,-z,now
+
+%:
+	dh $@ --buildsystem=cmake
+
+override_dh_missing:
+	dh_missing --fail-missing

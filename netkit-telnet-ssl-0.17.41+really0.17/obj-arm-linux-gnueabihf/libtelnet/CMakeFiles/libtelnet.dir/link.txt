@@ -1,0 +1,2 @@
+/usr/bin/ar qc liblibtelnet.a CMakeFiles/libtelnet.dir/auth.c.o CMakeFiles/libtelnet.dir/misc.c.o CMakeFiles/libtelnet.dir/ssl.c.o CMakeFiles/libtelnet.dir/sslapp.c.o
+/usr/bin/ranlib liblibtelnet.a

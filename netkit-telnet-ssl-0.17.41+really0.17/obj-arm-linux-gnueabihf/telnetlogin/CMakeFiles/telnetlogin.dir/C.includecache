@@ -1,0 +1,42 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/pi/netkit-telnet-ssl/netkit-telnet-ssl-0.17.41+really0.17/telnetlogin/telnetlogin.c
+../version.h
+/home/pi/netkit-telnet-ssl/netkit-telnet-ssl-0.17.41+really0.17/version.h
+sys/types.h
+-
+sys/stat.h
+-
+sys/ioctl.h
+-
+netdb.h
+-
+fcntl.h
+-
+ctype.h
+-
+paths.h
+-
+signal.h
+-
+unistd.h
+-
+stdlib.h
+-
+string.h
+-
+stdarg.h
+-
+stdio.h
+-
+syslog.h
+-
+
+/home/pi/netkit-telnet-ssl/netkit-telnet-ssl-0.17.41+really0.17/version.h
+

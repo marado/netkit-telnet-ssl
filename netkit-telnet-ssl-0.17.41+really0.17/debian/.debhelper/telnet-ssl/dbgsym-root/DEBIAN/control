@@ -1,0 +1,12 @@
+Package: telnet-ssl-dbgsym
+Source: netkit-telnet-ssl
+Version: 0.17.41+really0.17-2
+Auto-Built-Package: debug-symbols
+Architecture: armhf
+Maintainer: Debian QA Group <packages@qa.debian.org>
+Installed-Size: 191
+Depends: telnet-ssl (= 0.17.41+really0.17-2)
+Section: debug
+Priority: optional
+Description: debug symbols for telnet-ssl
+Build-Ids: b609e092f37bf6d3a0d425f408f8b4d362d71611

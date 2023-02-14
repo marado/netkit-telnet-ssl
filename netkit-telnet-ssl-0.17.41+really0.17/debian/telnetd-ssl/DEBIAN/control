@@ -1,0 +1,22 @@
+Package: telnetd-ssl
+Source: netkit-telnet-ssl
+Version: 0.17.41+really0.17-2
+Architecture: armhf
+Maintainer: Debian QA Group <packages@qa.debian.org>
+Installed-Size: 151
+Depends: adduser, openbsd-inetd | inet-superserver, passwd, openssl, libc6 (>= 2.28), libssl1.1 (>= 1.1.0)
+Conflicts: telnetd
+Provides: telnet-server
+Section: net
+Priority: optional
+Description: telnet server with SSL encryption support
+ The in.telnetd program is a server which supports the DARPA telnet interactive
+ communication protocol.
+ .
+ SSL telnetd replaces normal telnetd using SSL authentication and
+ encryption. It interoperates with normal telnetd in both directions.
+ It checks if the other side is also talking SSL, if not it falls back
+ to normal telnet protocol.
+ .
+ Advantages over normal telnetd: Your passwords and the data you send
+ will not go in cleartext over the line.

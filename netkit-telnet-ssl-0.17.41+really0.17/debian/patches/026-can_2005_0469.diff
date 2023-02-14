@@ -1,0 +1,37 @@
+Description: Buffer overflow in LINEMODE suboptions, CAN-2005-0469.
+ telnet/telnet.cc (slc_add_reply): Check that sufficiently space
+ still is available beyond `slc_replyp'.
+ .
+ Extracted by comparison of netkit-telnet_0.17-18woody3,
+ netkit-telnet_0.17-29, and netkit-telnet-ssl_0.17.24+0.1-7.1.
+
+Author: Martin 'Joey' Schultze.
+Comment: Introduced in netkit-telnet_0.17-28.
+Forwarded: no
+Last-Update: 2015-01-26
+
+--- netkit-telnet-0.17.orig/telnet/telnet.cc
++++ netkit-telnet-0.17/telnet/telnet.cc
+@@ -1051,6 +1051,7 @@
+ 
+ 
+ unsigned char slc_reply[128];
++unsigned char const * const slc_reply_eom = &slc_reply[sizeof(slc_reply)];
+ unsigned char *slc_replyp;
+ 
+ void slc_start_reply(void) {
+@@ -1062,6 +1063,14 @@
+ }
+ 
+ void slc_add_reply(int func, int flags, int value) {
++  /* A sequence of up to 6 bytes my be written for this member of the SLC
++   * suboption list by this function.  The end of negotiation command,
++   * which is written by slc_end_reply(), will require 2 additional
++   * bytes.  Do not proceed unless there is sufficient space for these
++   * items.
++   */
++  if (&slc_replyp[6+2] > slc_reply_eom)
++    return;
+   if ((*slc_replyp++ = func) == IAC)
+     *slc_replyp++ = IAC;
+   if ((*slc_replyp++ = flags) == IAC)

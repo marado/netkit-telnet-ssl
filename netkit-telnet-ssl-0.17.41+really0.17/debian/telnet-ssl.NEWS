@@ -1,0 +1,64 @@
+netkit-telnet-ssl (0.17.41+0.2-3) unstable; urgency=low
+
+    This client now understands the working SSL options 'cipher=list'
+    and 'cacert=file'.  The old option 'cert=file' now reads the full
+    chain stored in the selected file, thereby making full verification
+    possible when the CA-file option is taken into account.  The now
+    functional option 'cipher=list' is available, but is rarely of use.
+
+    The status command 'auth status' reports on the active cipher and
+    some further diagnostic output has been fixed or added, being visible
+    in verbose, or in debug mode.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Mon, 16 Jan 2017 16:01:45 +0100
+
+netkit-telnet-ssl (0.17.24+0.2-1) experimental; urgency=low
+
+    The client package telnet-ssl no longer conflicts with the standard
+    telnet client.  Instead, the priority of telnet-ssl is set higher
+    within the alternates subsystem, thus gaining precedence over the
+    non-ssl supporting legacy program.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Fri, 30 Jan 2015 18:55:31 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-21) unstable; urgency=low
+
+    SSL keys/certificates generated since 2006-09-17 with Debian's openssl
+    package are vulnerable due to a predictable random number generator.
+    For more details see:
+
+      http://www.debian.org/security/2008/dsa-1571
+      http://www.debian.org/security/key-rollover/
+      http://wiki.debian.org/SSLkeys
+
+    To generate new keys using the default telnetd-ssl setup (as root):
+
+      rm -f /etc/telnetd-ssl/telnetd.pem /etc/ssl/certs/telnetd.pem
+      dpkg-reconfigure telnetd-ssl
+
+    If you have set up any SSL infrastructure beyond this, it will
+    also need to be regenerated.
+
+ -- Ian Beckwith <ianb@erislabs.net>  Mon, 26 May 2008 00:37:58 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-5) unstable; urgency=low
+
+  * Autologin
+    For compatability with vanilla telnet, and by popular demand, autologin
+    is no longer on by default in telnet-ssl.
+
+    Autologin is enabled if any of the following command-line arguments are used:
+
+    * -a 
+    * -l username 
+    * -r (rlogin mode) 
+    * -z cert=cert.pem
+    * -z key=key.pem
+
+  * Certificate-based authentication
+    SSL telnetd now supports -z certsok and /etc/ssl.users for
+    certificate-based authentication without a password. As a consequence
+    of this, telnetlogin(8) now accepts -f for login without a
+    password. See telnetd(8) for more information.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Sun,  5 Dec 2004 12:57:09 +0000

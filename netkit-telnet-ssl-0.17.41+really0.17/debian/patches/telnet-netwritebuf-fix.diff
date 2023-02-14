@@ -1,0 +1,75 @@
+Description: Infinite recursion on cleanup.
+ This is happening from the handling from "Abort Output"
+ command. This causes flushing of "netfile", which in turn
+ calls fflush. In this case, the netwritebuf() also fails
+ to write the iovec. That in turns calls cleanup(0). This
+ leads to another call to fflush() from the atexit handler,
+ causing a recursion that never ends as writev() in netwrtebuf()
+ keeps on failing.
+ 
+ Fix by checking the return from netwritebuf and return error
+ to the caller.
+
+Author: Nachiketa Prachanda <nprachan@vyatta.att-mail.com>
+Comment: Fix infinite recursion on cleanup
+Forwarded: no
+Last Update: 2022-09-06
+
+--- a/telnetd/utility.c
++++ b/telnetd/utility.c
+@@ -271,7 +271,7 @@
+ }
+ #endif /* USE_SSL */
+ 
+-static void
++static int
+ netwritebuf(void)
+ {
+ 	struct iovec *vector;
+@@ -282,11 +282,11 @@
+ 	int ltrailing = trailing;
+ 
+ 	if (!listlen)
+-		return;
++		return 0;
+ 
+ 	vector = malloc(listlen * sizeof(struct iovec));
+ 	if (!vector) {
+-		return;
++		return -1;
+ 	}
+ 
+ 	len = listlen - (doclear & ltrailing);
+@@ -333,9 +333,11 @@
+ 	  free(vector);
+ 
+ 	  if (n < 0) {
+-		if (errno != EWOULDBLOCK && errno != EINTR)
+-		  cleanup(0);
+-		return;
++		if (errno != EWOULDBLOCK && errno != EINTR) {
++			syslog(LOG_INFO, "telnetd:%s:%d:errno=%d\n", __func__, __LINE__, errno);
++			return -1;
++		}
++		return 0;
+ 	  }
+ 	}
+ 
+@@ -366,6 +368,7 @@
+ 	}
+ 
+ 	skip = len;
++	return 0;
+ }
+ 
+ /*
+@@ -1340,7 +1343,8 @@
+ 		ret += l;
+ 	}
+ 
+-	netwritebuf();
++	if (netwritebuf() < 0)
++		return -1;
+ 	return ret;
+ }
+ 

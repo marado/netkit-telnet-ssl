@@ -1,0 +1,7 @@
+/usr/bin/telnet-ssl
+/usr/share/man/man1/telnet-ssl.1
+/usr/sbin/in.telnetd
+/usr/share/man/man5/issue.net.5
+/usr/share/man/man8/in.telnetd.8
+/usr/bin/telnetlogin
+/usr/share/man/man8/telnetlogin.8

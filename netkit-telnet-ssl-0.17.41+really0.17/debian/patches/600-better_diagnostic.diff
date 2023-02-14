@@ -1,0 +1,143 @@
+Description: Better error diagnostics.
+ Improve a test used by the server to read 'SSL_accept() <= 0'.
+ Otherwise the particular case of a negative return value will go
+ unnoticed as an important error, albeit a less probable one.
+ [libtelnet/ssl.c (auth_ssl_is)]
+ .
+ A client demanding initial SSL, or a server for that matter, will observe
+ an immediate failure when the remote server has no support for this.
+ Similarly, when a degree of certificate verification has been set and
+ either partner can not meet set requirements.  Extract simplified
+ error reports, suppressing the highly technical message of libssl.
+ .
+ When the server has responded with `SSL ACCEPT', but the connection
+ with SSL_connect() fails of some reason, then extract an intelligible
+ reason instead of calling ERR_print_errors().
+ [libtelnet/ssl.c (auth_ssl_reply)]
+ .
+ Similarly, when SSL_accept() exposes a failure in the server started
+ by AUTH_SSL_START, augment the returned message with a hopefully useful
+ hint on the nature of the fault.
+ [libtelnet/ssl.c (auth_ssl_is)]
+ .
+ When `ssl_only_flag' is set, SSL_connect() will return a negative
+ return status, should the target host lack the ability to talk SSL.
+ Therefore also negative values must be taken as declined sessions.
+ Replace ERR_print_errors_fp() with a better intelligible reason,
+ constructed as in the previous case.  Also, add a custom error text
+ when SSL_ERROR_SSL was detected, but rely on `errno' otherwise.
+ [telnet/netlink.cc (connect)]
+ .
+ The class `network' possibly leaves `errno = 0', which is obscuring
+ the cause of failure, so we insert a fictitious EIO in such case.
+ [telnet/network.cc (netflush)]
+ .
+ Finally, when 'ssl_only_flag' is set and the server observes a failure
+ in SSL_accept(), then extract a shortened hint in the same manner as
+ before and report it!
+ [telnetd/telnetd.c (main)]
+
+Author: Mats Erik Andersson <debian@gisladisker.se>
+Forwarded: no
+Last-Update: 2015-02-18
+
+--- netkit-telnet-ssl-0.17.24+0.2/libtelnet/ssl.c.orig	2015-01-25 23:45:06.000000000 +0100
++++ netkit-telnet-ssl-0.17.24+0.2/libtelnet/ssl.c	2015-02-18 23:20:06.168555546 +0100
+@@ -312,13 +312,16 @@
+ 		    /* only want/need verify if doing certsok stuff */
+ 		    if (ssl_certsok_flag||ssl_cert_required) 
+ 			SSL_set_verify(ssl_con,ssl_verify_flag,server_verify_callback);
+-		    if (!SSL_accept(ssl_con)) {
+-
++		    if (SSL_accept(ssl_con) <= 0) {
++			char *res, *p;
+ 			/*
+ 			syslog(LOG_WARNING, "ssl_accept error");
+ 			*/
+ 
+-			fprintf(stderr,"[SSL - SSL_accept error]\r\n");
++			res = ERR_error_string(ERR_peek_last_error(), NULL);
++			p = strrchr(res, ':');
++			fprintf(stderr,"[SSL - SSL_accept error: %s]\r\n",
++				p ? &p[1] : res);
+ 			fflush(stderr);
+ 			sleep(5);
+ 			SSL_free(ssl_con);
+@@ -400,11 +403,14 @@
+ 		    SSL_set_verify(ssl_con,ssl_verify_flag,
+ 		    				client_verify_callback);
+ 		    if ((status = SSL_connect(ssl_con)) <= 0) {
++			char *res, *p;
++
+ 			auth_finished(0,AUTH_REJECT);
+ 
+-			fprintf(stderr,"[SSL - FAILED (%d)]\r\n", status);
++			res = ERR_error_string(ERR_peek_last_error(), NULL);
++			p = strrchr(res, ':');
++			fprintf(stderr,"SSL: %s\n", p ? &p[1] : res);
+ 			fprintf(stderr,"telnet: Unable to ssl_connect to remote host\n");
+-			ERR_print_errors(bio_err);
+ 			fflush(stderr);
+ 			auth_failed=1;
+ 			return;
+--- netkit-telnet-ssl-0.17.24+0.2/telnet/netlink.cc.orig	2015-01-25 23:45:06.000000000 +0100
++++ netkit-telnet-ssl-0.17.24+0.2/telnet/netlink.cc	2015-02-01 00:48:01.556732480 +0100
+@@ -236,11 +236,25 @@
+ 
+ 	/* if we are doing raw SSL then start it now ... */
+ 	if (ssl_only_flag) {
+-	    if (!SSL_connect(ssl_con)) {
+-	      /* static char errbuf[1024]; */
++	    int rc = SSL_connect(ssl_con);
+ 
+-		ERR_print_errors_fp(stderr);
+-		perror("SSL_connect");
++	    if (rc <= 0) {
++		/* static char errbuf[1024]; */
++		char *res, *p;
++		int err = SSL_get_error(ssl_con, rc);
++
++		if (!errno)
++		  errno = EIO;
++		res = ERR_error_string(ERR_peek_last_error(), NULL);
++		p = strrchr(res, ':');
++		fprintf(stderr,"SSL: %s\n", p ? &p[1] : res);
++		if (err == SSL_ERROR_SSL)
++		  fprintf(stderr, "%s: %s\n", hostname,
++			  "Error during SSL negotiation.");
++		else {
++		  ERR_print_errors_fp(stderr);
++		  perror("SSL_Connect");
++		}
+ 		fflush(stderr);
+ 
+ 		exit(1);
+--- netkit-telnet-ssl-0.17.24+0.2/telnet/network.cc.orig	2015-01-25 23:45:06.000000000 +0100
++++ netkit-telnet-ssl-0.17.24+0.2/telnet/network.cc	2015-01-26 13:06:36.494592003 +0100
+@@ -81,6 +81,8 @@
+ int netflush(void) {
+     int r = netoring.flush();
+     if (r < -1) {
++	if (!errno)
++	  errno = EIO;
+ 	setcommandmode();
+ 	perror(hostname);
+ 	nlink.close(0);
+--- netkit-telnet-ssl-0.17.24+0.2/telnetd/telnetd.c.orig	2015-01-25 23:45:06.000000000 +0100
++++ netkit-telnet-ssl-0.17.24+0.2/telnetd/telnetd.c	2015-02-18 23:01:14.392602393 +0100
+@@ -520,9 +520,12 @@
+ 
+ 	    if (SSL_accept(ssl_con) <= 0) {
+ 		static char errbuf[1024];
+-	    
+-	        sprintf(errbuf,"SSL_accept error %s\n",
+-		    ERR_error_string(ERR_get_error(),NULL));
++		char *res, *p;
++
++		res = ERR_error_string(ERR_peek_last_error(), NULL);
++		p = strrchr(res, ':');
++
++	        sprintf(errbuf,"SSL_accept error: %s\n", p ? &p[1] : res);
+ 
+ 		syslog(LOG_WARNING, "%s", errbuf);
+ 

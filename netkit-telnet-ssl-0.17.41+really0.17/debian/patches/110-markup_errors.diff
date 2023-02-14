@@ -1,0 +1,42 @@
+Description: Nit picking on troff macros.
+ Annoying misprints which Lintian complains on.
+ .
+ A minor inconsistency bug, misnaming the original escape character.
+Author: Mats Erik Andersson <debian@gisladisker.se>
+Bug-Debian: http://bugs.debian.org/676258
+Forwarded: not-needed
+Last-Update: 2015-01-10
+
+--- netkit-telnet-0.17/telnet/telnet.1.orig	2015-01-09 20:22:23.000000000 +0100
++++ netkit-telnet-0.17/telnet/telnet.1	2015-01-10 01:35:37.775594668 +0100
+@@ -711,7 +711,7 @@
+ .It Ic escape
+ This is the
+ .Nm telnet
+-escape character (initially \*(Lq^[\*(Rq) which causes entry
++escape character (initially \*(Lq^]\*(Rq) which causes entry
+ into
+ .Nm telnet
+ command mode (when connected to a remote system).
+--- netkit-telnet-0.17/telnetd/telnetd.8.orig	2015-01-09 20:22:23.000000000 +0100
++++ netkit-telnet-0.17/telnetd/telnetd.8	2015-01-10 00:30:52.891551907 +0100
+@@ -323,7 +323,7 @@
+ .Ed
+ .Pp
+ The pseudo-terminal allocated to the client is configured
+-to operate in \(lqcooked\(rq mode, and with 
++to operate in \(Lqcooked\(Rq mode, and with 
+ .Dv XTABS
+ .Dv CRMOD
+ enabled (see
+--- netkit-telnet-0.17/telnetlogin/telnetlogin.8.orig	2015-01-09 20:22:23.000000000 +0100
++++ netkit-telnet-0.17/telnetlogin/telnetlogin.8	2015-01-10 01:18:25.835583309 +0100
+@@ -60,7 +60,7 @@
+ accepts only the subset of options to
+ .Xr login 1
+ shown above, in the order listed. This is the order 
+-.Nm telnetd 8
++.Xr telnetd 8
+ normally provides them in.
+ .Nm telnetlogin
+ also does sanity checks on the environment variables

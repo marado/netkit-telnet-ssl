@@ -1,0 +1,1128 @@
+netkit-telnet-ssl (0.17.41+really0.17-2) unstable; urgency=medium
+
+  * QA upload.
+  * Revert dropping openssl from telnetd-ssl's Depends.
+  * Replace obsolete egrep with grep in telnetd-ssl's postinst.
+
+ -- Bastian Germann <bage@debian.org>  Wed, 14 Sep 2022 09:43:51 +0200
+
+netkit-telnet-ssl (0.17.41+really0.17-1) unstable; urgency=medium
+
+  * QA upload.
+  * Drop watch file (not scanning for upstream).
+  * Drop the Debian menu file (deprecated).
+  * Drop ssltelnet package remains.
+  * Drop outdated (as of switch to 3.0 source) README.Debian.
+  * Merge CMake patches to one.
+  * d/copyright: Convert to the machine-readable format
+    with debian/* info from netkit-telnet package.
+  * Synchronize patch set with netkit-telnet package.
+
+ -- Bastian Germann <bage@debian.org>  Mon, 05 Sep 2022 19:23:52 +0200
+
+netkit-telnet-ssl (0.17.41+0.2-3.3) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Fix FTBFS with cmake 3.18.
+  * debian/openssl.cnf: default_bits 1024 -> 4096
+    Thanks to Marcos Marado.(Closes: #920371)
+  * Remove the alternative build dependency on libssl1.0-dev.
+    (Closes: #917349)
+
+ -- Adrian Bunk <bunk@debian.org>  Fri, 05 Feb 2021 15:19:51 +0200
+
+netkit-telnet-ssl (0.17.41+0.2-3.2) unstable; urgency=high
+
+  * Non-maintainer upload
+  * Use cmake to build the package. Closes: #912132
+
+ -- Christoph Biedl <debian.axhn@manchmal.in-ulm.de>  Sun, 24 Feb 2019 14:38:52 +0100
+
+netkit-telnet-ssl (0.17.41+0.2-3.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Replace sg usage with getent group in postinst (Closes: #904048)
+    - note that there's still much room for related improvements, like
+      not removing users and groups in postrm (see discussion linked
+      from #228692) and not removing group created by another package,
+      maybe even use the same group for both netkit-telnet* packages
+      to simplify maintscripts if possible.
+
+ -- Andreas Henriksson <andreas@fatal.se>  Sat, 28 Jul 2018 16:14:32 +0200
+
+netkit-telnet-ssl (0.17.41+0.2-3) unstable; urgency=low
+
+  * Adapt to libssl of recent version.
+    + debian/patches/630-recent_libssl.diff: New file.
+    + debian/control: Reverse order between libssl-dev and libssl1.0-dev,
+      remove versioning of libssl-dev.
+  * Substantially improve certificate handling and diagnostics to achieve
+    full verification ability.
+    + debian/patches/650-improve_abilities.diff: New file.
+  * debian/rules: Set the macro SSL_LOG_FILE to '/var/tmp/telnetd.log'.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Sun, 22 Jan 2017 00:40:10 +0100
+
+netkit-telnet-ssl (0.17.41+0.2-2) unstable; urgency=low
+
+  * Allow version of libssl-dev older than 1.1.0.
+    + debian/control: Update build dependency.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Sat, 17 Dec 2016 17:45:45 +0100
+
+netkit-telnet-ssl (0.17.41+0.2-1) unstable; urgency=medium
+
+  * Update to source version 0.17-41 of netkit-telnet.
+  * Depend on libssl1.0-dev for buildability. Closes: #828448
+  * Fix CN in generated certificate when reported domain name is empty.
+    + debian/telnetd.postinst: Updated.
+  * Make source package account for dead upstream source, not binaries.
+    + debian/source/lintian-overrides: New file.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Mon, 28 Nov 2016 19:51:18 +0100
+
+netkit-telnet (0.17-41) unstable; urgency=low
+
+  * Declare Standards version as 3.9.8, no changes.
+  * Rework cross-compilation mechanism, suggested by Helmut Grohne.
+    Closes: #835977
+    + debian/patches/150-cross_configuration.diff: New file.
+    + debian/rules: Drop CROSS, prefer CC and CXX with host type prefix.
+  * debian/rules: Increase hardening level.
+  * debian/telnet.lintian-overrides: New name of old file.
+    Add overrides concerning `wont'.
+  * debian/telnetd.lintian-overrides: Add `wont' clauses.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Mon, 07 Nov 2016 19:06:40 +0100
+
+netkit-telnet-ssl (0.17.40+0.2-2) unstable; urgency=low
+
+  * Upgrade to Standards 3.9.7, no changes.
+  * [piuparts, telnetd-ssl] Remove a newly created random-seed file.
+    + debian/telnetd.postinst: Updated.
+  * [lintian] Add overrides for protocol compliant spelling 'wont'.
+    + debian/telnet-ssl.lintian-overrides: Updated.
+    + debian/telnetd-ssl.lintian-overrides: Updated.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Mon, 29 Feb 2016 19:28:52 +0100
+
+netkit-telnet-ssl (0.17.40+0.2-1) unstable; urgency=low
+
+  * Bring in package changes from experimental to unstable.
+  * Update to source version 0.17-40 of netkit-telnet.
+    + debian/rules: Define and use the variable LDDEFS.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Mon, 27 Apr 2015 23:20:22 +0200
+
+netkit-telnet (0.17-40) unstable; urgency=low
+
+  * Bring in package changes from experimental to unstable.
+  * debian/rules: Add a variable LDDEFS. It is consumed during linking
+    and is intended to suppress unnecessary linking.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Mon, 27 Apr 2015 22:37:15 +0200
+
+netkit-telnet-ssl (0.17.39+0.2-1) experimental; urgency=low
+
+  * Import the changes in upstream 'netkit-telnet', relevant to reach
+    a common version '0.17.39' also with this package variant.
+    + debian/patches/045-avoid_unsetting_term.diff: New file.
+    + debian/patches/120-some_protocol_refinement.diff: New file.
+    + debian/patches/130-drain_input_from_child.diff: New file.
+    + debian/patches/610-support_uservar.diff: New file.
+    + debian/patches/620-do_not_strip_telnetlogin.diff: New file.
+    + debian/rules: Add '-DACCEPT_USERVAR' to CFLAGS and CXXFLAGS.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Tue, 17 Mar 2015 18:05:47 +0100
+
+netkit-telnet (0.17-39) experimental; urgency=low
+
+  * Isolate support for USERVAR in a separate patch for easier use in
+    the variant package netkit-telnet-ssl.  Add LANG and LC_* to the
+    list of environment variables acceptable by the server.  Add support
+    in the client for exporting USERVAR classified variables.
+    + debian/patches/120-some_protocol_refinement.diff: Updated.
+    + debian/patches/124-support_uservar.diff: New file.
+  * Activate support for user variables in environment.  The server
+    accepts USERVAR classified variables, and the user agent announces
+    non-standard named variables as USERVAR.  Closes: #237268
+    + debian/rules: Add '-DACCEPT_USERVAR' to CFLAGS and to CXXFLAGS. 
+  * Modify patch for direct use also with package netkit-telnet-ssl.
+    + debian/patches/130-drain_input_from_child.diff: Updated.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Mon, 09 Mar 2015 15:42:23 +0100
+
+netkit-telnet (0.17-38) experimental; urgency=low
+
+  * Interchange maintainer and uploader!
+  * Refactor patch sets.
+    + debian/patches/010-full_set_in_18.diff: Updated and renamed.
+    + debian/patches/020-from_18_to_24.diff: Updated and renamed.
+    + debian/patches/022-buffer_overflow_by_HOME.diff: New file.
+    + debian/patches/024-can_2004-0911.diff: New file.
+    + debian/patches/026-can_2005_0469.diff: New file.
+  * Repair broken host name check in telnetlogin.
+    + debian/patches/140-telnetlogin_name_check.diff: New file.
+  * New switch '-N' for telnetd.  Taken from netkit-telnet-ssl.
+    + debian/patches/142-numeric_hosts.diff: New file.
+  * Suppress a useless error message at package removal.
+    + debian/telnetd.postrm: Updated.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Fri, 06 Feb 2015 19:41:53 +0100
+
+netkit-telnet (0.17-37) experimental; urgency=low
+
+  * Add Mats Erik Andersson as uploader.
+  * Migrate to format "3.0 (quilt)".
+    + debian/source/format: New file.
+    + debian/patches/010-full_set_in_18woody3.diff: New file.
+    + debian/patches/020-from_18woody3_to_29.diff: New file.
+    + debian/patches/030-reject_invalid_port.diff: New file.
+    + debian/patches/040-do_not_strip_programs.diff: New file.
+    + debian/patches/045-avoid_unsetting_term.diff: New file.
+  * Upgrade to Standards 3.9.6, compatibility 9.
+    + debian/rules: Implement targets "build-arch" and "build-indep".
+  * debian/rules: Implement hardening and cross builds, like netkit-ftp.
+    + debian/patches/100-format_security_error.diff: New file.
+  * debian/control: Add "misc:Depends" to both packages.
+  * debian/telnetd.postinst: Make sure that inetd.conf exists before
+    greping for text in it.
+  * [lintian] Mixed complaints.
+    + Delete leftover postinst.debhelper and postrm.debhelper.
+    + Protocol notion name "dont" is legal; add lintian overrides.
+    + description-synopsis-starts-with-article
+    + maintainer-script-without-set-e
+    + debian/control: Expand extended description of both packages.
+      Remove outdated conflict with suidmanager.
+    + debian/copyright: Include an explicit copy of the relevant license
+      "BSD-4-clause".  Complement data on license holders.
+    + debian/menu: Command is the physical executable, not the link.
+    + debian/patches/110-markup_errors.diff: New file.  Closes: #676258
+    + debian/rules: Call dh_prep and dh_lintian.
+  * Improve protocol compliance and negotiation printout.
+    + debian/patches/120-some_protocol_refinement.diff: New file.
+  * Incomplete transfer of data from server to client.  Closes: #607415
+    + debian/patches/130-drain_input_from_child.diff
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Thu, 22 Jan 2015 17:26:31 +0100
+
+netkit-telnet (0.17-36) unstable; urgency=low
+
+  [ Ian Beckwith ]
+  * telnetd.postinst:
+    + Fix update-inetd --remove regexp.
+    + Drop group from telnetd-ssl regexp.
+  * telnetd.postrm: Only remove inetd entry if it is disabled.
+  * telnetd Depends:
+    + Replace netbase Depends: with openbsd-inetd | inet-superserver
+      to pull in update-inetd (Closes: #473262).
+    + Remove versioned dependencies on versions of dpkg and base-files
+      that long predate oldstable.
+
+  [ Alberto Gonzalez Iniesta ]
+  * Upload Ian's patch (Closes: #486123)
+  * Patched telnet.cc to avoid unsetting the TERM variable when is not
+    known in the local host. Thanks Philippe Troin for the patch.
+    (Closes: #237324)
+  * Updated debian/menu. Thanks Hideki Yamane. (Closes: #483829)
+  * Removed stripping options from Makefiles. (Closes: #437618)
+
+ -- Alberto Gonzalez Iniesta <agi@inittab.org>  Tue, 22 Jul 2008 17:38:26 +0200
+
+netkit-telnet (0.17-35) unstable; urgency=low
+
+  * The 'this does not need to depend on update-inetd' release
+  * debian/control: Removed Depends on update-inetd.
+
+ -- Alberto Gonzalez Iniesta <agi@inittab.org>  Wed, 13 Dec 2006 08:39:28 +0100
+
+netkit-telnet (0.17-34) unstable; urgency=low
+
+  * The 'update-inetd' batch release.
+  * debian/control: Added Depends on update-inetd 
+
+ -- Alberto Gonzalez Iniesta <agi@inittab.org>  Sat, 18 Nov 2006 10:18:50 +0100
+
+netkit-telnet (0.17-33) unstable; urgency=low
+
+  * Patched telnetd.postinst to fix removal of telnetd-ssl.
+    Thanks Ian Beckwith for the patch. (Closes: #389278)
+  * Changed telnetd.telnetd to telnetd in inetd configuration.
+    Former format not supported by inetutils-inetd.
+  * Bumped Standards-Version to 3.7.2.2. No change
+
+ -- Alberto Gonzalez Iniesta <agi@inittab.org>  Fri, 20 Oct 2006 13:21:38 +0200
+
+netkit-telnet (0.17-32) unstable; urgency=low
+
+  * telnet/commands.cc: Patched to reject invalid port numbers.
+    Thanks a lot Justin Pryzby for the patch (Closes: #300273)
+  * Bumped Standards-Version to 3.6.2.0. No change
+
+ -- Alberto Gonzalez Iniesta <agi@inittab.org>  Sun,  9 Oct 2005 18:17:12 +0200
+
+netkit-telnet (0.17-31) unstable; urgency=low
+
+  * Build against new libstdc++6.
+  * Moved to debhelper compatability 4. Created debian/compat.
+
+ -- Alberto Gonzalez Iniesta <agi@inittab.org>  Sat, 17 Sep 2005 13:04:06 +0200
+
+netkit-telnet (0.17-30) unstable; urgency=low
+
+  * telnetd.postrm. Added '|| true' to rmdir of old directories.
+    This will allow removal of the package when home dir of the 
+    telnetd user is already gone. (Closes: #308439)
+
+ -- Alberto Gonzalez Iniesta <agi@inittab.org>  Fri,  8 Jul 2005 16:58:11 +0200
+
+netkit-telnet (0.17-29) unstable; urgency=high
+
+  * The 'Brown Paper Bag' release.
+  * Don't create /nonexistent when adding telned user. (Closes: #302395)
+  * urgency set to high since this has to go into sarge.
+
+ -- Alberto Gonzalez Iniesta <agi@inittab.org>  Thu, 31 Mar 2005 18:47:21 +0200
+
+netkit-telnet (0.17-28) unstable; urgency=high
+
+  * telnet/telnet.cc: Fixed buffer overflow in the handling of the
+    LINEMODE suboptions in telnet clients (CAN-2005-0469).
+    Thanks Martin 'Joey' Schulze for the patch.
+
+ -- Alberto Gonzalez Iniesta <agi@inittab.org>  Tue, 29 Mar 2005 11:10:01 +0200
+
+netkit-telnet (0.17-27) unstable; urgency=low
+
+  * New maintainer
+  * debian/control. Removed full stops from packages descriptions to shut
+    lintian up.
+  * Changed $HOME of telnetd user to /nonexistent. (Closes: #272312)
+  * debian/menu. Set full path to telnet in command field.
+
+ -- Alberto Gonzalez Iniesta <agi@inittab.org>  Sat, 12 Mar 2005 13:07:06 +0100
+
+netkit-telnet (0.17-26) unstable; urgency=high
+
+  * telnetd/utility.c: Fix remote DOS hole (CAN-2004-0911). Thanks Herbert Xu.
+    (Closes: #273694)
+
+ -- Robert Millan <rmh@debian.org>  Tue, 28 Sep 2004 00:22:59 +0200
+
+netkit-telnet (0.17-25) unstable; urgency=low
+
+  * telnet/commands.cc: Fix buffer overflow when $HOME is too big.  Thanks
+    Josh Martin. (Closes: #264846)
+
+ -- Robert Millan <rmh@debian.org>  Fri, 13 Aug 2004 04:21:36 +0200
+
+netkit-telnet-ssl (0.17.24+0.2-1) experimental; urgency=low
+
+  * New maintainer and new uploader.
+  * Upgrade to Standards 3.9.6, compatibility 9.
+    + debian/rules: Implement targets "build-arch" and "build-indep".
+  * Make this client coexist with the standard client.
+    + debian/control: Remove conflict with `telnet'.
+    + debian/postinst: Increase priority to 110 for precedence.
+    + debian/telnet-ssl.NEWS: New file.
+    + debian/telnetd-ssl.NEWS: Previously called 'NEWS'.
+  * Migrate to format "3.0 (quilt)".
+    + debian/source/format: Updated.
+  * Rebase against original netkit-telnet-0.17.  The source archive
+    is the same as for 'netkit-telnet', but versioned '0.17.24+0.2'.
+    + debian/watch: Use a mangled query at 'ftp.debian.org'.
+    + debian/patches/010-full_set_in_18.diff: New file.
+    + debian/patches/020-from_18_to_24.diff: New file.
+    + debian/patches/022-buffer_overflow_by_HOME.diff: New file.
+    + debian/patches/024-can_2004-0911.diff: New file.
+    + debian/patches/026-can_2005_0469.diff: New file.
+    + debian/patches/030-reject_invalid_port.diff: New file.
+    + debian/patches/500-implement_ssl.diff: New file.
+    + debian/patches/510-can_2004_0640_and_0998.diff: New file.
+    + debian/patches/512-numeric_hosts.diff: New file.
+    + debian/patches/514-mixed_up_to_24_7_1.diff: New file.
+    + debian/patches/516-telnet_up_to_24_7_1.diff: New file.
+    + debian/patches/518-telnetd_up_to_24_7_1.diff: New file.
+    + debian/patches/520-from_7_1_to_14.diff: New file.
+    + debian/patches/530-from_14_to_21.diff: New file.
+    + debian/patches/540-buffer_overflow.diff: New file.
+    + debian/patches/545-track_scm.diff: New file.
+  * debian/rules: Implement hardening and cross builds, like netkit-ftp.
+    + debian/patches/100-format_security_error.diff: New file.
+  * Report a useful error when failing due to forced SSL.
+    + debian/patches/600-better_diagnostic.diff: New file.
+  * Make grep complain less when inetd.conf is no longer present.
+    + debian/telnetd.postinst: Updated.
+
+ -- Mats Erik Andersson <mats.andersson@gisladisker.se>  Thu, 19 Feb 2015 00:15:17 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-24) unstable; urgency=medium
+
+  * Fix buffer overflow (Closes: #695181).
+
+ -- Ian Beckwith <ianb@debian.org>  Sat, 22 Feb 2014 17:00:11 +0000
+
+netkit-telnet-ssl (0.17.24+0.1-23) unstable; urgency=low
+
+  * Remove hardcoded dependencies on libssl0.9.8 (Closes: #622656)
+    Thanks to Guillem Jover for patch.
+  * Propitiate lintian:
+    + telnet-ssl: Depends: add ${misc:Depends}.
+    + Remove long-obsolete Replaces: netstd and
+      Conflicts: ssltelnet, suidmanager.
+    + Add debian/source/format.
+    + Fix syntax of lintian overrides.
+    + Add lintian override for spelling of IAC DONT.
+    + Tweak wording of Description.
+    + Tweak debian/NEWS.
+    + debian/copyright: Explicitly include license instead
+      of reference to common-licenses.
+    + Standards-Version: 3.9.1.
+
+ -- Ian Beckwith <ianb@debian.org>  Wed, 20 Apr 2011 01:21:48 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-22) unstable; urgency=low
+
+  * General package tidy:
+    + Use set -e in all maintainer scripts.
+    + Update maintainer email.
+    + Remove DM-Upload-Allowed now I have Ascended.
+    + Standards-Version: 3.8.2 (no changes).
+    + Override non-applicable lintian tags no-homepage-field and
+      spelling-error-in-binary.
+    + Use dh_lintian to install overrides
+    + Build-depend on debhelper version with dh_lintian.
+
+ -- Ian Beckwith <ianb@debian.org>  Wed, 22 Jul 2009 01:30:39 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-21) unstable; urgency=low
+
+  * Update debian/NEWS with details of openssl problems
+    and key rollover.
+  * debian/control Depends:
+    + Explicitly depend on fixed openssl.
+    + Remove versioned dependencies on versions of dpkg and base-files
+      that long predate oldstable.
+    + Depend on passwd, needed for {user,group}del.
+  * telnetd-ssl postinst/postrm: fix update-inetd --remove regexp.
+  * Added stub debian/watch (upstream is dead).
+  * Standards-Version: 3.8.0 (no changes).
+
+ -- Ian Beckwith <ianb@erislabs.net>  Fri, 13 Jun 2008 13:11:15 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-20) unstable; urgency=low
+
+  * debian/control:
+    + Add DM-Upload-Allowed: yes
+    + Maintainer: update my email address.
+    + Standard-Version: 3.7.3 (no changes).
+  * */Makefile: cut out unnecessary linking.
+  * debian/NEWS: reformat to keep lintian happy.
+  * debian/telnetd.postinst: work round checkbashisms false positive.
+  * telnetd/telnetd.8: fix quoting.
+  * debian/rules: remove unneeded debhelper calls.
+
+ -- Ian Beckwith <ianb@erislabs.net>  Wed, 26 Mar 2008 02:55:38 +0000
+
+netkit-telnet-ssl (0.17.24+0.1-19) unstable; urgency=low
+
+  * telnet-ssl: Handle SSL_ERROR_WANT_READ, triggered by SSL
+    rehandshaking, based on patch by Alfred Arnold.
+  * Fix compiler warnings when converting string constants
+    to 'char *'s.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Thu, 04 Oct 2007 22:30:28 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-18) unstable; urgency=low
+
+  * debian/control:
+    + Added ${misc:Depends} to Depends.
+    + Updated long description.
+  * debian/rules:
+    + Use $(CURDIR) instead of `pwd`.
+    + Only run make distclean if MCONFIG exists,
+      instead of ignoring return code.
+  * Change telnet-ssl menu section to match new menu policy.
+  * Bump debhelper compat level to 5.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Mon, 06 Aug 2007 17:19:38 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-17) unstable; urgency=low
+
+  * Preserve telnetd arguments across all upgrades, including
+    ones which modify the inetd.conf entry (Closes: #421503).
+  * Avoid spurious updates when telnetd has arguments in inetd.conf.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Mon, 14 May 2007 02:25:45 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-16) unstable; urgency=low
+
+  * Fix inetd dependencies, thanks to Marco d'Itri (Closes: #402583).
+    + Drop dependencies on netbase and update-inetd.
+    + Add dependency on openbsd-inetd | inet-superserver.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Wed, 13 Dec 2006 03:28:58 +0000
+
+netkit-telnet-ssl (0.17.24+0.1-15) unstable; urgency=low
+
+  * debian/control: add Depends: on update-inetd.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Wed,  6 Dec 2006 05:56:34 +0000
+
+netkit-telnet-ssl (0.17.24+0.1-14) unstable; urgency=medium
+
+  * Changed telnetd-ssl.telnetd-ssl to telnetd-ssl in inetd configuration.
+    Former format not supported by inetutils-inetd.
+    Thanks to Alberto Gonzalez Iniesta.
+    urgency=medium to try and get this fix in etch.
+  * Install telnet README files in /usr/share/doc/telnet-ssl/
+    (rather than /usr/share/doc/telnet/)
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Sat, 11 Nov 2006 17:11:42 +0000
+
+netkit-telnet-ssl (0.17.24+0.1-13) unstable; urgency=low
+
+  * Tweaked fix for #122763.
+  * New telnet command: startssl - start SSL when talking
+    to non-telnetds (eg imapd with STARTTLS) (Closes: #187202).
+  * telnetd.postinst: configure: rewrite netkit-telnet's
+    inetd entry if it still exists.
+  * telnetd.8: add -z sslopt to options in SYNOPSIS.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Sun, 24 Sep 2006 01:40:09 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-12) unstable; urgency=low
+
+  * telnetd-ssl: Fixed segfault in netwritebuf() (Closes: #122763).
+  * Added Christoph Martin to Uploaders:.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Mon, 10 Jul 2006 02:37:20 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-11) unstable; urgency=low
+
+  * Move telnetd.pem to /etc/telnetd-ssl (Closes: #368416):
+  * Use private copy of openssl.cnf (from openssl_0.9.8b-2) (Closes: #372105).
+  * Set Common Name to FQDN when generating certificate.
+  * Standards-Version: 3.7.2 (No changes).
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Fri, 16 Jun 2006 19:10:02 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-10) unstable; urgency=low
+
+  * telnet: don't disable ssl to localhost if -z secure
+    is set (Closes: #339528, #339535).
+  * Applied Justin Pryzby's netkit-telnet patch to reject invalid
+    port numbers (See #300273).
+  * Man page fixes:
+    + telnet.1: formatting fix, thanks to Nicolas François (Closes: #357737).
+    + issue.net.5: insert \& in %-sequences to stop groff interpreting them.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Fri, 28 Apr 2006 20:13:02 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-9) unstable; urgency=low
+
+  * Fixed socks problems, thanks to IWAMURO Motonori (Closes: #314416).
+  * Dropped netbase as a dependency of telnet-ssl (Closes: #316946).
+  * telnetd-ssl postinst/postrm changes:
+    + Rename telnetd user to telnetd-ssl (Closes: #147945).
+    + Made update-inetd regexps a bit more robust.
+    + Added || true to rmdir calls in telnetd.post{inst,rm}.
+    + Use colons to separate user and group in chown calls.
+  * Bumped Standards-Version (No changes).
+  * Switched to debhelper compat level 4.
+  * Fixed warnings generated by gcc 4.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Tue, 12 Jul 2005 02:07:26 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-8) unstable; urgency=low
+
+  * Ack NMU. Thanks Joey Hess (Closes: #302036).
+  * telnetd-ssl.postinst: create telnetd user with home
+    dir of /nonexistant (See #272312).
+  * telnetd/utility.c: wrap SSL_writev in #ifdef USE_SSL
+    Thanks to Matt Bookman.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Thu, 14 Apr 2005 16:55:29 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-7.1) unstable; urgency=HIGH
+
+  * NMU
+  * telnet/telnet.cc: Fixed buffer overflow in the handling of the
+    LINEMODE suboptions in telnet clients (CAN-2005-0469).
+    Thanks Martin 'Joey' Schulze for the patch.
+    Closes: #302036
+
+ -- Joey Hess <joeyh@debian.org>  Thu, 31 Mar 2005 11:09:56 -1000
+
+netkit-telnet-ssl (0.17.24+0.1-7) unstable; urgency=low
+
+  * telnetd.postrm: use "test -x" instead of "command -v" (Closes: #293052).
+  * telnetd.{prerm,postinst}: use "test -x" before calls to update-inetd.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Thu, 24 Feb 2005 20:09:31 +0000
+
+netkit-telnet-ssl (0.17.24+0.1-6) unstable; urgency=high
+
+  * Urgency high due to security fix
+  * Fixed format string vulnerability discovered by Joel Eriksson
+    [telnetd/telnetd.c, CAN-2004-0998]
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Tue, 21 Dec 2004 18:13:20 +0000
+
+netkit-telnet-ssl (0.17.24+0.1-5) unstable; urgency=low
+
+  * telnet:
+    + Separate autologin and SSL (Closes: #57149, #57266, #59295, #62198, #83306).
+    + Autologin now defaults to off (use -a to enable).
+    + Verify server cert commonName matches remote hostname (Closes: #210749).
+    + Enable -z authdebug (Closes: #145551).
+    + Enable SSL when connecting from telnet> prompt (Closes: #26994).
+    + Give better diagnostics and exit cleanly when SSL certificate verification fails.
+    + Make -z verify=3 simulate -z certrequired.
+  * telnetlogin:
+    + added '-f username' option for preauthenticated login without password.
+    + fixed logic of check_a_hostname.
+  * telnetd:
+    + Fix -z certsok (Closes: #36527).
+    + set SSL_VERIFY_PEER if certsok enabled.
+    + Add -N option to log IP addresses rather than perform reverse DNS lookups.
+      Thanks to Dean Gaudet (Closes: #258371).
+  * Support DEB_BUILD_OPTIONS.
+  * Fixed compiler warnings.
+  * Updated man pages.
+  * debian/control: changed Priority: to extra.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Sun,  5 Dec 2004 12:57:09 +0000
+
+netkit-telnet-ssl (0.17.24+0.1-4) unstable; urgency=high
+
+  * telnetd/utility.c: Fix remote DOS hole (CAN-2004-0911). Thanks Herbert Xu.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Thu, 30 Sep 2004 20:23:02 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-3) unstable; urgency=low
+
+  * New Maintainer (Closes: #260184)
+  * telnet/commands.cc: Apply Josh Martin's patch to fix
+    buffer overflow when $HOME is too big.
+  * telnetd/issue.net.5: escaped hyphen.
+
+ -- Ian Beckwith <ianb@nessie.mcc.ac.uk>  Sun, 15 Aug 2004 16:48:32 +0100
+
+netkit-telnet-ssl (0.17.24+0.1-2) unstable; urgency=high
+
+  * fix syslog format string vulnerability CAN-2004-0640 (closes: #258372)
+  * correct lintian error of description field
+  * correct menu entry
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Tue, 13 Jul 2004 11:39:27 +0200
+
+netkit-telnet-ssl (0.17.24+0.1-1) unstable; urgency=low
+
+  * Bring netkit-telnet-ssl in line with current netkit-telnet
+  * Build for sid/sarge (closes: #189600)
+  * Fix telnet.1 manpage (closes: #156454)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Thu, 27 May 2004 13:50:41 +0200
+
+netkit-telnet (0.17-24) unstable; urgency=low
+
+  * New maintainer. (Closes: #249714)
+    - control (Maintainer): Set myself.
+
+ -- Robert Millan <rmh@debian.org>  Wed, 19 May 2004 02:10:38 +0200
+
+netkit-telnet (0.17-23) unstable; urgency=low
+
+  * Accept numeric telnet options in telnet (closes: #242018).
+  * Added telnet dependency on netbase for /etc/services.
+
+ -- Herbert Xu <herbert@debian.org>  Sat, 15 May 2004 17:13:42 +1000
+
+netkit-telnet (0.17-22) unstable; urgency=low
+
+  * Use colon as separator for chown (closes: #217404).
+
+ -- Herbert Xu <herbert@debian.org>  Sat,  6 Dec 2003 08:45:30 +1100
+
+netkit-telnet (0.17-21) unstable; urgency=low
+
+  * Removed build-stamp/install-stamp from debian/rules.
+  * Removed obsolete warning options from configure.
+  * Disable 8-bit mode if parity bit is enabled (closes: #203544).
+  * Disabled trigraph warnings.
+  * Commented out tokens after endif.
+  * Added -b option to telnet (closes: #194736).
+
+ -- Herbert Xu <herbert@debian.org>  Sat, 18 Oct 2003 14:38:04 +1000
+
+netkit-telnet (0.17-20) unstable; urgency=low
+
+  * Use 8-bit mode without binary option as default (OpenBSD via
+    Xisco Calafat).
+  * Added port specification to telnetrc (closes: #144921).
+
+ -- Herbert Xu <herbert@debian.org>  Sun, 25 May 2003 19:02:35 +1000
+
+netkit-telnet (0.17-19) unstable; urgency=low
+
+  * Applied Hurd patch (Robert Millan, closes: #149325).
+  * Fixed telnetlogin path in telnetd manpage (closes: #150812).
+  * Do not abort if user/group does not exist in prerm (closes: #149181).
+
+ -- Herbert Xu <herbert@debian.org>  Sun, 22 Sep 2002 15:05:20 +1000
+
+netkit-telnet (0.17-18) unstable; urgency=low
+
+  * Added missing El's in telnetd(8).
+  * -S now accepts a number (closes: #136804).
+  * Show the machine we are connected instead of the first (closes: #137554).
+
+ -- Herbert Xu <herbert@debian.org>  Sun,  7 Apr 2002 09:41:12 +1000
+
+netkit-telnet-ssl (0.17.17+0.1-2) unstable; urgency=low
+
+  * moved from nonus to main
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Sat, 23 Mar 2002 12:33:10 +0100
+
+netkit-telnet-ssl (0.17.17+0.1-1) unstable; urgency=high
+
+  * Provide telnet-server (#120180).
+  * Fixed IAC+SB crash (#122313, #128988).
+  * drop dummy ssltelnet package
+  * reintroduce options -4 and -6 (closes: #129253)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Wed,  6 Mar 2002 17:07:23 +0100
+
+netkit-telnet (0.17-17) unstable; urgency=high
+
+  * Provide telnet-server (closes: #120180).
+  * Fixed IAC+SB crash (closes: #122313, #128988).
+
+ -- Herbert Xu <herbert@debian.org>  Fri, 18 Jan 2002 20:13:23 +1100
+
+netkit-telnet-ssl (0.17.16+0.1-2) unstable; urgency=high
+
+  * fixed a bug in urgent handling which caused a session close on
+    interrupt characters (closes: #121831)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Sat,  1 Dec 2001 20:33:21 +0100
+
+netkit-telnet-ssl (0.17.16+0.1-1) unstable; urgency=high
+
+  * bring in line with netkit-telnet
+    * fixes netobuf overflows and some minor errors
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Tue, 20 Nov 2001 16:18:00 +0100
+
+netkit-telnet (0.17-16) unstable; urgency=low
+
+  * Set resolv_hostp outside the source routing ifdef in telnetd.
+  * Documented telnet options -4 and -6 (closes: #109636).
+
+ -- Herbert Xu <herbert@debian.org>  Sun, 16 Sep 2001 14:38:05 +1000
+
+netkit-telnet (0.17-15) unstable; urgency=low
+
+  * Don't ignore all EADDRINUSE errors in telnet.
+  * Don't clear the environment in telnetlogin (closes: #108872).
+
+ -- Herbert Xu <herbert@debian.org>  Thu, 16 Aug 2001 19:38:11 +1000
+
+netkit-telnet (0.17-14) unstable; urgency=high
+
+  * Fixed netobuf buffer overflows.
+
+ -- Herbert Xu <herbert@debian.org>  Sat, 11 Aug 2001 17:52:25 +1000
+
+netkit-telnet-ssl (0.17.13+0.1-2) unstable; urgency=high
+
+  * fix environ problem in telnetlogin (closes: #108848, #109510, #109478)
+  * more cleanup in clean make-target (closes: #104194)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Fri, 24 Aug 2001 15:04:30 +0200
+
+netkit-telnet-ssl (0.17.13+0.1-1) unstable; urgency=low
+
+  * bring in line with netkit-telnet
+    * Updated devpts check to include devfs as well.
+    * Added include <sys/time.h> to telnetd/utility.c (96803).
+    * Added exit 0 to telnetd.postrm (93934).
+    * Changed misleading help message (94231).
+    * Renamed member printf to xprintf (91351).
+    * Use new in C++ compiler test (91353).
+  * fix typo in telnetd(8) manpage (closes: #99865)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Thu, 14 Jun 2001 16:23:54 +0200
+
+netkit-telnet (0.17-13) unstable; urgency=medium
+
+  * Updated devpts check to include devfs as well.
+
+ -- Herbert Xu <herbert@debian.org>  Sat, 19 May 2001 15:33:41 +1000
+
+netkit-telnet (0.17-12) unstable; urgency=low
+
+  * Added include <sys/time.h> to telnetd/utility.c (closes: #96803).
+
+ -- Herbert Xu <herbert@debian.org>  Wed,  9 May 2001 21:17:12 +1000
+
+netkit-telnet (0.17-11) unstable; urgency=low
+
+  * Added exit 0 to telnetd.postrm (closes: #93934).
+  * Changed misleading help message (closes: #94231).
+
+ -- Herbert Xu <herbert@debian.org>  Sat, 21 Apr 2001 22:52:11 +1000
+
+netkit-telnet (0.17-10) unstable; urgency=low
+
+  * Renamed member printf to xprintf (closes: #91351).
+  * Use new in C++ compiler test (closes: #91353).
+
+ -- Herbert Xu <herbert@debian.org>  Fri, 13 Apr 2001 19:34:12 +1000
+
+netkit-telnet-ssl (0.17.9-1) unstable; urgency=low
+
+  * bring netkit-telnet changes to -ssl
+  * change builddepends libssl096-dev to libssl-dev
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Sat, 10 Mar 2001 17:16:47 +0100
+
+netkit-telnet (0.17-9) unstable; urgency=low
+
+  * Fixed path to license file (Christoph Martin, closes: #86476).
+  * Added missing #DEBHELPER# tag to telnet.prerm (Hiroyuki YAMAMORI,
+    closes: #86894).
+  * Only call update-alternatives in prerm if removing or deconfiguring
+    (closes: #87330).
+
+ -- Herbert Xu <herbert@debian.org>  Sun, 25 Feb 2001 00:00:59 +1100
+
+netkit-telnet-ssl (0.17.8+0.1-1) unstable; urgency=low
+
+  * bring netkit-telnet patches to -ssl
+  * use upstream patch netkit-telnet-0.17+ssl-0.1.diff
+  * fix pointer to BSD license in copyright
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Sun, 18 Feb 2001 13:08:49 +0100
+
+netkit-telnet (0.17-8) unstable; urgency=low
+
+  * Removed remnant of suidregister from telnetd (closes: #85882).
+  * Fixed handling of sockaddr lengths (closes: #86177).
+  * Dynamically allocate editedhost (closes: #86080).
+
+ -- Herbert Xu <herbert@debian.org>  Sat, 17 Feb 2001 12:53:11 +1100
+
+netkit-telnet-ssl (0.17.7-1) unstable; urgency=low
+
+  * bring netkit-telnet patches to -ssl
+  * fix builddepends to libssl096-dev (closes: #84174)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Thu,  1 Feb 2001 10:27:12 +0100
+
+netkit-telnet (0.17-7) unstable; urgency=low
+
+  * Added includes for gcc 2.97 (Randolph Chung, closes: #83337).
+  * Avoid DNS lookups if the address is numerical (closes: #83828).
+  * Added menu hint (closes: #80161).
+
+ -- Herbert Xu <herbert@debian.org>  Mon, 29 Jan 2001 21:10:59 +1100
+
+netkit-telnet-ssl (0.17.6-1) unstable; urgency=medium
+
+  * link against libssl096 because libssl095a has vanished (closes:
+    #82063, #82064, #82053, #82499)
+  * new upstream Debian version
+  * builddepend on libssl096-dev
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Tue, 16 Jan 2001 15:02:21 +0100
+
+netkit-telnet (0.17-6) unstable; urgency=low
+
+  * Added menu entry for telnet (closes: #74845).
+
+ -- Herbert Xu <herbert@debian.org>  Sat, 21 Oct 2000 11:08:44 +1100
+
+netkit-telnet (0.17-5) unstable; urgency=low
+
+  * Fixed a memory allocation bug.
+
+ -- Herbert Xu <herbert@debian.org>  Fri, 22 Sep 2000 23:12:57 +1100
+
+netkit-telnet-ssl (0.17.4-1) unstable; urgency=low
+
+  * new upstream version (closes: #69572)
+  * link against libssl095a (closes: #66305, #67078)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Tue, 19 Sep 2000 21:15:58 +0200
+
+netkit-telnet (0.17-4) unstable; urgency=low
+
+  * Relaxed telnetlogin a bit.
+  * Provide telnet-client (closes: #70549).
+
+ -- Herbert Xu <herbert@debian.org>  Sat,  9 Sep 2000 17:42:53 +1100
+
+netkit-telnet (0.17-3) unstable; urgency=low
+
+  * Check for EAFNOSUPPORT after calling socket(2) in telnet.
+  * Added IPv6 support for telnetd.
+
+ -- Herbert Xu <herbert@debian.org>  Sun, 27 Aug 2000 11:28:48 +1100
+
+netkit-telnet (0.17-2) unstable; urgency=low
+
+  * Install telnetlogin ourselves (closes: #69773).
+  * Fixed alternatives typo (closes: #69597).
+
+ -- Herbert Xu <herbert@debian.org>  Wed, 23 Aug 2000 20:01:38 +1000
+
+netkit-telnet (0.17-1) unstable; urgency=low
+
+  * New upstream release.
+  * Applied a modified version of Jason Gunthorpe's IPv6 patch for telnet
+    (closes: #68998).
+  * Read /etc/telnetrc before .telnetrc if it exists.  The idea was from
+    Robert Luberda.  Documented the special hostname DEFAULT (closes: #69113).
+  * Use alternatives for /usr/bin/telnet (closes: #56754).
+
+ -- Herbert Xu <herbert@debian.org>  Sat, 19 Aug 2000 14:06:48 +1000
+
+netkit-telnet (0.16-6) unstable; urgency=low
+
+  * Handle localchars correctly (closes: #66039).
+
+ -- Herbert Xu <herbert@debian.org>  Mon, 26 Jun 2000 15:01:42 +1000
+
+netkit-telnet (0.16-5) unstable; urgency=low
+
+  * Fixed a bug in responses to TTYPE queries where a (null) could be sent
+    instead of the correct terminal type (closes: #63155).
+
+ -- Herbert Xu <herbert@debian.org>  Sat,  6 May 2000 09:42:58 +1000
+
+netkit-telnet (0.16-4) frozen unstable; urgency=low
+
+  * Disabled signal handling that does not work (closes: #62388).  Patches
+    that provide correct signal handling are welcome.
+
+ -- Herbert Xu <herbert@debian.org>  Mon, 24 Apr 2000 16:58:22 +1000
+
+netkit-telnet-ssl (0.16.3-1) frozen unstable; urgency=medium
+
+  * brings fixes applied to netkit-telnet also to netkit-telnet-ssl. These
+    versions versions should have parallel features and bugfixes.
+  * Made FHS compliant (closes: Bug#60428, #61489)
+  * fix call to suidunregister (wrong package) (closes: Bug#60437)
+  * recompile with libncurses5 like netkit-telnet
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Sun,  9 Apr 2000 11:52:47 +0200
+
+netkit-telnet (0.16-3) frozen unstable; urgency=medium
+
+  * Restored the default to not being 8-bit clean since it breaks SunOS
+    (closes: #60352, #60386).  People who need 8-bit cleanness should use -8.
+  * Made FHS compliant.
+
+ -- Herbert Xu <herbert@debian.org>  Wed, 15 Mar 2000 10:39:00 +1100
+
+netkit-telnet (0.16-2) frozen unstable; urgency=low
+
+  * Recompiled with libncurses5.
+  * Changed the permission of /usr/lib/telnetd/login to 4754 (closes: #58786).
+  * telnet is now 8-bit clean by default since it appeared to be so in slink,
+    albeit unintentionally (closes: #57685).
+
+ -- Herbert Xu <herbert@debian.org>  Sun, 12 Mar 2000 21:10:47 +1100
+
+netkit-telnet-ssl (0.16.1-1) frozen unstable; urgency=low
+
+  * brings security fixes applied to netkit-telnet also to
+    netkit-telnet-ssl. These versions should have parallel features and
+    bugfixes. 
+  * Now uses update-alternatives for telnet so it will install at same
+    time as othe versions of telnet (eg in heimdal-clients) (closes:
+    Bug#54557). (Thanks to Brian May <bam@debian.org>) 
+  * typo in postinst in call to suidregister (closes: Bug#55197)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Mon, 13 Mar 2000 20:25:15 +0100
+
+netkit-telnet (0.16-1) frozen unstable; urgency=low
+
+  * New upstream release with security fixes.
+  * Run as root if devpts is not present.
+
+ -- Herbert Xu <herbert@debian.org>  Thu,  3 Feb 2000 13:42:29 +1100
+
+netkit-telnet-ssl (0.14.9-1) unstable; urgency=low
+
+  * new upstream
+  * telnetd-ssl now provides telnetd (closes: Bug#54557)
+  * make auto-generated telnetd.pem readable only for root.telnetd
+    (closes: Bug#54471)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Sat, 15 Jan 2000 10:38:02 +0100
+
+netkit-telnet (0.14-9) unstable; urgency=low
+
+  * Compile login with -g -O2 -Wall.
+  * Fixed path to default login in in.telnetd(8).
+  * Fixed usage() output (closes: #51498).
+
+ -- Herbert Xu <herbert@debian.org>  Tue, 30 Nov 1999 22:43:39 +1100
+
+netkit-telnet-ssl (0.14.8-3) unstable; urgency=high
+
+  * remove diversions of old ssltelnet package, so that telnet and telnetd
+    are usable again (closes: Bug#52622, #51328, #52624)
+  * telnet-ssl now provides telnet (closes: Bug#51968, #49500)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Mon, 10 Jan 2000 20:51:10 +0100
+
+netkit-telnet-ssl (0.14.8-2) unstable; urgency=low
+
+  * don't use lorder in creating libs (closes: Bug#48893)
+  * fix problem with pending data from ssl connection (closes: Bug#43196)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Sun, 28 Nov 1999 14:39:05 +0100
+
+netkit-telnet-ssl (0.14.8-1) unstable; urgency=low
+
+  * new upstream
+  * fixes problem with compatibility with recent telnetd (closes:
+    Bug#45485) 
+  * feature change: default for connections to localhost is now not to
+    encrypt the connection (closes: Bug#41076)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Fri, 22 Oct 1999 14:06:16 +0200
+
+netkit-telnet (0.14-8) unstable; urgency=low
+
+  * Call fatalperror() instead of fatal() when getpty() fails.
+  * Delete telnetd group before creating telnetd (closes: #46659).
+
+ -- Herbert Xu <herbert@debian.org>  Tue,  5 Oct 1999 17:52:36 +1000
+
+netkit-telnet (0.14-7) unstable; urgency=low
+
+  * Redirect stderr for group existence check to /dev/null.
+
+ -- Herbert Xu <herbert@debian.org>  Sat, 25 Sep 1999 22:00:31 +1000
+
+netkit-telnet (0.14-6) unstable; urgency=low
+
+  * Check for existence of user/group before removing (fixes #45651).
+
+ -- Herbert Xu <herbert@debian.org>  Tue, 21 Sep 1999 21:07:18 +1000
+
+netkit-telnet (0.14-5) unstable; urgency=low
+
+  * Depend on base-files (>= 2.1.8) for group utmp (fixes #44687).
+
+ -- Herbert Xu <herbert@debian.org>  Sat, 11 Sep 1999 12:53:08 +1000
+
+netkit-telnet (0.14-4) unstable; urgency=low
+
+  * Rebuilt with working fakeroot (fixes #44043, #44044).
+
+ -- Herbert Xu <herbert@debian.org>  Fri,  3 Sep 1999 20:32:28 +1000
+
+netkit-telnet (0.14-3) unstable; urgency=medium
+
+  * telnetd is now a member of utmp (fixes #43543).
+  * Call adduser with --quiet (fixes #43587).
+  * configure now works with egcs 2.95 (fixes #43580, #43747)
+
+ -- Herbert Xu <herbert@debian.org>  Thu,  2 Sep 1999 21:18:06 +1000
+
+netkit-telnet-ssl (0.14.2-1) unstable; urgency=low
+
+  * new upstream version (Closes #43577)
+  * link agains openssl 0.9.4
+  * disable default encryption for localhost (Closes #41076)
+  * be less verbose on connection opening
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Sun, 29 Aug 1999 16:58:40 +0200
+
+netkit-telnet (0.14-2) unstable; urgency=low
+
+  * telnetd now depends on adduser and passwd (fixes #43515).
+
+ -- Herbert Xu <herbert@debian.org>  Thu, 26 Aug 1999 14:49:25 +1000
+
+netkit-telnet (0.14-1) unstable; urgency=low
+
+  * New upstream release.
+  * Installed the login wrapper (fixes #42092).
+  * Reopen logging if necessary (fixes #36149).
+
+ -- Herbert Xu <herbert@debian.org>  Tue, 24 Aug 1999 09:17:24 +1000
+
+netkit-telnet (0.12-6) unstable; urgency=low
+
+  * Applied patch from Matt McLean for openpty support (fixes #35629).
+  * Use glibc versions of logout/logwtmp.
+
+ -- Herbert Xu <herbert@debian.org>  Tue, 29 Jun 1999 14:16:14 +1000
+
+netkit-telnet (0.12-5) unstable; urgency=low
+
+  * Fixed a bug with hostnames longer than 64 characters (fixes #33559).
+
+ -- Herbert Xu <herbert@debian.org>  Tue, 16 Mar 1999 15:24:36 +1100
+
+netkit-telnet-ssl (0.12-4) unstable; urgency=high
+
+  * fixes security hole in termcap handling
+  * change include paths to work with openssl 0.9.3
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Mon, 23 Aug 1999 21:28:26 +0200
+
+netkit-telnet-ssl (0.12-3) unstable; urgency=low
+
+  * include empty package ssltelnet to help upgrade to telnet(d)-ssl (Bug
+    #34987, #38360, #38569, #36031, #36748, #37237) 
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Mon, 31 May 1999 16:22:33 +0200
+
+netkit-telnet-ssl (0.12-2) unstable; urgency=low
+
+  * linked against new libssl09 (openssl)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Mon,  3 May 1999 20:50:31 +0200
+
+netkit-telnet-ssl (0.12-1) unstable; urgency=low
+
+  * First SSL-patch to netkit-telnet, rewrite and replacement of ssltelnet
+  * Fixes several bugs of ssltelnet (#11844, #14641, #17461, #21336,
+    #22428, #25389, #26405, #26553)
+
+ -- Christoph Martin <christoph.martin@uni-mainz.de>  Sun,  7 Mar 1999 22:20:24 +0100
+
+netkit-telnet (0.12-4) frozen unstable; urgency=low
+
+  * Uploaded to slink.
+
+ -- Herbert Xu <herbert@debian.org>  Sun, 15 Nov 1998 15:04:40 +1100
+
+netkit-telnet (0.12-3) unstable; urgency=low
+
+  * Rebuilt with libncurses4.
+
+ -- Herbert Xu <herbert@debian.org>  Sun,  1 Nov 1998 19:38:49 +1100
+
+netkit-telnet (0.12-2) unstable; urgency=low
+
+  * Rebuilt with libstdc++2.9 (fixes #27789).
+
+ -- Herbert Xu <herbert@debian.org>  Thu, 15 Oct 1998 22:32:04 +1000
+
+netkit-telnet (0.12-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Herbert Xu <herbert@debian.org>  Mon, 28 Sep 1998 16:50:43 +1000
+
+

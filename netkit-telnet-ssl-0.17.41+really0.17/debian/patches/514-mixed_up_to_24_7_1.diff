@@ -1,0 +1,553 @@
+Description: Incremental patch up to 0.17.24+0.1-7.1.
+ Changes past netkit-telnet-ssl_0.17.24+0.1.orig.tar.gz.
+ .
+ Format string vulnerability, CAN-2004-0911, is moved to a separate file
+ inherited from netkit-telnet, but adaptions were made here so that the
+ patch applies cleanly.
+ .
+ Buffer overflow when $HOME is large; moved to a separate file in common
+ with netkit-telnet.
+ .
+ Remote DOS hole, CAN-2005-0469, is moved to a separate file in common
+ with netkit-telnet.
+ .
+ New switch '-N' in telnetd, bug #258371, is moved to a separate file.
+ .
+ Changes to `telnet' and `telnetd' are delegated to separate files.
+ .
+ Include `libtelnet' as subdirectory during build.
+ [Makefile]
+ .
+ (telnetlogin) Fix logic in check_a_hostname().  Implement new option
+ '-f' and check_username(), verifying a requesting user's name.
+ [telnetlogin/telnetlogin.8, telnetlogin/telnetlogin.c]
+ .
+ (libtelnet) New variable `auth_failed'.  When certificate verification
+ fails, send all output to stderr, then flush it.  Fix two uses of
+ `UserNameRequested'.  Improve callback function to verify that server's
+ commonName matches the remote hostname.  Improve printed feedback when
+ reporting the cause of certificate rejection.
+ [libtelnet/ssl.c]
+ .
+ Fix compiler warnings.
+ [libtelnet/auth-prot.h, libtelnet/auth.c, libtelnet/misc.c]
+ [libtelnet/ssl.c, libtelnet/sslapp.h]
+ .
+ Trivial SCM header changes were moved elsewhere.
+
+Author: Ian Beckwith, Christoph Martin
+Comment: Computed from netkit-telnet-ssl_0.17.24+0.1-7.1.diff.
+Bug-Debian: http://bugs.debian.org/210749
+Forwarded: no
+Last-Update: 2004-12-05
+
+--- a/telnetlogin/telnetlogin.8
++++ b/telnetlogin/telnetlogin.8
+@@ -28,7 +28,7 @@
+ .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ .\" SUCH DAMAGE.
+ .\"
+-.\"	$Id: telnetlogin.8,v 1.4 2000/07/30 23:57:10 dholland Exp $
++.\"	$Id: telnetlogin.8,v 1.2 2004/11/07 15:47:43 ianb Exp $
+ .\"
+ .Dd April 12, 2000
+ .Dt TELNETLOGIN 8
+@@ -40,6 +40,7 @@
+ .Nm telnetlogin
+ .Op Fl h Ar host
+ .Op Fl p
++.Op Fl f Ar username
+ .Op Ar username
+ .Sh DESCRIPTION
+ .Nm telnetlogin
+@@ -79,11 +80,6 @@
+ .Xr inetd 8 ,
+ .Xr telnetd 8
+ .Sh RESTRICTIONS
+-.Nm telnetlogin
+-does not permit the
+-.Fl f
+-option to login, so will not
+-work with telnetds that perform authentication via Kerberos or SSL.
+ .Pp
+ THIS IS PRESENTLY EXPERIMENTAL CODE; USE WITH CAUTION.
+ .Sh HISTORY
+--- a/telnetlogin/telnetlogin.c
++++ b/telnetlogin/telnetlogin.c
+@@ -35,7 +35,7 @@
+  "All rights reserved.\n";
+ 
+ char rcsid[] =
+-  "$Id: telnetlogin.c,v 1.1 2000/04/13 01:07:22 dholland Exp $";
++  "$Id: telnetlogin.c,v 1.2 2004/11/07 15:47:43 ianb Exp $";
+ #include "../version.h"
+ 
+ #include <sys/types.h>
+@@ -76,7 +76,16 @@
+    int i=0;
+    /* should we check length? */
+    for (i=0; hname[i]; i++) {
+-      if (hname[i]<=32 && hname[i]>126) return -1;
++      if ((hname[i]<=32) || (hname[i]>126)) return -1;
++   }
++   return 0;
++}
++
++static int check_username(char *username) {
++   int i;
++   if (strlen(username) > 32) return -1;
++   for (i=0; username[i]; i++) {
++      if ((username[i]<=32) || (username[i]>126)) return -1;
+    }
+    return 0;
+ }
+@@ -158,6 +167,12 @@
+    if (argn < argc && !strcmp(argv[argn], "-p")) {
+       argn++;
+    }
++   if (argn < argc && !strcmp(argv[argn], "-f")) {
++      argn++;
++      if (argn==argc) die("Illegal args: -f requires argument");
++      if (check_username(argv[argn])) die("Illegal remote username specified");
++      argn++;
++   }
+    if (argn < argc && argv[argn][0] != '-') {
+       argn++;
+    }
+--- a/libtelnet/auth-proto.h
++++ b/libtelnet/auth-proto.h
+@@ -123,7 +123,9 @@
+ int auth_ssl_status P((Authenticator *, char *, int));
+ void auth_ssl_printsub P((unsigned char *, int, unsigned char *, int));
+ #endif /* USE_SSL */
+- 
++
++extern void printsub P((char, unsigned char *, int));
++extern int writenet P((char *, int));
+ #endif
+ #ifdef __cplusplus
+ }
+--- a/libtelnet/auth.c
++++ b/libtelnet/auth.c
+@@ -37,6 +37,9 @@
+  */
+ 
+ #ifndef lint
++#ifdef __GNUC__
++__attribute__ ((unused))
++#endif	/* __GNUC__ */
+ static char sccsid[] = "@(#)auth.c	5.2 (Berkeley) 3/22/91";
+ #endif /* not lint */
+ 
+@@ -83,6 +86,9 @@
+ 
+ #define	typemask(x)		(1<<((x)-1))
+ 
++int auth_onoff(const char *type, int on);
++
++
+ int auth_debug_mode = 0;
+ static 	char	*Name = "Noname";
+ static	int	Server = 0;
+@@ -241,7 +247,7 @@
+ 
+ 	int
+ auth_onoff(type, on)
+-	char *type;
++	const char *type;
+ 	int on;
+ {
+ 	int i, mask = -1;
+@@ -456,7 +462,7 @@
+ 		return;
+ 	}
+ 
+-	if (ap = findauthenticator(data[0], data[1])) {
++	if ((ap = findauthenticator(data[0], data[1]))) {
+ 		if (ap->is)
+ 			(*ap->is)(ap, data+2, cnt-2);
+ 	} else if (auth_debug_mode)
+@@ -474,7 +480,7 @@
+ 	if (cnt < 2)
+ 		return;
+ 
+-	if (ap = findauthenticator(data[0], data[1])) {
++	if ((ap = findauthenticator(data[0], data[1]))) {
+ 		if (ap->reply)
+ 			(*ap->reply)(ap, data+2, cnt-2);
+ 	} else if (auth_debug_mode)
+@@ -487,7 +493,7 @@
+ 	unsigned char *data;
+ 	int cnt;
+ {
+-	Authenticator *ap;
++  /*	Authenticator *ap; */
+ 	unsigned char savename[256];
+ 
+ 	if (cnt < 1) {
+@@ -542,6 +548,9 @@
+ }
+ 
+ 	/* ARGSUSED */
++#ifdef __GNUC__
++__attribute__ ((used))
++#endif	/* __GNUC__ */
+ 	static void
+ auth_intr(sig)
+ 	int sig;
+--- a/libtelnet/misc.c
++++ b/libtelnet/misc.c
+@@ -32,6 +32,9 @@
+  */
+ 
+ #ifndef lint
++#ifdef __GNUC__
++__attribute__ ((unused))
++#endif	/* __GNUC__ */
+ static char sccsid[] = "@(#)misc.c	5.1 (Berkeley) 2/28/91";
+ #endif /* not lint */
+ 
+@@ -54,7 +57,12 @@
+  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+  */
+ 
++#include <stdio.h>
++#include <stdlib.h>
++
+ #include "misc.h"
++#include "auth.h"
++#include "auth-proto.h"
+ 
+ char *RemoteHostName;
+ char *LocalHostName;
+--- a/libtelnet/ssl.c
++++ b/libtelnet/ssl.c
+@@ -47,6 +47,9 @@
+ #include <string.h>
+ #endif
+ 
++#include <unistd.h>
++#include <openssl/err.h>
++
+ #include "auth.h"
+ #include "misc.h"
+ 
+@@ -91,11 +94,12 @@
+ #define VERIFY_ROOT_OK VERIFY_OK
+ #endif
+ 
++extern int netflush(void);
++
+ extern int auth_debug_mode;
+-static auth_ssl_valid = 0;
++static int auth_ssl_valid = 0;
+ static char *auth_ssl_name = 0;    /* this holds the oneline name */
+ 
+-extern BIO *bio_err;
+ extern int ssl_only_flag;
+ extern int ssl_debug_flag;
+ extern int ssl_active_flag;
+@@ -120,6 +124,9 @@
+ 
+ BIO *bio_err=NULL;
+ 
++int auth_failed=0;
++
++
+ /* compile this set to 1 to negotiate SSL but not actually start it */
+ static int ssl_dummy_flag=0;
+ 
+@@ -135,7 +142,7 @@
+  * telnet connect if we are talking straight ssl with no telnet
+  * protocol --tjh
+  */
+-int
++void
+ display_connect_details(ssl_con,verbose)
+ SSL *ssl_con;
+ int verbose;
+@@ -152,7 +159,7 @@
+ 	/* grab the full list of ciphers */
+ 	i=0;
+ 	buf[0]='\0';
+-	while((p=SSL_get_cipher_list(ssl_con,i++))!=NULL) {
++	while((p=(char *)SSL_get_cipher_list(ssl_con,i++))!=NULL) {
+ 	  if (i>0)
+ 	    strcat(buf,":");
+ 	  strcat(buf,p);
+@@ -280,7 +287,7 @@
+ unsigned char *data;
+ int cnt;
+ {
+-	int valid;
++  /*	int valid; */
+ 
+ 	if (cnt-- < 1)
+ 		return;
+@@ -364,7 +371,7 @@
+ unsigned char *data;
+ int cnt;
+ {
+-	int i;
++  /*	int i; */
+ 	int status;
+ 
+ 	if (cnt-- < 1)
+@@ -389,16 +396,13 @@
+ 		    SSL_set_verify(ssl_con,ssl_verify_flag,
+ 		    				client_verify_callback);
+ 		    if ((status = SSL_connect(ssl_con)) <= 0) {
+-			fprintf(stderr,"[SSL - FAILED (%d)]\r\n", status);
+-			fflush(stderr);
+-
+-			perror("telnet: Unable to ssl_connect to remote host");
++			auth_finished(0,AUTH_REJECT);
+ 
++			fprintf(stderr,"[SSL - FAILED (%d)]\r\n", status);
++			fprintf(stderr,"telnet: Unable to ssl_connect to remote host\n");
+ 			ERR_print_errors(bio_err);
+-
+-			/* don't know what I "should" be doing here ... */
+-
+-			auth_finished(0,AUTH_REJECT);
++			fflush(stderr);
++			auth_failed=1;
+ 			return;
+ 		    } else {
+ 
+@@ -452,7 +456,7 @@
+ 	 */
+ 	if (ssl_certsok_flag) {
+ 	    user_fp = fopen("/etc/ssl.users", "r");
+-	    if (!auth_ssl_name || !user_fp) {
++	    if (!auth_ssl_name || !user_fp || !UserNameRequested) {
+ 	        /* If we haven't received a certificate, then don't 
+ 		 * return AUTH_VALID. 
+ 		 */
+@@ -486,7 +490,7 @@
+ 			cp = strchr(n, ',');
+ 			if (cp)
+ 			    *cp++ = '\0';
+-			if (!UserNameRequested || 
++			if (UserNameRequested &&
+ 			            !strcmp(UserNameRequested, n)) {
+ 			    strcpy(name, n);
+ 			    fclose(user_fp);
+@@ -543,7 +547,7 @@
+ 	default:
+ 		sprintf(lbuf, " %d (unknown)", data[3]);
+ 		strncpy((char *)buf, lbuf, buflen);
+-	common2:
++/*	common2: */
+ 		BUMP(buf, buflen);
+ 		for (i = 4; i < cnt; i++) {
+ 			sprintf(lbuf, " %d", data[i]);
+@@ -568,7 +572,7 @@
+ #endif /* SSLEAY8 */
+ {
+     static char *saved_subject=NULL;
+-    X509 *peer;
++    /*    X509 *peer; */
+     char *subject, *issuer;
+ #ifdef SSLEAY8
+     int depth,error;
+@@ -715,8 +719,8 @@
+ int depth, error;
+ #endif /* SSLEAY8 */
+ {
+-    X509 *peer;
+-    char *subject, *issuer;
++  /*    X509 *peer; */
++    char *subject, *issuer, *cnsubj;
+ #ifdef SSLEAY8
+     int depth,error;
+     char *xs;
+@@ -727,13 +731,13 @@
+ 
+ #endif /* SSLEAY8 */
+ 
+-#ifdef LOCAL_DEBUG
+-    fprintf(stderr,"ssl:client_verify_callback:depth=%d ok=%d err=%d-%s\n",
+-    	depth,ok,error,X509_cert_verify_error_string(error));
+-    fflush(stderr);
+-#endif /* LOCAL_DEBUG */
++    if(ssl_debug_flag && !ok) {
++      fprintf(stderr,"ssl:client_verify_callback:depth=%d ok=%d err=%d-%s\n",
++	      depth,ok,error,X509_verify_cert_error_string(error));
++      fflush(stderr);
++    }
+ 
+-    subject=issuer=NULL;
++    subject=issuer=cnsubj=NULL;
+ 
+     /* first thing is to have a meaningful name for the current
+      * certificate that is being verified ... and if we cannot
+@@ -761,60 +765,77 @@
+ 	fflush(stderr);
+     }
+ 
+-    /* if the server is using a self signed certificate then 
+-     * we need to decide if that is good enough for us to 
+-     * accept ... 
+-     */
+-    if (error==VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT) {
+-	if (ssl_cert_required) {
+-	    /* make 100% sure that in secure more we drop the 
+-	     * connection if the server does not have a 
+-	     * real certificate!
+-	     */
+-	    fprintf(stderr,"SSL: rejecting connection - server has a self-signed certificate\n");
+-	    fflush(stderr);
+-
+-            /* sometimes it is really handy to be able to debug things
+-	     * and still get a connection!
+-	     */
+-	    if (ssl_debug_flag) {
+-		fprintf(stderr,"SSL: debug -> ignoring cert required!\n");
+-		fflush(stderr);
+-		ok=1;
+-	    } else {
+-		ok=0;
+-	    }
+-	    goto return_time;
+-	} else {
+-	    ok=1;
+-	    goto return_time;
+-	}
++    /* verify commonName matches hostname */
++    if(ssl_cert_required && depth == 0) {
++      char *cn,*p;	
++	  
++      cnsubj=strdup(subject);
++      if(cnsubj == NULL) {
++	fprintf(stderr,"SSL: Out of memory.\n");
++	ok=0;
++	goto return_time;
++      }
++      cn=strstr(cnsubj,"/CN=");
++      if(cn == NULL) {
++	fprintf(stderr,"SSL: Cannot extract CN from certificate subject.\n");
++	ok=0;
++	goto return_time;
++      }
++      cn+=4; /* skip /CN= */
++      p=strchr(cn,'/');
++      if(p != NULL) {
++	*p='\0';
++      }
++      if(strcasecmp(cn,RemoteHostName) != 0) {
++	fprintf(stderr,"SSL: Certificate CN (%s) does not match hostname (%s)\n",
++		cn,RemoteHostName);
++	ok=0;
++	goto return_time;
++      }
+     }
+ 
+-    /* if we have any form of error in secure mode we reject the connection */
+-    if (! ((error==VERIFY_OK)||(error==VERIFY_ROOT_OK)) ) {
+-	if (ssl_cert_required) {
+-	    fprintf(stderr,"SSL: rejecting connection - ");
+-	    if (error==VERIFY_ERR_UNABLE_TO_GET_ISSUER) {
+-		fprintf(stderr,"unknown issuer: %s\n",issuer);
+-	    } else {
+-		ERR_print_errors(bio_err);
+-	    }
+-	    fflush(stderr);
+-	    ok=0;
+-	    goto return_time;
+-	} else {
+-	    /* be nice and display a lot more meaningful stuff 
+-	     * so that we know which issuer is unknown no matter
+-	     * what the callers options are ...
+-	     */
+-	    if (error==VERIFY_ERR_UNABLE_TO_GET_ISSUER) {
+-		fprintf(stderr,"SSL: unknown issuer: %s\n",issuer);
+-		fflush(stderr);
+-	    }
+-	}
++    if((error==VERIFY_OK) || (error==VERIFY_ROOT_OK)) {
++      goto return_time;
+     }
+ 
++    switch(error) {
++    case VERIFY_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
++      fprintf(stderr,"SSL: Server has a self-signed certificate\n");
++    case VERIFY_ERR_UNABLE_TO_GET_ISSUER:
++      fprintf(stderr,"SSL: unknown issuer: %s\n",issuer);
++      break;
++    case X509_V_ERR_CERT_NOT_YET_VALID:
++      fprintf(stderr,"SSL: Certificate not yet valid\n");
++      BIO_printf(bio_err,"notBefore=");
++      ASN1_TIME_print(bio_err,X509_get_notBefore(ctx->current_cert));
++      BIO_printf(bio_err,"\n");
++      break;
++    case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
++      fprintf(stderr,"SSL: Error in certificate notBefore field\n");
++      BIO_printf(bio_err,"notBefore=");
++      ASN1_TIME_print(bio_err,X509_get_notBefore(ctx->current_cert));
++      BIO_printf(bio_err,"\n");
++      break;
++    case X509_V_ERR_CERT_HAS_EXPIRED:
++      fprintf(stderr,"SSL: Certificate has expired\n");
++      BIO_printf(bio_err,"notAfter=");
++      ASN1_TIME_print(bio_err,X509_get_notAfter(ctx->current_cert));
++      BIO_printf(bio_err,"\n");
++      break;
++    case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
++      fprintf(stderr,"SSL: Error in certificate notAfter field\n");
++      BIO_printf(bio_err,"notAfter=");
++      ASN1_TIME_print(bio_err,X509_get_notAfter(ctx->current_cert));
++      BIO_printf(bio_err,"\n");
++      break;
++    default:
++      fprintf(stderr,"SSL: %s (%d)\n", X509_verify_cert_error_string(error),error);
++      break;
++    }
++
++    /* If we are here there was an error */
++    ok=0;
++    
+ return_time: ;
+ 
+     /* clean up things */
+@@ -822,7 +843,20 @@
+ 	free(subject);
+     if (issuer!=NULL)
+ 	free(issuer);
+-
++    if (cnsubj!=NULL)
++	free(cnsubj);
++    if(!ok && ssl_cert_required) {
++      if(ssl_debug_flag) {
++	fprintf(stderr,"SSL: debug -> ignoring cert required!\n");
++	ok=1;
++      }
++      else {
++	fprintf(stderr,"SSL: Rejecting connection\n");
++	ok=0;
++      }
++    }
++    fflush(stderr);
++      
+     return ok;
+ }
+ 
+--- a/libtelnet/sslapp.h
++++ b/libtelnet/sslapp.h
+@@ -45,6 +45,7 @@
+ #include "x509.h"
+ #include "ssl.h"
+ #define OLDPROTO NOPROTO
++#undef NOPROTO
+ #define NOPROTO
+ #include "err.h"
+ #undef NOPROTO
+@@ -72,7 +73,7 @@
+ /* we hide all the initialisation code in a separate file now */
+ extern int do_ssleay_init(int server);
+ 
+-extern int display_connect_details(SSL *ssl_con, int verbose);
++extern void display_connect_details(SSL *ssl_con, int verbose);
+ extern int server_verify_callback();
+ extern int client_verify_callback();
+ 

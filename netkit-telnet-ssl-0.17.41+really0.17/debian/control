@@ -1,0 +1,40 @@
+Source: netkit-telnet-ssl
+Section: net
+Priority: optional
+Maintainer: Debian QA Group <packages@qa.debian.org>
+Standards-Version: 3.9.8
+Rules-Requires-Root: no
+Build-Depends: debhelper-compat (= 13), libncurses-dev, libssl-dev, cmake
+
+Package: telnet-ssl
+Architecture: any
+Depends: netbase, ${shlibs:Depends}, ${misc:Depends}
+Provides: telnet-client
+Description: telnet client with SSL encryption support
+ The telnet command is used for interactive communication with another host
+ using the TELNET protocol.
+ .
+ SSL telnet replaces normal telnet using SSL authentication and
+ encryption. It interoperates with normal telnetd in both directions.
+ It checks if the other side is also talking SSL, if not it falls back
+ to normal telnet protocol.
+ .
+ Advantages over normal telnet: Your passwords and the data you send
+ will not go in cleartext over the line.
+
+Package: telnetd-ssl
+Architecture: any
+Depends: adduser, openbsd-inetd | inet-superserver, passwd, openssl, ${shlibs:Depends}, ${misc:Depends}
+Provides: telnet-server
+Conflicts: telnetd
+Description: telnet server with SSL encryption support
+ The in.telnetd program is a server which supports the DARPA telnet interactive
+ communication protocol.
+ .
+ SSL telnetd replaces normal telnetd using SSL authentication and
+ encryption. It interoperates with normal telnetd in both directions.
+ It checks if the other side is also talking SSL, if not it falls back
+ to normal telnet protocol.
+ .
+ Advantages over normal telnetd: Your passwords and the data you send
+ will not go in cleartext over the line.

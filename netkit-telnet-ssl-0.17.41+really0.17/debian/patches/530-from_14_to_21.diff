@@ -1,0 +1,172 @@
+Description: Mixed updates.
+ Optimize linking.
+ [telnet/Makefile, telnetd/Makefile, telnetlogin/Makefile]
+ .
+ Handle SSL_ERROR_WANT_READ, which is triggered by SSL re-handshake.
+ [telnet/netlink.cc]
+ .
+ Compiler warnings when converting string constants.
+ [telnet/commands.cc, libtelnet/auth.c, libtelnet/auth-proto.h]
+ [libtelnet/misc.c, libtelnet/misc-proto.h]
+ .
+ Fix quoting in manual page.
+ [telnetd/telnetd.8]
+ .
+ Trivial SCM header changes were moved elsewhere.
+
+Author: Alfred Arnold, Ian Beckwith, Peter Runestig
+Comment: interdiff netkit-telnet-ssl_0.17.24+0.1-{14,21}.diff
+Forwarded: no
+Last-Update: 2007-10-04
+
+--- a/telnet/commands.cc
++++ b/telnet/commands.cc
+@@ -35,7 +35,7 @@
+  * From: @(#)commands.c	5.5 (Berkeley) 3/22/91
+  */
+ char cmd_rcsid[] = 
+-  "$Id: commands.cc,v 1.12 2006-09-24 00:48:31 ianb Exp $";
++  "$Id: commands.cc,v 1.13 2007-10-04 21:38:18 ianb Exp $";
+ 
+ #include <string.h>
+ 
+@@ -1525,10 +1525,10 @@
+ 
+ #if	defined(AUTHENTICATE)
+ struct authlist {
+-	char	*name;
+-	char	*help;
+-	int	(*handler)(const char *, const char *);
+-	int	narg;
++    const char	*name;
++    const char	*help;
++    int	(*handler)(const char *, const char *);
++    int	narg;
+ };
+ 
+ static int auth_help (const char *, const char *);
+--- a/telnet/netlink.cc
++++ b/telnet/netlink.cc
+@@ -19,6 +19,20 @@
+ #define HAS_IPPROTO_IP
+ #endif
+ 
++/* code from Peter 'Luna' Runestig <peter@runestig.com> */
++static int select_read(int rfd)
++/* timeout = 20 seconds */
++{
++    fd_set rfds;
++    struct timeval tv;
++
++    FD_ZERO(&rfds);
++    FD_SET(rfd, &rfds);
++    tv.tv_sec = 20;
++    tv.tv_usec = 0;
++    return select(rfd + 1, &rfds, NULL, NULL, &tv);
++}
++
+ netlink nlink;
+ 
+ class netchannel : public ringbuf::source {
+@@ -27,12 +41,23 @@
+ 	int net = nlink.getfd();
+ 	int l;
+ #ifdef USE_SSL
+-	if (ssl_active_flag)
+-	  l = SSL_read(ssl_con, buf, maxlen);
+-	else
++	if (ssl_active_flag) {
++	    do {
++		l = SSL_read(ssl_con, buf, maxlen);
++		/*
++		 * SSL_ERROR_WANT_READ may occur if an SSL/TLS rehandshake occurs.
++		 * This means that data was available at the socket, but all was
++		 * consumed by SSL itself, so we select (w/20s timeout)  and retry.
++		 */
++	    } while (l<0 &&
++		     (SSL_ERROR_WANT_READ == SSL_get_error(ssl_con, l)) &&
++		     (select_read(net) > 0));
++        } else
+ #endif /* USE_SSL */
+-	l = recv(net, buf, maxlen, 0);
+-	if (l<0 && errno == EWOULDBLOCK) l = 0;
++        {
++  	    l = recv(net, buf, maxlen, 0);
++	    if (l<0 && errno == EWOULDBLOCK) l = 0;
++        }
+ 	return l;
+     }
+ };
+@@ -200,7 +225,7 @@
+ 	{
+ 	  static char local_host[256] = { 0 };
+ 	  int len = sizeof(local_host);
+-	  
++
+ 	  if (!local_host[0]) {
+ 	    gethostname(local_host, len);        /* WAS &len!!! */
+ 	    local_host[sizeof(local_host)-1] = 0;
+--- a/telnetd/telnetd.8
++++ b/telnetd/telnetd.8
+@@ -315,7 +315,7 @@
+ .Ed
+ .Pp
+ The pseudo-terminal allocated to the client is configured
+-to operate in \*(lqcooked\*(rq mode, and with 
++to operate in \(lqcooked\(rq mode, and with 
+ .Dv XTABS
+ .Dv CRMOD
+ enabled (see
+--- a/libtelnet/auth-proto.h
++++ b/libtelnet/auth-proto.h
+@@ -68,7 +68,7 @@
+ #if	defined(AUTHENTICATE)
+ Authenticator *findauthenticator P((int, int));
+ 
+-void auth_init P((char *, int));
++void auth_init P((const char *, int));
+ int auth_cmd P((int, char **));
+ void auth_request P((void));
+ void auth_send P((unsigned char *, int));
+--- a/libtelnet/auth.c
++++ b/libtelnet/auth.c
+@@ -90,7 +90,7 @@
+ 
+ 
+ int auth_debug_mode = 0;
+-static 	char	*Name = "Noname";
++static 	const char *Name = "Noname";
+ static	int	Server = 0;
+ static	Authenticator	*authenticated = 0;
+ static	int	authenticating = 0;
+@@ -176,7 +176,7 @@
+ 
+ 	void
+ auth_init(name, server)
+-	char *name;
++	const char *name;
+ 	int server;
+ {
+ 	Authenticator *ap = authenticators;
+--- a/libtelnet/misc.c
++++ b/libtelnet/misc.c
+@@ -73,7 +73,7 @@
+ auth_encrypt_init(local, remote, name, server)
+ 	char *local;
+ 	char *remote;
+-	char *name;
++	const char *name;
+ 	int server;
+ {
+ 	RemoteHostName = remote;
+--- a/libtelnet/misc-proto.h
++++ b/libtelnet/misc-proto.h
+@@ -68,7 +68,7 @@
+ extern "C" {
+ #endif
+ 
+-void auth_encrypt_init P((char *, char *, char *, int));
++void auth_encrypt_init P((char *, char *, const char *, int));
+ void auth_encrypt_connect P((int));
+ void auth_encrypt_user P((const char *name));
+ void printd P((unsigned char *, int));

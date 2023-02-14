@@ -1,0 +1,2206 @@
+Description: Source patches present in package 0.17-18woody3.
+ Multiple files are touched by this legacy patch.  It has been
+ pruned to reproduce source package netkit-telnet_0.17-18.
+ .
+ Implement IPv6 support.
+ .
+ Read `/etc/telnetrc'.
+ .
+ Various buffer length errors.
+ .
+ Fix IAC+SB crashes due to format errors.
+ .
+ The server accepts numerical TOS together with `-S'.
+ .
+ Remote DOS hole, CAN-2004-0911, moved to a separate file.
+ .
+ Buffer overflow, CAN-2005-0469, moved to a separate file.
+
+Comment: Recovered from source netkit-telnet_0.17-18woody3.diff.gz.
+Author: Herbert Xu, Jason Gunthorpe
+Forwarded: no
+Last-Update: 2015-01-26
+
+--- a/telnet/commands.cc
++++ b/telnet/commands.cc
+@@ -86,10 +86,6 @@
+ 
+ #define HELPINDENT ((int) sizeof ("connect"))
+ 
+-#ifndef       MAXHOSTNAMELEN
+-#define       MAXHOSTNAMELEN 64
+-#endif        MAXHOSTNAMELEN
+-
+ #if	defined(HAS_IPPROTO_IP) && defined(IP_TOS)
+ int tos = -1;
+ #endif	/* defined(HAS_IPPROTO_IP) && defined(IP_TOS) */
+@@ -98,7 +94,7 @@
+ 
+ 
+ char	*hostname;
+-static char _hostname[MAXHOSTNAMELEN];
++static char *_hostname;
+ 
+ //typedef int (*intrtn_t)(int argc, const char *argv[]);
+ 
+@@ -161,7 +157,7 @@
+ 	assert(argc>=1);
+ 	if (nargs>=0 && argc!=nargs+1) {
+ 	    fprintf(stderr, "Wrong number of arguments for command.\n");
+-	    fprintf(stderr, "Try %s ? for help\n", argv[0]);
++	    fprintf(stderr, "Try ? %s for help\n", argv[0]);
+ 	    return 0;    /* is this right? */
+ 	}
+ 	if (nargs==-2) {
+@@ -689,9 +685,9 @@
+       "print encryption debugging information" },
+ #endif
+ 
+-    { "skiprc", "don't read ~/.telnetrc file",
++    { "skiprc", "don't read the telnetrc files",
+       NULL, &skiprc,
+-      "read ~/.telnetrc file" },
++      "read the telnetrc files" },
+     { "binary",
+       "sending and receiving of binary data",
+       togbinary, NULL,
+@@ -1615,15 +1611,20 @@
+ #endif
+ 
+ int tn(int argc, const char *argv[]) {
+-    register struct hostent *host = 0;
+     struct sockaddr_in sn;
+-    struct servent *sp = 0;
+     char *srp = NULL;
+     int srlen;
+-
++    int family = 0;
+     const char *cmd, *volatile user = 0;
+     const char *portp = NULL;
+     char *hostp = NULL;
++    char *resolv_hostp;
++    struct addrinfo hints;
++    struct addrinfo *hostaddr = 0;
++    int res;
++    char name[NI_MAXHOST];
++    char service[NI_MAXSERV];
++    struct addrinfo *tmpaddr;
+ 
+     /* clear the socket address prior to use */
+     memset(&sn, 0, sizeof(sn));
+@@ -1632,6 +1633,10 @@
+ 	printf("?Already connected to %s\n", hostname);
+ 	return 0;
+     }
++    if (_hostname) {
++	delete[] _hostname;
++	_hostname = 0;
++    }
+     if (argc < 2) {
+ 	(void) strcpy(line, "open ");
+ 	printf("(to) ");
+@@ -1662,6 +1667,20 @@
+ 	    autologin = 1;
+ 	    continue;
+ 	}
++	if (strcmp(*argv, "-6") == 0) {
++	    --argc; ++argv;
++#ifdef AF_INET6
++	    family = AF_INET6;
++#else
++	    puts("IPv6 unsupported");
++#endif
++	    continue;
++	}
++	if (strcmp(*argv, "-4") == 0) {
++	    --argc; ++argv;
++	    family = AF_INET;
++	    continue;
++	}
+ 	if (hostp == 0) {
+ 	    /* this leaks memory - FIXME */
+ 	    hostp = strdup(*argv++);
+@@ -1680,6 +1699,8 @@
+     if (hostp == 0)
+ 	goto usage;
+ 
++    resolv_hostp = hostp;
++
+ #if defined(IP_OPTIONS) && defined(HAS_IPPROTO_IP)
+     if (hostp[0] == '@' || hostp[0] == '!') {
+ 	if ((hostname = strrchr(hostp, ':')) == NULL)
+@@ -1696,78 +1717,94 @@
+ 	} else {
+ 	    sn.sin_addr.s_addr = temp;
+ 	    sn.sin_family = AF_INET;
++	    /*
++	     * For source route we just make sure to get the IP given
++	     * on the command line when looking up the port.
++	     */
++	    resolv_hostp = inet_ntoa(sn.sin_addr);
+ 	}
+     } 
+-    else {
+-#endif
+-	if (inet_aton(hostp, &sn.sin_addr)) {
+-	    sn.sin_family = AF_INET;
+-	    strcpy(_hostname, hostp);
+-	    hostname = _hostname;
+-	} 
+-	else {
+-	    host = gethostbyname(hostp);
+-	    if (host) {
+-		sn.sin_family = host->h_addrtype;
+-		if (host->h_length > (int)sizeof(sn.sin_addr)) {
+-		    host->h_length = sizeof(sn.sin_addr);
+-		}
+-#if	defined(h_addr)		/* In 4.3, this is a #define */
+-		memcpy((caddr_t)&sn.sin_addr,
+-				host->h_addr_list[0], host->h_length);
+-#else	/* defined(h_addr) */
+-		memcpy((caddr_t)&sn.sin_addr, host->h_addr, host->h_length);
+-#endif	/* defined(h_addr) */
+-		strncpy(_hostname, host->h_name, sizeof(_hostname));
+-		_hostname[sizeof(_hostname)-1] = '\0';
+-		hostname = _hostname;
+-	    } else {
+-		herror(hostp);
+-		return 0;
+-	    }
+-	}
+-#if defined(IP_OPTIONS) && defined(HAS_IPPROTO_IP)
+-    }
+ #endif
++
++    /* User port or the default name of telnet. */
+     if (portp) {
+ 	if (*portp == '-') {
+ 	    portp++;
+ 	    telnetport = 1;
+ 	} else
+ 	    telnetport = 0;
+-	sn.sin_port = atoi(portp);
+-	if (sn.sin_port == 0) {
+-	    sp = getservbyname(portp, "tcp");
+-	    if (sp)
+-		sn.sin_port = sp->s_port;
+-	    else {
+-		printf("%s: bad port number\n", portp);
+-		return 0;
+-	    }
+-	} 
+-	else {
+-	    sn.sin_port = htons(sn.sin_port);
+-	}
+-    } 
++    }
+     else {
+-	if (sp == 0) {
+-	    sp = getservbyname("telnet", "tcp");
+-	    if (sp == 0) {
+-		fprintf(stderr, "telnet: tcp/telnet: unknown service\n");
+-		return 0;
+-	    }
+-	    sn.sin_port = sp->s_port;
+-	}
++	portp = "telnet";
+ 	telnetport = 1;
+     }
+-    printf("Trying %s...\n", inet_ntoa(sn.sin_addr));
++
++    /* We only understand SOCK_STREAM sockets. */
++    memset(&hints, 0, sizeof(hints));
++    hints.ai_socktype = SOCK_STREAM;
++    hints.ai_flags = AI_NUMERICHOST;
++    hints.ai_family = family;
++        
++    /* Resolve both the host and service simultaneously. */
++    res = getaddrinfo(resolv_hostp, portp, &hints, &hostaddr);
++    if (res == EAI_NONAME) {
++	hints.ai_flags = AI_CANONNAME;
++	res = getaddrinfo(resolv_hostp, portp, &hints, &hostaddr);
++    } else if (hostaddr) {
++	hostaddr->ai_canonname = 0;
++    }
++    if (res || !hostaddr) {
++	fprintf(stderr, "telnet: could not resolve %s/%s: %s\n", resolv_hostp, portp, gai_strerror(res));
++	return 0;
++    }
++     
++    /* Try to connect to every listed round robin IP. */
++    tmpaddr = hostaddr;
++    errno = 0;
+     do {
+-	int x = nlink.connect(debug, host, &sn, srp, srlen, tos);
+-	if (!x) return 0;
+-	else if (x==1) continue;
++	int x;
++
++	if (!tmpaddr) {
++	    if (errno)
++		perror("telnet: Unable to connect to remote host");
++	    else
++		fputs("telnet: Unable to connect to remote host: "
++		      "Bad port number\n", stderr);
++err:
++	    freeaddrinfo(hostaddr);
++	    return 0;
++	}
++
++	if (tmpaddr->ai_family == AF_UNIX) {
++nextaddr:
++	    tmpaddr = tmpaddr->ai_next;
++	    continue;
++	}
++
++	getnameinfo(tmpaddr->ai_addr, tmpaddr->ai_addrlen,
++		    name, sizeof(name), service, sizeof(service),
++		    NI_NUMERICHOST | NI_NUMERICSERV);
++
++	printf("Trying %s...\n", name);
++	x = nlink.connect(debug, tmpaddr, srp, srlen, tos);
++	if (!x)
++	    goto err;
++	else if (x==1)
++	    goto nextaddr;
++
+ 	connected++;
+     } while (connected == 0);
++    if (tmpaddr->ai_canonname == 0) {
++	hostname = new char[strlen(hostp)+1];
++	strcpy(hostname, hostp);
++    }
++    else {
++	hostname = new char[strlen(tmpaddr->ai_canonname)+1];
++	strcpy(hostname, tmpaddr->ai_canonname);
++    }
++
+     cmdrc(hostp, hostname);
++    freeaddrinfo(hostaddr);
+     if (autologin && user == NULL) {
+ 	struct passwd *pw;
+ 
+@@ -2013,31 +2050,16 @@
+     return 0;
+ }
+ 
+-static char *rcname = 0;
+-static char rcbuf[128];
+-
+-void cmdrc(const char *m1, const char *m2) {
++static void readrc(const char *m1, const char *m2, const char *rcname) {
+     FILE *rcfile;
+     int gotmachine = 0;
+     int l1 = strlen(m1);
+     int l2 = strlen(m2);
+-    char m1save[64];
+-
+-    if (skiprc) return;
++    char m1save[strlen(m1) + 1];
+ 
+     strcpy(m1save, m1);
+     m1 = m1save;
+ 
+-    if (rcname == 0) {
+-	rcname = getenv("HOME");
+-	if (rcname)
+-	    strcpy(rcbuf, rcname);
+-	else
+-	    rcbuf[0] = '\0';
+-	strcat(rcbuf, "/.telnetrc");
+-	rcname = rcbuf;
+-    }
+-
+     rcfile = fopen(rcname, "r");
+     if (!rcfile) return;
+ 
+@@ -2073,6 +2095,25 @@
+     fclose(rcfile);
+ }
+ 
++void cmdrc(const char *m1, const char *m2) {
++    static char *rcname = 0;
++    static char rcbuf[128];
++
++    if (skiprc) return;
++
++    readrc(m1, m2, "/etc/telnetrc");
++    if (rcname == 0) {
++	rcname = getenv("HOME");
++	if (rcname)
++	    strcpy(rcbuf, rcname);
++	else
++	    rcbuf[0] = '\0';
++	strcat(rcbuf, "/.telnetrc");
++	rcname = rcbuf;
++    }
++    readrc(m1, m2, rcname);
++}
++
+ #if defined(IP_OPTIONS) && defined(HAS_IPPROTO_IP)
+ 
+ /*
+--- a/telnet/main.cc
++++ b/telnet/main.cc
+@@ -45,7 +45,10 @@
+ 
+ #include <sys/types.h>
+ #include <getopt.h>
++#include <stdlib.h>
+ #include <string.h>
++#include <netdb.h>
++#include <errno.h>
+ 
+ #include "ring.h"
+ #include "externs.h"
+@@ -80,12 +83,13 @@
+ void usage(void) {
+     fprintf(stderr, "Usage: %s %s%s%s%s\n",
+ 	    prompt,
+-	    " [-8] [-E] [-L] [-a] [-d] [-e char] [-l user] [-n tracefile]",
+-	    "\n\t",
++	    "[-4] [-6] [-8] [-E] [-L] [-a] [-d] [-e char] [-l user]",
++	    "\n\t[-n tracefile]",
+ #ifdef TN3270
++	    "\n\t"
+ 	    "[-noasynch] [-noasynctty] [-noasyncnet] [-r] [-t transcom]\n\t",
+ #else
+-	    "[-r] ",
++	    " [-r] ",
+ #endif
+ 	    "[host-name [port]]"
+ 	);
+@@ -103,6 +107,7 @@
+ 	extern int optind;
+ 	int ch;
+ 	char *user;
++	int family;
+ 
+ 	tninit();		/* Clear out things */
+ #if	defined(CRAY) && !defined(__STDC__)
+@@ -117,12 +122,23 @@
+ 		prompt = argv[0];
+ 
+ 	user = NULL;
++	family = 0;
+ 
+ 	rlogin = (strncmp(prompt, "rlog", 4) == 0) ? '~' : _POSIX_VDISABLE;
+ 	autologin = -1;
+ 
+-	while ((ch = getopt(argc, argv, "8EKLS:X:ade:k:l:n:rt:x")) != EOF) {
++	while ((ch = getopt(argc, argv, "468EKLS:X:ade:k:l:n:rt:x")) != EOF) {
+ 		switch(ch) {
++		case '4':
++			family = AF_INET;
++			break;
++		case '6':
++#ifdef AF_INET6
++			family = AF_INET6;
++#else
++			fputs("IPv6 unsupported\n", stderr);
++#endif
++			break;
+ 		case '8':
+ 			eight = 3;	/* binary output and input */
+ 			break;
+@@ -137,19 +153,22 @@
+ 			break;
+ 		case 'S':
+ 		    {
+-#ifdef	HAS_GETTOS
+ 			extern int tos;
++			int num;
+ 
+-			if ((tos = parsetos(optarg, "tcp")) < 0)
++#ifdef	HAS_GETTOS
++			if ((num = parsetos(optarg, "tcp")) < 0) {
++#else
++			errno = 0;
++			num = strtol(optarg, 0, 0);
++			if (errno) {
++#endif
+ 				fprintf(stderr, "%s%s%s%s\n",
+ 					prompt, ": Bad TOS argument '",
+ 					optarg,
+ 					"; will try to use default TOS");
+-#else
+-			fprintf(stderr,
+-			   "%s: Warning: -S ignored, no parsetos() support.\n",
+-								prompt);
+-#endif
++			} else
++				tos = num;
+ 		    }
+ 			break;
+ 		case 'X':
+@@ -233,6 +252,9 @@
+ 			*argp++ = "-l";
+ 			*argp++ = user;
+ 		}
++		if (family) {
++			*argp++ = family == AF_INET ? "-4" : "-6";
++		}
+ 		*argp++ = argv[0];		/* host */
+ 		if (argc > 1)
+ 			*argp++ = argv[1];	/* port */
+--- a/telnet/netlink.cc
++++ b/telnet/netlink.cc
+@@ -81,20 +81,23 @@
+     ::close(net);
+ }
+ 
+-int netlink::connect(int debug, struct hostent *host, 
+-		     struct sockaddr_in *sn, 
++int netlink::connect(int debug, struct addrinfo *addr, 
+ 		     char *srcroute, int srlen, int tos) 
+ {
+     int on=1;
+ 
+-    net = socket(AF_INET, SOCK_STREAM, 0);
++    net = socket(addr->ai_family, SOCK_STREAM, 0);
+     if (net < 0) {
++	if (errno == EAFNOSUPPORT)
++	    return 1;
+ 	perror("telnet: socket");
+ 	return 0;
+     }
+ 
+ #if defined(IP_OPTIONS) && defined(HAS_IPPROTO_IP)
+     if (srcroute) {
++	if (addr->ai_family != AF_INET)
++	    fputs("Source route is only supported for IPv4\n", stderr);
+ 	if (setsockopt(net, IPPROTO_IP, IP_OPTIONS, srcroute, srlen) < 0)
+ 	    perror("setsockopt (IP_OPTIONS)");
+     }
+@@ -108,7 +111,7 @@
+ #endif
+     if (tos < 0) tos = 020;	/* Low Delay bit */
+     if (tos && (setsockopt(net, IPPROTO_IP, IP_TOS, &tos, sizeof(int)) < 0)
+-	&& (errno != ENOPROTOOPT))
++	&& (errno != ENOPROTOOPT) && (errno != EOPNOTSUPP))
+ 	perror("telnet: setsockopt (IP_TOS) (ignored)");
+ #endif	/* defined(IPPROTO_IP) && defined(IP_TOS) */
+ 
+@@ -116,27 +119,8 @@
+ 	perror("setsockopt (SO_DEBUG)");
+     }
+     
+-    if (::connect(net, (struct sockaddr *)sn, sizeof(*sn)) < 0) {
+-#if defined(h_addr)		/* In 4.3, this is a #define */
+-	if (host && host->h_addr_list[1]) {
+-	    int oerrno = errno;
+-	    
+-	    fprintf(stderr, "telnet: connect to address %s: ",
+-		    inet_ntoa(sn->sin_addr));
+-	    errno = oerrno;
+-	    perror(NULL);
+-	    host->h_addr_list++;
+-	    if (host->h_length > (int)sizeof(sn->sin_addr)) {
+-		host->h_length = sizeof(sn->sin_addr);
+-	    }
+-	    memcpy(&sn->sin_addr, host->h_addr_list[0], host->h_length);
+-	    close(net);
+-	    return 1;
+-	}
+-#endif	/* defined(h_addr) */
+-
+-	perror("telnet: Unable to connect to remote host");
+-	return 0;
++    if (::connect(net, addr->ai_addr, addr->ai_addrlen) < 0) {
++	return 1;
+     }
+     return 2;
+ }
+--- a/telnet/netlink.h
++++ b/telnet/netlink.h
+@@ -6,8 +6,7 @@
+     netlink();
+     ~netlink();
+ 
+-    int connect(int debug, struct hostent *host, 
+-		struct sockaddr_in *sin, 
++    int connect(int debug, struct addrinfo *hostaddr, 
+ 		char *srcroute, int srlen,
+ 		int tos);
+     void close(int doshutdown);
+--- a/telnet/network.cc
++++ b/telnet/network.cc
+@@ -40,6 +40,7 @@
+ #include <sys/types.h>
+ #include <sys/socket.h>
+ #include <sys/time.h>
++#include <stdlib.h>
+ #include <errno.h>
+ #include <arpa/telnet.h>
+ 
+--- a/telnet/ring.cc
++++ b/telnet/ring.cc
+@@ -165,7 +165,7 @@
+ 
+ /////////////////////////////////////////////////// supply //////////////
+ 
+-void ringbuf::printf(const char *format, ...) {
++void ringbuf::xprintf(const char *format, ...) {
+     char xbuf[256];
+     va_list ap;
+     va_start(ap, format);
+--- a/telnet/ring.h
++++ b/telnet/ring.h
+@@ -83,7 +83,7 @@
+     // manual supply
+     void putch(char c) { write(&c, 1); }
+     void write(const char *buffer, int ct);
+-    void printf(const char *format, ...);
++    void xprintf(const char *format, ...);
+     int empty_count() { return size - count; }
+ 
+     // automatic supply
+--- a/telnet/sys_bsd.cc
++++ b/telnet/sys_bsd.cc
+@@ -189,18 +189,25 @@
+  * Various signal handling routines.
+  */
+ 
++#if 0
+ static void deadpeer(int /*sig*/) {
+     setcommandmode();
+     siglongjmp(peerdied, -1);
+ }
++#endif
+ 
+ static void intr(int /*sig*/) {
+     if (localchars) {
+ 	intp();
+     }
+     else {
++#if 0
+         setcommandmode();
+ 	siglongjmp(toplevel, -1);
++#else
++	signal(SIGINT, SIG_DFL);
++	raise(SIGINT);
++#endif
+     }
+ }
+ 
+@@ -214,6 +221,8 @@
+ 	    sendabort();
+ 	return;
+     }
++    signal(SIGQUIT, SIG_DFL);
++    raise(SIGQUIT);
+ }
+ 
+ #ifdef	SIGWINCH
+@@ -238,7 +247,9 @@
+ void sys_telnet_init(void) {
+     signal(SIGINT, intr);
+     signal(SIGQUIT, intr2);
++#if 0
+     signal(SIGPIPE, deadpeer);
++#endif
+ #ifdef	SIGWINCH
+     signal(SIGWINCH, sendwin);
+ #endif
+--- a/telnet/telnet.1
++++ b/telnet/telnet.1
+@@ -42,7 +42,7 @@
+ protocol
+ .Sh SYNOPSIS
+ .Nm telnet
+-.Op Fl 8ELadr
++.Op Fl 468ELadr
+ .Op Fl S Ar tos
+ .Op Fl e Ar escapechar
+ .Op Fl l Ar user
+@@ -68,6 +68,10 @@
+ .Pp
+ Options:
+ .Bl -tag -width indent
++.It Fl 4
++Force IPv4 address resolution.
++.It Fl 6
++Force IPv6 address resolution.
+ .It Fl 8
+ Request 8-bit operation. This causes an attempt to negotiate the
+ .Dv TELNET BINARY
+@@ -474,17 +478,21 @@
+ placing a dash before the port number.
+ .Pp
+ After establishing a connection, any commands associated with the
+-remote host in the user's
++remote host in
++.Pa /etc/telnetrc
++and the user's
+ .Pa .telnetrc
+-file are executed.
++file are executed, in that order.
+ .Pp
+-The format of the .telnetrc file is as follows: Lines beginning with a
++The format of the telnetrc files is as follows: Lines beginning with a
+ #, and blank lines, are ignored.  The rest of the file should consist
+ of hostnames and sequences of
+ .Nm telnet
+ commands to use with that host. Commands should be one per line,
+ indented by whitespace; lines beginning without whitespace are
+-interpreted as hostnames. Upon connecting to a particular host, the
++interpreted as hostnames.  Lines beginning with the special hostname
++.Ql DEFAULT
++will apply to all hosts.  Upon connecting to a particular host, the
+ commands associated with that host are executed.
+ .It Ic quit
+ Close any open session and exit
+@@ -1184,9 +1192,7 @@
+ When the skiprc toggle is
+ .Dv TRUE ,
+ .Tn telnet
+-does not read the 
+-.Pa \&.telnetrc
+-file.  The initial value for this toggle is
++does not read the telnetrc files.  The initial value for this toggle is
+ .Dv FALSE.
+ .It Ic termdata
+ Toggles the display of all terminal data (in hexadecimal format).
+@@ -1239,7 +1245,9 @@
+ .Dv TELNET ENVIRON
+ option.
+ .Sh FILES
+-.Bl -tag -width ~/.telnetrc -compact
++.Bl -tag -width /etc/telnetrc -compact
++.It Pa /etc/telnetrc
++global telnet startup values
+ .It Pa ~/.telnetrc
+ user customized telnet startup values
+ .El
+--- a/telnet/telnet.cc
++++ b/telnet/telnet.cc
+@@ -646,7 +646,7 @@
+     mklist(termbuf, tname, termtypes);
+     next = 0;
+   }
+-  if (next==termtypes.num()) next = 0;
++  if (next==termtypes.num()-1) next = 0;
+   return termtypes[next++];
+ }
+ /*
+@@ -681,7 +681,7 @@
+       }
+ #endif /* TN3270 */
+       name = gettermname();
+-      netoring.printf("%c%c%c%c%s%c%c", IAC, SB, TELOPT_TTYPE,
++      netoring.xprintf("%c%c%c%c%s%c%c", IAC, SB, TELOPT_TTYPE,
+ 		      TELQUAL_IS, name, IAC, SE);
+     }
+     break;
+@@ -693,7 +693,7 @@
+     if (SB_GET() == TELQUAL_SEND) {
+       long oospeed, iispeed;
+       TerminalSpeeds(&iispeed, &oospeed);
+-      netoring.printf("%c%c%c%c%ld,%ld%c%c", IAC, SB, TELOPT_TSPEED, 
++      netoring.xprintf("%c%c%c%c%ld,%ld%c%c", IAC, SB, TELOPT_TSPEED, 
+ 		      TELQUAL_IS, oospeed, iispeed, IAC, SE);
+     }
+     break;
+@@ -780,7 +780,7 @@
+ 	send_wont(TELOPT_XDISPLOC, 1);
+ 	break;
+       }
+-      netoring.printf("%c%c%c%c%s%c%c", IAC, SB, TELOPT_XDISPLOC,
++      netoring.xprintf("%c%c%c%c%s%c%c", IAC, SB, TELOPT_XDISPLOC,
+ 		      TELQUAL_IS, dp, IAC, SE);
+     }
+     break;
+@@ -798,7 +798,7 @@
+     return;
+   }
+   
+-  netoring.printf("%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE, 
++  netoring.xprintf("%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE, 
+ 		  DONT, cmd[0], IAC, SE);
+ }
+ 
+@@ -815,7 +815,7 @@
+     /*@*/	printf("lm_do: no command!!!\n");	/* Should not happen... */
+     return;
+   }
+-  netoring.printf("%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE, 
++  netoring.xprintf("%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE, 
+ 		  WONT, cmd[0], IAC, SE);
+ }
+ 
+@@ -838,7 +838,7 @@
+     k |= MODE_ACK;
+   }
+   
+-  netoring.printf("%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE, LM_MODE,
++  netoring.xprintf("%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE, LM_MODE,
+ 		  k, IAC, SE);
+   
+   setconnmode(0);	/* set changed mode */
+@@ -933,11 +933,11 @@
+ 
+ void slc_import(int def) {
+   if (def) {
+-    netoring.printf("%c%c%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE,
++    netoring.xprintf("%c%c%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE,
+ 		    LM_SLC, 0, SLC_DEFAULT, 0, IAC, SE);
+   }
+   else {
+-    netoring.printf("%c%c%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE,
++    netoring.xprintf("%c%c%c%c%c%c%c%c%c", IAC, SB, TELOPT_LINEMODE,
+ 		    LM_SLC, 0, SLC_VARIABLE, 0, IAC, SE);
+   }
+ }
+@@ -1142,6 +1142,7 @@
+   }
+ }
+ 
++/* OPT_REPLY_SIZE must be a multiple of 2. */
+ #define	OPT_REPLY_SIZE	256
+ unsigned char *opt_reply;
+ unsigned char *opt_replyp;
+@@ -1173,6 +1174,7 @@
+ 
+ void env_opt_add(const char *ep) {
+   const char *vp;
++  const unsigned char *tp;
+   unsigned char c;
+   
+   if (opt_reply == NULL)		/*XXX*/
+@@ -1185,11 +1187,12 @@
+     return;
+   }
+   vp = env_getvalue(ep, 1);
+-  if (opt_replyp + (vp ? strlen(vp) : 0) + strlen(ep) + 6 > opt_replyend)
++  tp = opt_replyp + (vp ? strlen(vp) * 2 : 0) + strlen(ep) * 2 + 6;
++  if (tp > opt_replyend)
+     {
+       register int len;
+-      opt_replyend += OPT_REPLY_SIZE;
+-      len = opt_replyend - opt_reply;
++      len = ((tp - opt_reply) + OPT_REPLY_SIZE - 1) & ~(OPT_REPLY_SIZE - 1);
++      opt_replyend = opt_reply + len;
+       opt_reply = (unsigned char *)realloc(opt_reply, len);
+       if (opt_reply == NULL) {
+ 	/*@*/			printf("env_opt_add: realloc() failed!!!\n");
+--- a/telnet/terminal.cc
++++ b/telnet/terminal.cc
+@@ -45,6 +45,8 @@
+ #include <signal.h>
+ #include <errno.h>
+ #include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
+ 
+ #include "ring.h"
+ #include "defines.h"
+--- a/telnet/utilities.cc
++++ b/telnet/utilities.cc
+@@ -47,6 +47,8 @@
+ #include <sys/socket.h>
+ #include <unistd.h>
+ #include <ctype.h>
++#include <string.h>
++#include <stdlib.h>
+ 
+ #include "ring.h"
+ #include "defines.h"
+--- a/telnetd/authenc.c
++++ b/telnetd/authenc.c
+@@ -42,18 +42,6 @@
+     return(0);
+ }
+ 
+-void
+-net_encrypt()
+-{
+-#if	defined(ENCRYPT)
+-    char *s = (nclearto > nbackp) ? nclearto : nbackp;
+-    if (s < nfrontp && encrypt_output) {
+-	(*encrypt_output)((unsigned char *)s, nfrontp - s);
+-    }
+-    nclearto = nfrontp;
+-#endif
+-}
+-
+ int
+ telnet_spin()
+ {
+--- a/telnetd/defs.h
++++ b/telnetd/defs.h
+@@ -55,10 +55,11 @@
+ #include <fcntl.h>
+ #include <sys/file.h>
+ #include <sys/stat.h>
+-#include <sys/time.h>
++#include <time.h>
+ #include <sys/ioctl.h>
+ #include <netinet/in.h>
+ #include <arpa/telnet.h>
++#include <sys/uio.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <signal.h>
+--- a/telnetd/ext.h
++++ b/telnetd/ext.h
+@@ -81,12 +81,11 @@
+  */
+ extern char ptyobuf[BUFSIZ+NETSLOP], *pfrontp, *pbackp;
+ extern char netibuf[BUFSIZ], *netip;
+-extern char netobuf[BUFSIZ+NETSLOP], *nfrontp, *nbackp;
+-extern char *neturg;		/* one past last byte of urgent data */
+ extern int pcc, ncc;
++extern FILE *netfile;
+ 
+ /* printf into netobuf */
+-void netoprintf(const char *fmt, ...) __attribute((format (printf, 1, 2))); 
++#define netoprintf(fmt, ...) fprintf(netfile, fmt, ## __VA_ARGS__)
+ 
+ extern int pty, net;
+ extern char *line;
+@@ -96,7 +95,7 @@
+ void add_slc(int, int, int);
+ void check_slc(void);
+ void change_slc(int, int, int);
+-void cleanup(int);
++void cleanup(int) __attribute__ ((noreturn));
+ void clientstat(int, int, int);
+ void copy_termbuf(char *, int);
+ void deferslc(void);
+@@ -106,8 +105,8 @@
+ void dooption(int);
+ void dontoption(int);
+ void edithost(const char *, const char *);
+-void fatal(int, const char *);
+-void fatalperror(int, const char *);
++void fatal(int, const char *) __attribute__ ((noreturn));
++void fatalperror(int, const char *) __attribute__ ((noreturn));
+ void get_slc_defaults(void);
+ void init_env(void);
+ void init_termbuf(void);
+@@ -115,6 +114,8 @@
+ void localstat(void);
+ void netclear(void);
+ void netflush(void);
++size_t netbuflen(int);
++void sendurg(const char *, size_t);
+ 
+ #ifdef DIAGNOSTICS
+ void printoption(const char *, int);
+@@ -182,10 +183,11 @@
+ void tty_tspeed(int);
+ void willoption(int);
+ void wontoption(int);
+-void writenet(unsigned char *, int);
++#define writenet(b, l) fwrite(b, 1, l, netfile)
++void netopen(void);
+ 
+ #if defined(ENCRYPT)
+-extern void (*encrypt_output)(unsigned char *, int);
++extern void (*encrypt_output)(const unsigned char *, int);
+ extern int (*decrypt_input)(int);
+ extern char *nclearto;
+ #endif
+--- a/telnetd/global.c
++++ b/telnetd/global.c
+@@ -87,11 +87,10 @@
+ 
+ char	netibuf[BUFSIZ], *netip;
+ 
+-char	netobuf[BUFSIZ+NETSLOP], *nfrontp, *nbackp;
+-char	*neturg;		/* one past last bye of urgent data */
+-
+ int	pcc, ncc;
+ 
++FILE	*netfile;
++
+ int	pty, net;
+ int	SYNCHing;		/* we are in TELNET SYNCH mode */
+ 
+--- a/telnetd/issue.net.5
++++ b/telnetd/issue.net.5
+@@ -40,4 +40,4 @@
+ .Sh FILES
+ .Pa /etc/issue.net
+ .Sh "SEE ALSO"
+-.Xr telnetd 8
++.Xr in.telnetd 8
+--- a/telnetd/setproctitle.c
++++ b/telnetd/setproctitle.c
+@@ -139,7 +139,7 @@
+ 	(void) strcpy(Argv[0], buf);
+ 	p = &Argv[0][i];
+ 	while (p < LastArgv)
+-		*p++ = ' ';
++		*p++ = '\0';
+ 	Argv[1] = NULL;
+ }
+ 
+--- a/telnetd/state.c
++++ b/telnetd/state.c
+@@ -179,6 +179,7 @@
+ 		   */
+ 	      case AO:
+ 		  {
++		      static const char msg[] = { IAC, DM };
+ 		      DIAG(TD_OPTIONS, printoption("td: recv IAC", c));
+ 		      ptyflush();	/* half-hearted */
+ 		      init_termbuf();
+@@ -191,9 +192,7 @@
+ 		      }
+ 
+ 		      netclear();	/* clear buffer back */
+-		      *nfrontp++ = (char)IAC;
+-		      *nfrontp++ = (char)DM;
+-		      neturg = nfrontp-1; /* off by one XXX */
++		      sendurg(msg, sizeof(msg));
+ 		      DIAG(TD_OPTIONS, printoption("td: send IAC", DM));
+ 		      break;
+ 		  }
+--- a/telnetd/sys_term.c
++++ b/telnetd/sys_term.c
+@@ -41,8 +41,6 @@
+ 
+ #include "telnetd.h"
+ #include "pathnames.h"
+-#include "logout.h"
+-#include "logwtmp.h"
+ 
+ #if defined(__GLIBC__) && (__GLIBC__ >= 2)
+ /* mmm, nonstandard */
+@@ -681,7 +679,9 @@
+     memcpy(&argvfoo, &avs.argv, sizeof(argvfoo));
+     execv(loginprg, argvfoo);
+ 
++    openlog("telnetd", LOG_PID | LOG_ODELAY, LOG_DAEMON);
+     syslog(LOG_ERR, "%s: %m\n", loginprg);
++    closelog();
+     fatalperror(net, loginprg);
+ }
+ 
+--- a/telnetd/telnetd.8
++++ b/telnetd/telnetd.8
+@@ -161,7 +161,7 @@
+ .It Fl L Ar loginprg
+ This option may be used to specify a different login program.
+ By default, 
+-.Pa /bin/login
++.Pa /usr/sbin/telnetlogin
+ is used.
+ .It Fl n
+ Disable
+@@ -406,6 +406,7 @@
+ indicates a willingness to decrypt
+ the data stream.
+ .Xr issue.net 5 ) .
++.El
+ .Sh FILES
+ .Pa /etc/services ,
+ .Pa /etc/issue.net
+@@ -458,6 +459,7 @@
+ Telnet Environment Option Interoperability Issues
+ .It Cm RFC-1572
+ Telnet Environment Option
++.El
+ .Sh BUGS
+ Some
+ .Tn TELNET
+--- a/telnetd/telnetd.c
++++ b/telnetd/telnetd.c
+@@ -43,12 +43,16 @@
+ 
+ #include "../version.h"
+ 
++#include <sys/socket.h>
+ #include <netdb.h>
+ #include <termcap.h>
+ #include <netinet/in.h>
+ /* #include <netinet/ip.h> */ /* Don't think this is used at all here */
+ #include <arpa/inet.h>
+ #include <assert.h>
++#include <poll.h>
++#include <fcntl.h>
++#include <unistd.h>
+ #include "telnetd.h"
+ #include "pathnames.h"
+ #include "setproctitle.h"
+@@ -68,7 +72,7 @@
+ #define HAS_IPPROTO_IP
+ #endif
+ 
+-static void doit(struct sockaddr_in *who);
++static void doit(struct sockaddr *who, socklen_t who_len);
+ static int terminaltypeok(const char *s);
+ 
+ /*
+@@ -82,15 +86,119 @@
+ 
+ int debug = 0;
+ int keepalive = 1;
++#ifdef LOGIN_WRAPPER
++char *loginprg = LOGIN_WRAPPER;
++#else
+ char *loginprg = _PATH_LOGIN;
+-char *progname;
++#endif
+ 
+ extern void usage(void);
+ 
++static void
++wait_for_connection(const char *service)
++{
++	struct addrinfo hints;
++	struct addrinfo *res, *addr;
++	struct pollfd *fds, *fdp;
++	int nfds;
++	int i;
++	int error;
++	int on = 1;
++
++	memset(&hints, 0, sizeof(hints));
++	hints.ai_family = PF_UNSPEC;
++	hints.ai_flags = AI_PASSIVE;
++	hints.ai_socktype = SOCK_STREAM;
++	error = getaddrinfo(NULL, service, &hints, &res);
++	if (error) {
++		char *p;
++		error = asprintf(&p, "getaddrinfo: %s\n", gai_strerror(error));
++		fatal(2, error >= 0 ? p : "");
++	}
++
++	for (addr = res, nfds = 0; addr; addr = addr->ai_next, nfds++)
++		;
++	fds = malloc(sizeof(struct pollfd) * nfds);
++	for (addr = res, fdp = fds; addr; addr = addr->ai_next, fdp++) {
++		int s;
++
++		if (addr->ai_family == AF_LOCAL) {
++nextaddr:
++			fdp--;
++			nfds--;
++			continue;
++		}
++
++		s = socket(addr->ai_family, SOCK_STREAM, 0);
++		if (s < 0) {
++			if (errno == EAFNOSUPPORT || errno == EINVAL) {
++				goto nextaddr;
++			}
++			fatalperror(2, "socket");
++		}
++		if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))) {
++			fatalperror(2, "setsockopt");
++		}
++		if (bind(s, addr->ai_addr, addr->ai_addrlen)) {
++#ifdef linux
++			if (fdp != fds && errno == EADDRINUSE) {
++				close(s);
++				goto nextaddr;
++			}
++#endif
++			fatalperror(2, "bind");
++		}
++		if (listen(s, 1)) {
++			fatalperror(2, "listen");
++		}
++		if (fcntl(s, F_SETFL, O_NONBLOCK)) {
++			fatalperror(2, "fcntl");
++		}
++
++		fdp->fd = s;
++		fdp->events = POLLIN;
++	}
++
++	freeaddrinfo(res);
++
++	while (1) {
++		if (poll(fds, nfds, -1) < 0) {
++			if (errno == EINTR) {
++				continue;
++			}
++			fatalperror(2, "poll");
++		}
++
++		for (i = 0, fdp = fds; i < nfds; i++, fdp++) {
++			int fd;
++
++			if (!(fdp->revents & POLLIN)) {
++				continue;
++			}
++
++			fd = accept(fdp->fd, 0, 0);
++			if (fd >= 0) {
++				dup2(fd, 0);
++				close(fd);
++				goto out;
++			}
++			if (errno != EAGAIN) {
++				fatalperror(2, "accept");
++			}
++		}
++	}
++
++out:
++	for (i = 0, fdp = fds; i < nfds; i++, fdp++) {
++		close(fdp->fd);
++	}
++	free(fds);
++}
++
+ int
+ main(int argc, char *argv[], char *env[])
+ {
+-	struct sockaddr_in from;
++	struct sockaddr_storage from;
+ 	int on = 1;
+ 	socklen_t fromlen;
+ 	register int ch;
+@@ -103,12 +211,6 @@
+ 
+ 	pfrontp = pbackp = ptyobuf;
+ 	netip = netibuf;
+-	nfrontp = nbackp = netobuf;
+-#if	defined(ENCRYPT)
+-	nclearto = 0;
+-#endif
+-
+-	progname = *argv;
+ 
+ 	while ((ch = getopt(argc, argv, "d:a:e:lhnr:I:D:B:sS:a:X:L:")) != EOF) {
+ 		switch(ch) {
+@@ -249,74 +351,18 @@
+ 	argv += optind;
+ 
+ 	if (debug) {
+-	    int s, ns;
+-	    socklen_t foo;
+-	    struct servent *sp;
+-	    struct sockaddr_in sn;
+-
+-	    memset(&sn, 0, sizeof(sn));
+-	    sn.sin_family = AF_INET;
+-
+-	    if (argc > 1) {
+-		usage();
+-		/* NOTREACHED */
+-	    } else if (argc == 1) {
+-		    if ((sp = getservbyname(*argv, "tcp"))!=NULL) {
+-			sn.sin_port = sp->s_port;
+-		    } 
+-		    else {
+-			int pt = atoi(*argv);
+-			if (pt <= 0) {
+-			    fprintf(stderr, "telnetd: %s: bad port number\n",
+-				    *argv);
+-			    usage();
+-			    /* NOTREACHED */
+-			}
+-			sn.sin_port = htons(pt);
+-		   }
+-	    } else {
+-		sp = getservbyname("telnet", "tcp");
+-		if (sp == 0) {
+-		    fprintf(stderr, "telnetd: tcp/telnet: unknown service\n");
+-		    exit(1);
++		if (argc > 1) {
++			usage();
++			/* NOTREACHED */
+ 		}
+-		sn.sin_port = sp->s_port;
+-	    }
+ 
+-	    s = socket(AF_INET, SOCK_STREAM, 0);
+-	    if (s < 0) {
+-		    perror("telnetd: socket");;
+-		    exit(1);
+-	    }
+-	    (void) setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+-	    if (bind(s, (struct sockaddr *)&sn, sizeof(sn)) < 0) {
+-		perror("bind");
+-		exit(1);
+-	    }
+-	    if (listen(s, 1) < 0) {
+-		perror("listen");
+-		exit(1);
+-	    }
+-	    foo = sizeof(sn);
+-	    ns = accept(s, (struct sockaddr *)&sn, &foo);
+-	    if (ns < 0) {
+-		perror("accept");
+-		exit(1);
+-	    }
+-	    (void) dup2(ns, 0);
+-	    (void) close(ns);
+-	    (void) close(s);
+-	} else if (argc > 0) {
+-		usage();
+-		/* NOT REACHED */
++		wait_for_connection((argc == 1) ? *argv : "telnet");
+ 	}
+ 
+ 	openlog("telnetd", LOG_PID | LOG_ODELAY, LOG_DAEMON);
+ 	fromlen = sizeof (from);
+ 	if (getpeername(0, (struct sockaddr *)&from, &fromlen) < 0) {
+-		fprintf(stderr, "%s: ", progname);
+-		perror("getpeername");
+-		_exit(1);
++		fatalperror(2, "getpeername");
+ 	}
+ 	if (keepalive &&
+ 	    setsockopt(0, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof (on)) < 0) {
+@@ -339,7 +385,8 @@
+ 	}
+ #endif	/* defined(HAS_IPPROTO_IP) && defined(IP_TOS) */
+ 	net = 0;
+-	doit(&from);
++	netopen();
++	doit((struct sockaddr *)&from, fromlen);
+ 	/* NOTREACHED */
+ 	return 0;
+ }  /* end of main */
+@@ -354,7 +401,7 @@
+ #ifdef BFTPDAEMON
+ 	fprintf(stderr, " [-B]");
+ #endif
+-	fprintf(stderr, " [-debug]");
++	fprintf(stderr, " [-debug port]");
+ #ifdef DIAGNOSTICS
+ 	fprintf(stderr, " [-D (options|report|exercise|netdata|ptydata)]\n\t");
+ #endif
+@@ -373,7 +420,7 @@
+ #ifdef	AUTHENTICATE
+ 	fprintf(stderr, " [-X auth-type]");
+ #endif
+-	fprintf(stderr, " [port]\n");
++	fprintf(stderr, "\n");
+ 	exit(1);
+ }
+ 
+@@ -608,54 +655,45 @@
+  * Get a pty, scan input lines.
+  */
+ static void
+-doit(struct sockaddr_in *who)
++doit(struct sockaddr *who, socklen_t who_len)
+ {
+ 	const char *host;
+-	struct hostent *hp;
+ 	int level;
+ 	char user_name[256];
++	int i;
++	struct addrinfo hints, *res;
+ 
+ 	/*
+ 	 * Find an available pty to use.
+ 	 */
+ 	pty = getpty();
+ 	if (pty < 0)
+-		fatal(net, "All network ports in use");
++		fatalperror(net, "getpty");
+ 
+ 	/* get name of connected client */
+-	hp = gethostbyaddr((char *)&who->sin_addr, sizeof (struct in_addr),
+-		who->sin_family);
+-	if (hp)
+-		host = hp->h_name;
+-	else
+-		host = inet_ntoa(who->sin_addr);
+-
+-	/*
+-	 * We must make a copy because Kerberos is probably going
+-	 * to also do a gethost* and overwrite the static data...
+-	 */
+-	{
+-		int i;
+-		strncpy(remote_host_name, host, sizeof(remote_host_name)-1);
+-		remote_host_name[sizeof(remote_host_name)-1] = 0;
+-
+-		/* Disallow funnies. */
+-		for (i=0; remote_host_name[i]; i++) {
+-		    if (remote_host_name[i]<=32 || remote_host_name[i]>126) 
+-			remote_host_name[i] = '?';
+-		}
++	if (getnameinfo(who, who_len, remote_host_name,
++			sizeof(remote_host_name), 0, 0, 0)) {
++		syslog(LOG_ERR, "doit: getnameinfo: %m");
++		*remote_host_name = 0;
++        }
++
++	/* Disallow funnies. */
++	for (i=0; remote_host_name[i]; i++) {
++	    if (remote_host_name[i]<=32 || remote_host_name[i]>126) 
++		remote_host_name[i] = '?';
+ 	}
+ 	host = remote_host_name;
+ 
+ 	/* Get local host name */
+-	{
+-		struct hostent *h;
+-		gethostname(host_name, sizeof(host_name));
+-		h = gethostbyname(host_name);
+-		if (h) {
+-		    strncpy(host_name, h->h_name, sizeof(host_name));
+-		    host_name[sizeof(host_name)-1] = 0;
+-		}
++	gethostname(host_name, sizeof(host_name));
++	memset(&hints, 0, sizeof(hints));
++	hints.ai_family = PF_UNSPEC;
++	hints.ai_flags = AI_CANONNAME;
++	if ((i = getaddrinfo(host_name, 0, &hints, &res)))
++		syslog(LOG_WARNING, "doit: getaddrinfo: %s", gai_strerror(i));
++	else {
++		strncpy(host_name, res->ai_canonname, sizeof(host_name)-1);
++		host_name[sizeof(host_name)-1] = 0;
+ 	}
+ 
+ #if	defined(AUTHENTICATE) || defined(ENCRYPT)
+@@ -892,7 +930,7 @@
+ 	 * Never look for input if there's still
+ 	 * stuff in the corresponding output buffer
+ 	 */
+-	if (nfrontp - nbackp || pcc > 0) {
++	if (netbuflen(1) || pcc > 0) {
+ 	    FD_SET(f, &obits);
+ 	    if (f >= hifd) hifd = f+1;
+ 	} 
+@@ -1033,6 +1071,7 @@
+ 		}
+ #endif	/* LINEMODE */
+ 		if (ptyibuf[0] & TIOCPKT_FLUSHWRITE) {
++		    static const char msg[] = { IAC, DM };
+ 		    netclear();	/* clear buffer back */
+ #ifndef	NO_URGENT
+ 		    /*
+@@ -1041,8 +1080,7 @@
+ 		     * royally if we send them urgent
+ 		     * mode data.
+ 		     */
+-		    netoprintf("%c%c", IAC, DM);
+-		    neturg = nfrontp-1; /* off by one XXX */
++		    sendurg(msg, sizeof(msg));
+ #endif
+ 		}
+ 		if (his_state_is_will(TELOPT_LFLOW) &&
+@@ -1058,23 +1096,21 @@
+ 	    }
+ 	}
+ 	
+-	while (pcc > 0) {
+-	    if ((&netobuf[BUFSIZ] - nfrontp) < 2)
+-		break;
++	while (pcc > 0 && !netbuflen(0)) {
+ 	    c = *ptyip++ & 0377, pcc--;
+ 	    if (c == IAC)
+-		*nfrontp++ = c;
+-	    *nfrontp++ = c;
++		putc(c, netfile);
++	    putc(c, netfile);
+ 	    if ((c == '\r'  ) && (my_state_is_wont(TELOPT_BINARY))) {
+ 		if (pcc > 0 && ((*ptyip & 0377) == '\n')) {
+-		    *nfrontp++ = *ptyip++ & 0377;
++		    putc(*ptyip++ & 0377, netfile);
+ 		    pcc--;
+ 		} 
+-		else *nfrontp++ = '\0';
++		else putc('\0', netfile);
+ 	    }
+ 	}
+ 
+-	if (FD_ISSET(f, &obits) && (nfrontp - nbackp) > 0)
++	if (FD_ISSET(f, &obits))
+ 	    netflush();
+ 	if (ncc > 0)
+ 	    telrcv();
+--- a/telnetd/utility.c
++++ b/telnetd/utility.c
+@@ -41,6 +41,7 @@
+ 
+ #include <stdarg.h>
+ #include <sys/utsname.h>
++#include <sys/time.h>
+ 
+ #ifdef AUTHENTICATE
+ #include <libtelnet/auth.h>
+@@ -48,34 +49,19 @@
+ 
+ #include "telnetd.h"
+ 
+-/*
+- * utility functions performing io related tasks
+- */
+-
+-void
+-netoprintf(const char *fmt, ...)
+-{
+-   int len, maxsize;
+-   va_list ap;
+-   int done=0;
+-
+-   while (!done) {
+-      maxsize = sizeof(netobuf) - (nfrontp - netobuf);
+-
+-      va_start(ap, fmt);
+-      len = vsnprintf(nfrontp, maxsize, fmt, ap);
+-      va_end(ap);
+-
+-      if (len<0 || len==maxsize) {
+-	 /* didn't fit */
+-	 netflush();
+-      }
+-      else {
+-	 done = 1;
+-      }
+-   }
+-   nfrontp += len;
+-}
++struct buflist {
++	struct buflist *next;
++	char *buf;
++	size_t len;
++};
++
++static struct buflist head = { next: &head, buf: 0, len: 0 };
++static struct buflist *tail = &head;
++static size_t skip;
++static int trailing;
++static size_t listlen;
++static int doclear;
++static struct buflist *urg;
+ 
+ /*
+  * ttloop
+@@ -92,9 +78,7 @@
+ 
+     DIAG(TD_REPORT, netoprintf("td: ttloop\r\n"););
+ 		     
+-    if (nfrontp-nbackp) {
+-	netflush();
+-    }
++    netflush();
+     ncc = read(net, netibuf, sizeof(netibuf));
+     if (ncc < 0) {
+ 	syslog(LOG_INFO, "ttloop: read: %m\n");
+@@ -168,33 +152,64 @@
+  * character.
+  */
+ static
+-char *
+-nextitem(char *current)
+-{
+-    if ((*current&0xff) != IAC) {
+-	return current+1;
+-    }
+-    switch (*(current+1)&0xff) {
+-    case DO:
+-    case DONT:
+-    case WILL:
+-    case WONT:
+-	return current+3;
+-    case SB:		/* loop forever looking for the SE */
+-	{
+-	    register char *look = current+2;
+-
+-	    for (;;) {
+-		if ((*look++&0xff) == IAC) {
+-		    if ((*look++&0xff) == SE) {
+-			return look;
+-		    }
++const char *
++nextitem(
++	const unsigned char *current, const unsigned char *end,
++	const unsigned char *next, const unsigned char *nextend
++) {
++	if (*current++ != IAC) {
++		while (current < end && *current++ != IAC)
++			;
++		goto out;
++	}
++
++	if (current >= end) {
++		current = next;
++		if (!current) {
++			return 0;
+ 		}
+-	    }
++		end = nextend;
++		next = 0;
+ 	}
+-    default:
+-	return current+2;
+-    }
++
++	switch (*current++) {
++	case DO:
++	case DONT:
++	case WILL:
++	case WONT:
++		current++;
++		break;
++	case SB:		/* loop forever looking for the SE */
++		for (;;) {
++			int iac;
++
++			while (iac = 0, current < end) {
++				if (*current++ == IAC) {
++					if (current >= end) {
++						iac = 1;
++						break;
++					}
++iac:
++					if (*current++ == SE) {
++						goto out;
++					}
++				}
++			}
++
++			current = next;
++			if (!current) {
++				return 0;
++			}
++			end = nextend;
++			next = 0;
++			if (iac) {
++				goto iac;
++			}
++		}
++	}
++
++out:
++	return next ? next + (current - end) : current;
+ }  /* end of nextitem */
+ 
+ 
+@@ -216,145 +231,102 @@
+  */
+ void netclear(void)
+ {
+-    register char *thisitem, *next;
+-    char *good;
+-#define	wewant(p)	((nfrontp > p) && ((*p&0xff) == IAC) && \
+-				((*(p+1)&0xff) != EC) && ((*(p+1)&0xff) != EL))
++	doclear++;
++	netflush();
++	doclear--;
++}  /* end of netclear */
+ 
+-#if	defined(ENCRYPT)
+-    thisitem = nclearto > netobuf ? nclearto : netobuf;
+-#else
+-    thisitem = netobuf;
+-#endif
++static void
++netwritebuf(void)
++{
++	struct iovec *vector;
++	struct iovec *v;
++	struct buflist *lp;
++	ssize_t n;
++	size_t len;
++	int ltrailing = trailing;
+ 
+-    while ((next = nextitem(thisitem)) <= nbackp) {
+-	thisitem = next;
+-    }
++	vector = malloc(listlen * sizeof(struct iovec));
++	if (!vector) {
++		return;
++	}
+ 
+-    /* Now, thisitem is first before/at boundary. */
++	len = listlen - (doclear & ltrailing);
++	v = vector;
++	lp = head.next;
++	while (lp != &head) {
++		if (lp == urg) {
++			len = v - vector;
++			if (!len) {
++				n = send(net, lp->buf, 1, MSG_OOB);
++				if (n > 0) {
++					urg = 0;
++				}
++				goto epi;
++			}
++			break;
++		}
++		v->iov_base = lp->buf;
++		v->iov_len = lp->len;
++		v++;
++		lp = lp->next;
++	}
+ 
+-#if	defined(ENCRYPT)
+-    good = nclearto > netobuf ? nclearto : netobuf;
+-#else
+-    good = netobuf;	/* where the good bytes go */
+-#endif
++	vector->iov_base = (char *)vector->iov_base + skip;
++	vector->iov_len -= skip;
++
++	n = writev(net, vector, len);
+ 
+-    while (nfrontp > thisitem) {
+-	if (wewant(thisitem)) {
+-	    int length;
+-
+-	    next = thisitem;
+-	    do {
+-		next = nextitem(next);
+-	    } while (wewant(next) && (nfrontp > next));
+-	    length = next-thisitem;
+-	    bcopy(thisitem, good, length);
+-	    good += length;
+-	    thisitem = next;
+-	} else {
+-	    thisitem = nextitem(thisitem);
++epi:
++	free(vector);
++
++	if (n < 0) {
++		if (errno != EWOULDBLOCK && errno != EINTR)
++			cleanup(0);
++		return;
+ 	}
+-    }
+ 
+-    nbackp = netobuf;
+-    nfrontp = good;		/* next byte to be sent */
+-    neturg = 0;
+-}  /* end of netclear */
++	len = n + skip;
+ 
+-/*
+- *  netflush
+- *		Send as much data as possible to the network,
+- *	handling requests for urgent data.
+- */
+-extern int not42;
+-void
+-netflush(void)
+-{
+-    int n;
++	lp = head.next;
++	while (lp->len <= len) {
++		if (lp == tail && ltrailing) {
++			break;
++		}
+ 
+-    if ((n = nfrontp - nbackp) > 0) {
+-	DIAG(TD_REPORT,
+-	    { netoprintf("td: netflush %d chars\r\n", n);
+-	      n = nfrontp - nbackp;  /* update count */
+-	    });
+-#if	defined(ENCRYPT)
+-	if (encrypt_output) {
+-		char *s = nclearto ? nclearto : nbackp;
+-		if (nfrontp - s > 0) {
+-			(*encrypt_output)((unsigned char *)s, nfrontp-s);
+-			nclearto = nfrontp;
++		len -= lp->len;
++
++		head.next = lp->next;
++		listlen--;
++		free(lp->buf);
++		free(lp);
++
++		lp = head.next;
++		if (lp == &head) {
++			tail = &head;
++			break;
+ 		}
+ 	}
+-#endif
+-	/*
+-	 * if no urgent data, or if the other side appears to be an
+-	 * old 4.2 client (and thus unable to survive TCP urgent data),
+-	 * write the entire buffer in non-OOB mode.
+-	 */
+-	if ((neturg == 0) || (not42 == 0)) {
+-	    n = write(net, nbackp, n);	/* normal write */
+-	} else {
+-	    n = neturg - nbackp;
+-	    /*
+-	     * In 4.2 (and 4.3) systems, there is some question about
+-	     * what byte in a sendOOB operation is the "OOB" data.
+-	     * To make ourselves compatible, we only send ONE byte
+-	     * out of band, the one WE THINK should be OOB (though
+-	     * we really have more the TCP philosophy of urgent data
+-	     * rather than the Unix philosophy of OOB data).
+-	     */
+-	    if (n > 1) {
+-		n = send(net, nbackp, n-1, 0);	/* send URGENT all by itself */
+-	    } else {
+-		n = send(net, nbackp, n, MSG_OOB);	/* URGENT data */
+-	    }
+-	}
+-    }
+-    if (n < 0) {
+-	if (errno == EWOULDBLOCK || errno == EINTR)
+-		return;
+-	cleanup(0);
+-    }
+-    nbackp += n;
+-#if	defined(ENCRYPT)
+-    if (nbackp > nclearto)
+-	nclearto = 0;
+-#endif
+-    if (nbackp >= neturg) {
+-	neturg = 0;
+-    }
+-    if (nbackp == nfrontp) {
+-	nbackp = nfrontp = netobuf;
+-#if	defined(ENCRYPT)
+-	nclearto = 0;
+-#endif
+-    }
+-    return;
+-}  /* end of netflush */
+ 
++	skip = len;
++}
+ 
+ /*
+- * writenet
+- *
+- * Just a handy little function to write a bit of raw data to the net.
+- * It will force a transmit of the buffer if necessary
+- *
+- * arguments
+- *    ptr - A pointer to a character string to write
+- *    len - How many bytes to write
++ *  netflush
++ *             Send as much data as possible to the network,
++ *     handling requests for urgent data.
+  */
+-void writenet(register unsigned char *ptr, register int len)
++void
++netflush(void)
+ {
+-	/* flush buffer if no room for new data) */
+-	if ((&netobuf[BUFSIZ] - nfrontp) < len) {
+-		/* if this fails, don't worry, buffer is a little big */
+-		netflush();
++	if (fflush(netfile)) {
++		/* out of memory? */
++		cleanup(0);
+ 	}
+-
+-	bcopy(ptr, nfrontp, len);
+-	nfrontp += len;
+-
+-}  /* end of writenet */
++	if (listlen) {
++		netwritebuf();
++	}
++}
+ 
+ 
+ /*
+@@ -391,18 +363,30 @@
+ 	fatal(f, buf);
+ }
+ 
+-char editedhost[32];
++char *editedhost;
+ struct utsname kerninfo;
+ 
+ void
+ edithost(const char *pat, const char *host)
+ {
+-	char *res = editedhost;
++	char *res;
+ 
+ 	uname(&kerninfo);
+ 
+ 	if (!pat)
+ 		pat = "";
++
++	res = realloc(editedhost, strlen(pat) + strlen(host) + 1);
++	if (!res) {
++		if (editedhost) {
++			free(editedhost);
++			editedhost = 0;
++		}
++		fprintf(stderr, "edithost: Out of memory\n");
++		return;
++	}
++	editedhost = res;
++
+ 	while (*pat) {
+ 		switch (*pat) {
+ 
+@@ -420,18 +404,12 @@
+ 			*res++ = *pat;
+ 			break;
+ 		}
+-		if (res == &editedhost[sizeof editedhost - 1]) {
+-			*res = '\0';
+-			return;
+-		}
+ 		pat++;
+ 	}
+ 	if (*host)
+-		(void) strncpy(res, host,
+-				sizeof editedhost - (res - editedhost) -1);
++		(void) strcpy(res, host);
+ 	else
+ 		*res = '\0';
+-	editedhost[sizeof editedhost - 1] = '\0';
+ }
+ 
+ static char *putlocation;
+@@ -475,7 +453,9 @@
+ 			break;
+ 
+ 		case 'h':
+-			putstr(editedhost);
++			if (editedhost) {
++				putstr(editedhost);
++			}
+ 			break;
+ 
+ 		case 'd':
+@@ -1118,11 +1098,6 @@
+ 	char xbuf[30];
+ 
+ 	while (cnt) {
+-		/* flush net output buffer if no room for new data) */
+-		if ((&netobuf[BUFSIZ] - nfrontp) < 80) {
+-			netflush();
+-		}
+-
+ 		/* add a line of output */
+ 		netoprintf("%s: ", tag);
+ 		for (i = 0; i < 20 && cnt; i++) {
+@@ -1143,3 +1118,154 @@
+ 	} 
+ }
+ #endif /* DIAGNOSTICS */
++
++static struct buflist *
++addbuf(const char *buf, size_t len)
++{
++	struct buflist *bufl;
++
++	bufl = malloc(sizeof(struct buflist));
++	if (!bufl) {
++		return 0;
++	}
++	bufl->next = tail->next;
++	bufl->buf = malloc(len);
++	if (!bufl->buf) {
++		free(bufl);
++		return 0;
++	}
++	bufl->len = len;
++
++	tail = tail->next = bufl;
++	listlen++;
++
++	memcpy(bufl->buf, buf, len);
++	return bufl;
++}
++
++static ssize_t
++netwrite(void *cookie, const char *buf, size_t len)
++{
++	size_t ret;
++	const char *const end = buf + len;
++	int ltrailing = trailing;
++	int ldoclear = doclear;
++
++#define	wewant(p)	((*p&0xff) == IAC) && \
++				((*(p+1)&0xff) != EC) && ((*(p+1)&0xff) != EL)
++
++	ret = 0;
++
++	if (ltrailing) {
++		const char *p;
++		size_t l;
++		size_t m = tail->len;
++
++		p = nextitem(tail->buf, tail->buf + tail->len, buf, end);
++		ltrailing = !p;
++		if (ltrailing) {
++			p = end;
++		}
++
++		l = p - buf;
++		tail->len += l;
++		tail->buf = realloc(tail->buf, tail->len);
++		if (!tail->buf) {
++			return -1;
++		}
++
++		memcpy(tail->buf + m, buf, l);
++		buf += l;
++		len -= l;
++		ret += l;
++		trailing = ltrailing;
++	}
++
++	if (ldoclear) {
++		struct buflist *lpprev;
++
++		skip = 0;
++		lpprev = &head;
++		for (;;) {
++			struct buflist *lp;
++
++			lp = lpprev->next;
++
++			if (lp == &head) {
++				tail = lpprev;
++				break;
++			}
++
++			if (lp == tail && ltrailing) {
++				break;
++			}
++
++			if (!wewant(lp->buf)) {
++				lpprev->next = lp->next;
++				listlen--;
++				free(lp->buf);
++				free(lp);
++			} else {
++				lpprev = lp;
++			}
++		}
++	}
++
++	while (len) {
++		const char *p;
++		size_t l;
++
++		p = nextitem(buf, end, 0, 0);
++		ltrailing = !p;
++		if (ltrailing) {
++			p = end;
++		} else if (ldoclear) {
++			if (!wewant(buf)) {
++				l = p - buf;
++				goto cont;
++			}
++		}
++
++		l = p - buf;
++		if (!addbuf(buf, l)) {
++			return ret ? ret : -1;
++		}
++		trailing = ltrailing;
++
++cont:
++		buf += l;
++		len -= l;
++		ret += l;
++	}
++
++	netwritebuf();
++	return ret;
++}
++
++void
++netopen() {
++	static const cookie_io_functions_t funcs = {
++		read: 0, write: netwrite, seek: 0, close: 0
++	};
++
++	netfile = fopencookie(0, "w", funcs);
++}
++
++extern int not42;
++void
++sendurg(const char *buf, size_t len) {
++	if (!not42) {
++		fwrite(buf, 1, len, netfile);
++		return;
++	}
++
++	urg = addbuf(buf, len);
++}
++
++size_t
++netbuflen(int flush) {
++	if (flush) {
++		netflush();
++	}
++	return listlen != 1 ? listlen : tail->len - skip;
++}
+--- a/telnetlogin/telnetlogin.8
++++ b/telnetlogin/telnetlogin.8
+@@ -40,6 +40,7 @@
+ .Nm telnetlogin
+ .Op Fl h Ar host
+ .Op Fl p
++.Op Ar username
+ .Sh DESCRIPTION
+ .Nm telnetlogin
+ is a setuid wrapper that runs
+@@ -62,10 +63,8 @@
+ .Nm telnetd 8
+ normally provides them in.
+ .Nm telnetlogin
+-also only accepts the environment variables
++also does sanity checks on the environment variables
+ .Ev TERM , 
+-.Ev DISPLAY , 
+-.Ev POSIXLY_CORRECT ,
+ and
+ .Ev REMOTEHOST .
+ It also insists that the standard input, output, and error streams are
+@@ -83,7 +82,7 @@
+ .Nm telnetlogin
+ does not permit the
+ .Fl f
+-option to login, and does not permit passing a username, so will not
++option to login, so will not
+ work with telnetds that perform authentication via Kerberos or SSL.
+ .Pp
+ THIS IS PRESENTLY EXPERIMENTAL CODE; USE WITH CAUTION.
+--- a/telnetlogin/telnetlogin.c
++++ b/telnetlogin/telnetlogin.c
+@@ -51,20 +51,24 @@
+ #include <string.h>
+ #include <stdarg.h>
+ #include <stdio.h>
++#include <syslog.h>
+ 
+ #ifndef _PATH_LOGIN
+ #define _PATH_LOGIN "/bin/login"
+ #endif
+ 
++extern char **environ;
++
+ static const char *remhost = NULL;
+ 
++static void die(const char *, ...) __attribute__ ((noreturn));
++
+ static void die(const char *fmt, ...) {
+    va_list ap;
+-   fprintf(stderr, "telnetlogin: ");
++   openlog("telnetlogin", LOG_PID, LOG_AUTHPRIV);
+    va_start(ap, fmt);
+-   vfprintf(stderr, fmt, ap);
++   vsyslog(LOG_CRIT, fmt, ap);
+    va_end(ap);
+-   fprintf(stderr, "\n");
+    exit(1);
+ }
+ 
+@@ -86,41 +90,6 @@
+    return 0;
+ }
+ 
+-static int check_display(char *disp) {
+-   char *colon, *s;
+-   struct hostent *hp;
+-   int num;
+-
+-   colon = strchr(disp, ':');
+-   if (!colon) return -1;
+-   *colon = 0;  /* temporarily */
+-
+-   if (check_a_hostname(disp)) return -1;
+-
+-   hp = gethostbyname(disp);
+-   if (!hp) return -1;
+-
+-   *colon = ':';
+-   s = colon+1;
+-   while (*s && isdigit(*s)) s++;
+-   if (*s) {
+-      if (*s!='.') return -1;
+-      s++;
+-      while (*s && isdigit(*s)) s++;
+-   }
+-   if (*s) return -1;
+-
+-   num = atoi(colon+1);
+-   if (num<0 || num>99) return -1;
+-
+-   return 0;
+-}
+-
+-static int check_posixly_correct(char *val) {
+-   if (strlen(val)==0 || !strcmp(val, "1")) return 0;
+-   return -1;
+-}
+-
+ static int check_remotehost(char *val) {
+    if (check_a_hostname(val)) return -1;
+    if (remhost && strcmp(val, remhost)) return -1;
+@@ -132,8 +101,6 @@
+    int (*validator)(char *);
+ } legal_envs[] = {
+    { "TERM", check_term },
+-   { "DISPLAY", check_display },
+-   { "POSIXLY_CORRECT", check_posixly_correct },
+    { "REMOTEHOST", check_remotehost },
+    { NULL, NULL }
+ };
+@@ -166,10 +133,7 @@
+    static char argv0[] = "login";
+    int argn, i, j;
+    const char *rh = NULL;
+-   char **envs = __environ;
+-
+-   /* make as sure as possible no library routines or anything can use it */
+-   __environ = NULL;
++   char **envs = environ;
+ 
+    /* first, make sure our stdin/stdout/stderr are aimed somewhere */
+    i = open("/", O_RDONLY);
+@@ -194,6 +158,9 @@
+    if (argn < argc && !strcmp(argv[argn], "-p")) {
+       argn++;
+    }
++   if (argn < argc && argv[argn][0] != '-') {
++      argn++;
++   }
+    if (argn < argc) die("Illegal args: too many args");
+    argv[0] = argv0;
+ 
+@@ -201,21 +168,22 @@
+    if (envs) for (i=0; envs[i]; i++) {
+       char *testenv = envs[i];
+       size_t testlen = strlen(testenv);
+-      int ok = 0;
+-      for (j=0; legal_envs[j].name && !ok; j++) {
++      for (j=0; legal_envs[j].name; j++) {
+ 	 const char *okenv = legal_envs[j].name;
+ 	 size_t oklen = strlen(okenv);
++	 int sign;
+ 
+ 	 if (testlen < oklen) continue;
+ 	 if (testenv[oklen]!='=') continue;
+-	 if (memcmp(testenv, okenv, oklen)) continue;
++	 if ((sign = memcmp(testenv, okenv, oklen)) < 0) {
++	    continue;
++	 } else if (sign > 0) {
++	    break;
++	 }
+ 	 if (legal_envs[j].validator(testenv+oklen+1)) {
+ 	    die("Invalid environment: bad value for %s", okenv);
+ 	 }
+-	 ok = 1;
+-      }
+-      if (!ok) {
+-	 die("Illegal environment: forbidden variable");
++	 break;
+       }
+    }
+ 
+@@ -234,6 +202,13 @@
+     * but, should we insist that ruid==nobody?
+     */
+ 
++#ifdef debian
++   /*
++    * Debian's /bin/login doesn't work properly unless we're really root.
++    */
++   setuid(0);
++#endif
++
+    /*
+     * don't do anything with limits, itimers, or process priority either
+     */

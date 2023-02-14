@@ -1,0 +1,77 @@
+This is the telnet(d)-ssl package with encryption support.
+
+It is derived from netkit-telnet(d) and is
+patched with the SSL-enhancement of Tim Hudson <tjh@mincom.oz.au>,
+which he did to the SRA-telnet sources.
+
+These patches were done by:
+
+Tim Hudson
+tjh@cryptsoft.com
++61 7 32781581
+
+and
+
+Christoph Martin
+Christoph.Martin@Uni-Mainz.DE
+
+(Look at the VERSION file for details of contributors since the initial
+release)
+
+You can do whatever you like with these patches except pretend that
+you wrote them.
+
+This package uses the SSL-implementation which can be found in
+ftp://ftp.psy.uq.oz.au/pub/Crypto/SSL/SSLeay-0.8.1.tar.gz
+
+The SSLeay FAQ (which includes pointers to the porting documentation 
+and references to the other SSL-based applications) can be found at 
+http://www.psy.uq.oz.au/~ftp/Crypto
+  
+
+Test telnet like this:
+	telnet -z ssl www.netscape.com https
+then type
+	GET / HTTP/1.0 <RETURN><RETURN>
+and you should get back the HTML for the Netscape home page
+
+For installing put the path of telnetd in /etc/inetd.conf and send a
+kill -HUP to inetd. (On SCO this is not working :( ). Then you have to
+install at least the self-signed certificates
+
+I assume that the following exist:
+
+/usr/bin/ssl         (all the SSLeay utilites)
+/usr/lib/ssl         (libcrypto.a and libssl.a)
+/usr/include/ssl     (required SSLeay header files)
+
+/etc/ssl/certs       PUBLIC keys
+/etc/ssl/private     PRIVATE keys
+
+For telnetd you can operate using a self-signed certificate (this is the
+easiest way of driving SSL as a "simple" stream encryption
+library). To generate the required file you can either use
+"make certificate" or do the following:
+
+PATH=$PATH:/usr/bin/ssl
+
+# SSLeay 0.8.1 supports a quick mechanism for generating
+#                            "dummy" certificates
+cd /etc/ssl/certs
+req -new -x509 -nodes -out telnetd.pem -keyout telnetd.pem
+ln -s telnetd.pem `x509 -noout -hash < telnetd.pem`.0
+
+Then *test* that verify likes the setup
+
+verify /etc/ssl/certs/telnetd.pem
+
+SSL bugs should be directed to ssl-bugs@mincom.oz.au
+SSL comments/discussion should be directed to ssl-users@mincom.oz.au
+
+If you email ssl-users-request@mincom.oz.au you will be emailed 
+instructions on how to interact with the majordomo varient that 
+is managing this list.
+
+Email to ssleay@cryptsoft.com will get both Eric Young and Tim Hudson 
+if you are not sure which one of us a problem should be directed to.
+

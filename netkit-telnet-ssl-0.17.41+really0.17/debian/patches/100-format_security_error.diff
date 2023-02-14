@@ -1,0 +1,53 @@
+Description: Format string is not a string literal.
+ Hardened builds are failing due to "-Werror=format-security".
+ Insertion of a trivial format string resolves the failure.
+Author: Mats Erik Andersson <debian@gisladisker.se>
+Forwarded: no
+Last-Update: 2015-01-09
+
+--- netkit-telnet-0.17/telnetd/utility.c.orig	2015-01-09 20:22:23.000000000 +0100
++++ netkit-telnet-0.17/telnetd/utility.c	2015-01-09 23:11:41.695499612 +0100
+@@ -890,17 +890,17 @@
+ 			case ENV_VAR:
+ 			    if (pointer[1] == TELQUAL_SEND)
+ 				goto def_case;
+-			    netoprintf("\" VAR " + noquote);
++			    netoprintf("%s", "\" VAR " + noquote);
+ 			    noquote = 2;
+ 			    break;
+ 
+ 			case ENV_VALUE:
+-			    netoprintf("\" VALUE " + noquote);
++			    netoprintf("%s", "\" VALUE " + noquote);
+ 			    noquote = 2;
+ 			    break;
+ 
+ 			case ENV_ESC:
+-			    netoprintf("\" ESC " + noquote);
++			    netoprintf("%s", "\" ESC " + noquote);
+ 			    noquote = 2;
+ 			    break;
+ 
+--- netkit-telnet-0.17/telnet/utilities.cc.orig	2015-01-09 20:22:23.000000000 +0100
++++ netkit-telnet-0.17/telnet/utilities.cc	2015-01-09 23:33:05.219513739 +0100
+@@ -583,17 +583,17 @@
+ 			case ENV_VAR:
+ 			    if (pointer[1] == TELQUAL_SEND)
+ 				goto def_case;
+-			    fprintf(NetTrace, "\" VAR " + noquote);
++			    fprintf(NetTrace, "%s", "\" VAR " + noquote);
+ 			    noquote = 2;
+ 			    break;
+ 
+ 			case ENV_VALUE:
+-			    fprintf(NetTrace, "\" VALUE " + noquote);
++			    fprintf(NetTrace, "%s", "\" VALUE " + noquote);
+ 			    noquote = 2;
+ 			    break;
+ 
+ 			case ENV_ESC:
+-			    fprintf(NetTrace, "\" ESC " + noquote);
++			    fprintf(NetTrace, "%s", "\" ESC " + noquote);
+ 			    noquote = 2;
+ 			    break;
+ 
