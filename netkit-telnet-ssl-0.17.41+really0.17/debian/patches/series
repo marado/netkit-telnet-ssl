@@ -60,3 +60,4 @@
 110-markup_errors.diff
 telnet-netwritebuf-fix.diff
 use-cmake-as-buildsystem.patch
+700-fix_UTF8.diff

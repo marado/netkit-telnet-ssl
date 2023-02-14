@@ -1,0 +1,17 @@
+Description: Fixing how we handle UTF8 characters
+
+Author: Marcos Marado <mindboosternoori@gmail.com>
+Bug-Debian: https://bugs.debian.org/749322
+Last-Update: 2017-03-05
+
+--- netkit-telnet-ssl-0.17.41+0.2.orig/telnet/telnet.cc
++++ netkit-telnet-ssl-0.17.41+0.2/telnet/telnet.cc
+@@ -1800,7 +1800,7 @@ static int telsnd(void) {
+     }
+ #endif
+     if (MODE_LOCAL_CHARS(globalmode)) {
+-      if (TerminalSpecialChars(sc) == 0) {
++      if (TerminalSpecialChars(c) == 0) { // see https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=749322
+ 	bol = 1;
+ 	break;
+       }
